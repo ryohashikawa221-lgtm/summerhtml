@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サマースクール申込システム 他校舎運用マニュアル</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1b2a4a;--navy2:#243860;
+  --gold:#c9a84c;--gold2:#e8c96a;
+  --cream:#faf8f3;--cream2:#f0ebe0;
+  --red:#c0392b;--green:#1a6b3c;--blue:#1a5fa5;
+  --text:#1a1a1a;--muted:#666;
+  --border:#ddd;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--text)}
+.page-wrap{max-width:860px;margin:0 auto;background:#fff;box-shadow:0 2px 20px rgba(0,0,0,.1)}
+.print-btn{position:fixed;top:16px;right:16px;background:var(--navy);color:#fff;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:13px;z-index:100}
+
+.cover{background:var(--navy);color:#fff;padding:60px 48px;min-height:320px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+.cover::before{content:'';position:absolute;top:-60px;right:-60px;width:300px;height:300px;border:2px solid rgba(201,168,76,.2);border-radius:50%}
+.cover-school{font-size:11px;letter-spacing:.3em;color:var(--gold2);margin-bottom:8px}
+.cover-title{font-family:'Shippori Mincho',serif;font-size:32px;letter-spacing:.1em;margin-bottom:6px}
+.cover-sub{font-size:14px;color:rgba(255,255,255,.6);letter-spacing:.15em;margin-bottom:32px}
+.cover-note{font-size:11px;color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.15);padding-top:16px;line-height:2}
+.badge{display:inline-block;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);color:var(--gold2);padding:5px 14px;border-radius:2px;font-size:12px;margin:4px 4px 0 0}
+
+.page-header{background:var(--navy2);color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.1em;padding:6px 48px;display:flex;justify-content:space-between}
+
+.section{padding:40px 48px;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.section-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--navy);color:#fff;border-radius:50%;font-weight:700;font-size:14px;margin-bottom:12px}
+.section-title{font-family:'Shippori Mincho',serif;font-size:22px;color:var(--navy);margin-bottom:6px}
+.section-desc{font-size:12px;color:var(--muted);margin-bottom:20px}
+
+.card{padding:14px 16px;border:1px solid var(--border);border-radius:3px;border-left:3px solid var(--gold);font-size:12px;margin-bottom:10px}
+.card-title{font-weight:700;color:var(--navy);margin-bottom:8px;font-size:13px}
+.card ul{padding-left:16px;line-height:2.4}
+.card-blue{border-left-color:var(--blue)}
+.card-green{border-left-color:var(--green)}
+.card-red{border-left-color:var(--red)}
+.card-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.steps{display:flex;gap:0;margin-bottom:16px}
+.step{flex:1;text-align:center;padding:16px 10px;border:1px solid var(--border);border-right:none;font-size:12px}
+.step:last-child{border-right:1px solid var(--border)}
+.step-num{width:28px;height:28px;background:var(--navy);color:#fff;border-radius:50%;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.step-num.gold{background:var(--gold);color:var(--navy)}
+.step-title{font-weight:700;margin-bottom:6px;color:var(--navy);font-size:12px}
+.step-desc{color:var(--muted);line-height:1.7;font-size:11px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
+.tbl th{background:var(--navy);color:#fff;padding:8px 12px;text-align:left;font-weight:500;font-size:11px}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl tr:nth-child(even) td{background:var(--cream)}
+.tbl .center{text-align:center}
+
+.alert{padding:12px 16px;border-radius:3px;font-size:12px;margin:12px 0;line-height:1.9}
+.alert-warn{background:#fff7ed;border:1px solid #f97316;border-left:3px solid #f97316}
+.alert-info{background:#eff6ff;border:1px solid var(--blue);border-left:3px solid var(--blue)}
+.alert-green{background:#f0fdf4;border:1px solid var(--green);border-left:3px solid var(--green)}
+
+.url-box{background:var(--navy);color:#fff;padding:14px 18px;border-radius:3px;font-size:11px;line-height:2;margin:12px 0;word-break:break-all}
+.url-box a{color:var(--gold2)}
+
+.manual-footer{background:var(--navy);color:rgba(255,255,255,.5);padding:16px 48px;font-size:10px;display:flex;justify-content:space-between}
+
+@media print{
+  .print-btn{display:none}
+  .page-wrap{box-shadow:none;max-width:100%}
+  .section{page-break-inside:avoid;break-inside:avoid}
+  .cover{page-break-after:always;break-after:always}
+  .page-header{page-break-before:always;break-before:always}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨 印刷 / PDF保存</button>
+
+<div class="page-wrap">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-school">SUNDAI INTERNATIONAL NETWORK</div>
+  <div class="cover-title">サマースクール申込システム</div>
+  <div style="font-family:'Shippori Mincho',serif;font-size:20px;letter-spacing:.1em;margin-bottom:24px;color:rgba(255,255,255,.8)">他校舎セットアップ・運用マニュアル</div>
+  <div style="margin-bottom:24px">
+    <span class="badge">📊 スプレッドシートだけ変更すればOK</span>
+    <span class="badge">🔧 コード編集不要</span>
+    <span class="badge">🏫 他校舎でも即使用可能</span>
+  </div>
+  <div class="cover-note">
+    このシステムはスプレッドシートのデータを変更するだけで、申込サイトに自動反映されます。<br>
+    HTMLやJavaScriptなどのコードを編集する必要は一切ありません。
+  </div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>1 / 6</span>
+</div>
+
+<!-- SECTION 1: セットアップ手順 -->
+<div class="section">
+  <div class="section-num">1</div>
+  <div class="section-title">初回セットアップ手順</div>
+  <div class="section-desc">新しい校舎で使い始めるときの設定手順</div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">ファイルをコピー</div>
+      <div class="step-desc">スプレッドシートとGASプロジェクトをコピーして自分のGoogleアカウントに保存</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">初期セットアップ実行</div>
+      <div class="step-desc">スプレッドシートのメニューから「初期セットアップ」を実行して権限を付与</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">スプレッドシート更新</div>
+      <div class="step-desc">「学校設定」「講座マスター」「料金マスター」を自校舎の情報に更新</div>
+    </div>
+    <div class="step">
+      <div class="step-num gold">4</div>
+      <div class="step-title">デプロイして完成</div>
+      <div class="step-desc">GASエディタでデプロイを更新すれば申込サイトが使えるようになる</div>
+    </div>
+  </div>
+
+  <div class="alert alert-warn">
+    ⚠️ <strong>初期セットアップは必ず最初に実行してください。</strong>これをしないとGoogleドライブへのアクセス権限が付与されず、校章画像の表示やメール送信ができません。
+  </div>
+
+  <div class="card card-blue">
+    <div class="card-title">🔧 初期セットアップの実行方法</div>
+    <ul>
+      <li>スプレッドシートを開く</li>
+      <li>上部メニュー「📊 サマースクール管理」をクリック</li>
+      <li>「🔧 初期セットアップ（初回のみ実行）」をクリック</li>
+      <li>「権限を確認」のダイアログが出るので「許可」をクリック</li>
+      <li>「✅ 初期セットアップ完了！」のメッセージが出れば成功</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SECTION 2: 学校設定 -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>2 / 6</span>
+</div>
+<div class="section">
+  <div class="section-num">2</div>
+  <div class="section-title">学校設定シートの更新</div>
+  <div class="section-desc">スプレッドシートの「学校設定」シートを自校舎の情報に変更する</div>
+
+  <table class="tbl">
+    <thead><tr>
+      <th>設定項目</th>
+      <th>説明</th>
+      <th class="center">必須</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><strong>学校名（日本語）</strong></td><td>申込サイトのヘッダーに表示される日本語校舎名</td><td class="center">✅</td></tr>
+      <tr><td><strong>学校名（英語）</strong></td><td>ヘッダー・パンフレットに表示される英語校舎名</td><td class="center">✅</td></tr>
+      <tr><td><strong>サマースクール名称</strong></td><td>サマースクールの名称（例：サマースクール）</td><td class="center">✅</td></tr>
+      <tr><td><strong>年度</strong></td><td>開催年度（例：2026）</td><td class="center">✅</td></tr>
+      <tr><td><strong>連絡先メール</strong></td><td>申込通知を受け取るメールアドレス（複数はカンマ区切り）</td><td class="center">✅</td></tr>
+      <tr><td><strong>電話番号</strong></td><td>パンフレット・フッターに表示される電話番号</td><td class="center">✅</td></tr>
+      <tr><td><strong>管理者パスワード</strong></td><td>管理ページへのログインパスワード</td><td class="center">✅</td></tr>
+      <tr><td><strong>1次申込締め切り</strong></td><td>YYYY-MM-DD形式で入力（例：2026-05-24）</td><td class="center">任意</td></tr>
+      <tr><td><strong>校章URL</strong></td><td>GoogleドライブにアップロードしたPNG画像の共有URL</td><td class="center">任意</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-warn">
+    ⚠️ <strong>校章画像について：</strong><br>
+    ・画像は必ず <strong>PNG または JPG 形式</strong> でアップロードしてください（AI・SVG・PDF不可）<br>
+    ・Googleドライブにアップロード後、「リンクを知っている全員が閲覧可能」に設定してください<br>
+    ・共有リンク（<code>https://drive.google.com/file/d/XXXXX/view</code>の形式）をそのまま貼り付けるだけでOKです<br>
+    ・自動的にBase64に変換されてHTMLに埋め込まれます
+  </div>
+</div>
+
+<!-- SECTION 3: 講座マスター -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>3 / 6</span>
+</div>
+<div class="section">
+  <div class="section-num">3</div>
+  <div class="section-title">講座マスターの設定</div>
+  <div class="section-desc">開講する講座をスプレッドシートに入力する</div>
+
+  <table class="tbl">
+    <thead><tr>
+      <th>列名</th>
+      <th>説明</th>
+      <th>例</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><strong>講座ID</strong></td><td>重複しない一意のID（英数字・ハイフン使用）</td><td>t1-c01</td></tr>
+      <tr><td><strong>講座名</strong></td><td>申込サイトに表示される講座名</td><td>英検2級 面接演習</td></tr>
+      <tr><td><strong>対象学年</strong></td><td>料金マスターのヘッダーと完全一致させる</td><td>中学生</td></tr>
+      <tr><td><strong>種別(group/ind)</strong></td><td>グループ講座は「group」、個別講座は「ind」</td><td>group</td></tr>
+      <tr><td><strong>ターム</strong></td><td>数字（プレ講習は0）</td><td>1</td></tr>
+      <tr><td><strong>日程</strong></td><td>M/D〜D形式</td><td>6/22〜26</td></tr>
+      <tr><td><strong>時間帯</strong></td><td>H:MM〜H:MM形式</td><td>9:00〜10:30</td></tr>
+      <tr><td><strong>担当先生</strong></td><td>先生名（先生別時間割の列として使用）</td><td>橋川先生</td></tr>
+      <tr><td><strong>定員</strong></td><td>講座の最大受講人数</td><td>12</td></tr>
+      <tr><td><strong>料金(空欄=学年別標準)</strong></td><td>個別料金がある場合のみ入力（英検等）</td><td>150</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-info">
+    💡 <strong>対象学年が「全学年」の場合：</strong>全ての学年に表示されます（英検対策講座等に使用）<br>
+    💡 <strong>新しい先生を追加する場合：</strong>担当先生列に名前を入力するだけで自動的に時間割に追加されます
+  </div>
+</div>
+
+<!-- SECTION 4: 料金・割引マスター -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>4 / 6</span>
+</div>
+<div class="section">
+  <div class="section-num">4</div>
+  <div class="section-title">料金・割引マスターの設定</div>
+  <div class="section-desc">受講料金と割引制度をスプレッドシートで管理する</div>
+
+  <div class="card card-blue">
+    <div class="card-title">💰 料金マスターの形式</div>
+    <p style="line-height:2">1行目（ヘッダー）：「種別」「学年名1」「学年名2」… と入力<br>
+    2行目以降：種別ごとに料金を入力します。</p>
+    <table class="tbl" style="margin-top:8px">
+      <thead><tr><th>種別</th><th>小学低学年</th><th>小学高学年</th><th>中学生</th><th>高校生</th></tr></thead>
+      <tbody>
+        <tr><td>グループ講座（1ターム）</td><td>150</td><td>150</td><td>200</td><td>225</td></tr>
+        <tr><td>個別講座（1ターム）</td><td>200</td><td>200</td><td>250</td><td>280</td></tr>
+        <tr><td>プレ講習グループ（1コマ）</td><td>30</td><td>30</td><td>40</td><td>45</td></tr>
+        <tr><td>プレ講習個別（1コマ）</td><td>40</td><td>40</td><td>50</td><td>56</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert alert-warn">
+    ⚠️ <strong>重要：</strong>料金マスターの学年名（ヘッダー）は、<strong>講座マスターの「対象学年」と完全に一致</strong>させてください。一文字でも違うと料金が表示されません。
+  </div>
+
+  <div class="card card-green">
+    <div class="card-title">🎁 割引マスターの形式</div>
+    <ul>
+      <li>割引の種類・条件・割引率・説明をそれぞれ入力</li>
+      <li>パンフレットの割引制度欄に自動表示されます</li>
+      <li>割引の計算ロジックはコード側で実装済みのため、割引率の変更はここで行います</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SECTION 5: ZOOM/録画受講 -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>5 / 6</span>
+</div>
+<div class="section">
+  <div class="section-num">5</div>
+  <div class="section-title">ZOOM・録画受講について</div>
+  <div class="section-desc">保護者が申込時にZOOM・録画受講を選択できます</div>
+
+  <div class="card-grid-2">
+    <div class="card card-blue">
+      <div class="card-title">📹 ZOOM受講・🎬 録画受講が選択可能な学年</div>
+      <ul>
+        <li>小学高学年（4〜6年）※一部講座除く</li>
+        <li>中学生 ※一部講座除く</li>
+        <li>高校生 ※全講座OK</li>
+      </ul>
+    </div>
+    <div class="card card-red">
+      <div class="card-title">🚫 ZOOM・録画受講不可</div>
+      <ul>
+        <li><strong>小学低学年は全て不可</strong></li>
+        <li>美術・調理実習・理科実験・書道</li>
+        <li>紙芝居・トートバッグ・編み物</li>
+        <li>小石アート・算数ラボ 等の体験型</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    💡 保護者が「ZOOM受講」または「録画受講」を選択した場合、申込一覧の「講座詳細」列にその情報が記録されます。先生への連絡・ZOOMリンク送付は手動で行ってください。
+  </div>
+</div>
+
+<!-- SECTION 6: デプロイと運用 -->
+<div class="page-header">
+  <span>サマースクール申込システム 他校舎セットアップ・運用マニュアル</span>
+  <span>6 / 6</span>
+</div>
+<div class="section">
+  <div class="section-num">6</div>
+  <div class="section-title">デプロイと日常運用</div>
+  <div class="section-desc">スプレッドシートを更新した後の反映方法と日常運用</div>
+
+  <div class="card card-blue">
+    <div class="card-title">🚀 デプロイの更新方法（スプレッドシート変更後）</div>
+    <ul>
+      <li>GASエディタを開く（スプレッドシート → 拡張機能 → Apps Script）</li>
+      <li>右上の「デプロイ」→「デプロイを管理」をクリック</li>
+      <li>アクティブなデプロイの ✏️ 編集ボタンをクリック</li>
+      <li>バージョンを「<strong>新しいバージョン</strong>」に変更</li>
+      <li>「デプロイ」ボタンをクリック</li>
+    </ul>
+  </div>
+
+  <div class="alert alert-green">
+    ✅ <strong>毎年の更新はこれだけ：</strong>スプレッドシートの各シートを更新 → デプロイを更新。コードの編集は不要です。
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>シート名</th><th>更新内容</th><th class="center">頻度</th></tr></thead>
+    <tbody>
+      <tr><td><strong>学校設定</strong></td><td>学校名・メール・パスワード・締め切り日・校章URL</td><td class="center">毎年・校舎変更時</td></tr>
+      <tr><td><strong>講座マスター</strong></td><td>講座名・ターム・日程・時間帯・担当先生・定員</td><td class="center">毎年</td></tr>
+      <tr><td><strong>料金マスター</strong></td><td>学年別グループ・個別・プレ講習料金</td><td class="center">変更時のみ</td></tr>
+      <tr><td><strong>割引マスター</strong></td><td>割引種別・条件・割引率・説明</td><td class="center">変更時のみ</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card card-red" style="margin-top:16px">
+    <div class="card-title">⚠️ よくある問題と対処法</div>
+    <ul>
+      <li><strong>校章が表示されない</strong> → 画像がPNG/JPG形式か確認。Driveの共有設定が「リンクを知っている全員」になっているか確認</li>
+      <li><strong>料金が0円になる</strong> → 料金マスターの学年名と講座マスターの対象学年が完全一致しているか確認</li>
+      <li><strong>講座が表示されない</strong> → デプロイを更新してページをリロード</li>
+      <li><strong>申込メールが届かない</strong> → 学校設定の「連絡先メール」を確認。初期セットアップが完了しているか確認</li>
+      <li><strong>管理ページに入れない</strong> → 学校設定の「管理者パスワード」を確認</li>
+    </ul>
+  </div>
+
+  <div class="url-box" style="margin-top:16px">
+    <strong>📞 問い合わせ先（システム担当）</strong><br>
+    r-hashikawa@sundai-kaigai.jp<br>
+    TEL: 248-349-5234（駿台ミシガン国際学院）
+  </div>
+</div>
+
+<div class="manual-footer">
+  <span>駿台インターナショナルネットワーク　サマースクール申込システム</span>
+  <span>他校舎セットアップ・運用マニュアル</span>
+</div>
+
+</div>
+</body>
+</html>
