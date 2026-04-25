@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>駿台インターナショナル｜他校舎向けシステム導入マニュアル</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Shippori+Mincho:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1b2a4a;--navy2:#243860;--navy3:#0f1a33;
+  --gold:#c9a84c;--gold2:#e8c96a;--gold3:#a88535;
+  --cream:#faf8f3;--cream2:#f0ebe0;--cream3:#e8e0cc;
+  --red:#c0392b;--green:#1a6b3c;--blue:#1a5fa5;
+  --text:#1a1a1a;--muted:#666;--soft:#999;
+  --border:#ddd;--border2:#bbb;
+  --mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--text);line-height:1.75;font-size:14px}
+
+@page{size:A4;margin:15mm 12mm}
+@media print{
+  body{background:#fff;font-size:10.5pt}
+  .cover,.chapter{page-break-after:always}
+  .no-print{display:none!important}
+  .toc{page-break-after:always}
+  h2{page-break-before:always}
+  h2:first-of-type{page-break-before:auto}
+  .tip,.warn,.step-box,.faq-item,.code-block,.danger{page-break-inside:avoid}
+}
+
+/* ── COVER ── */
+.cover{
+  min-height:100vh;background:linear-gradient(135deg,var(--navy3) 0%,var(--navy) 50%,var(--navy2) 100%);
+  color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:50px 60px;
+  position:relative;overflow:hidden;
+}
+.cover::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 85% 15%,rgba(201,168,76,.25),transparent 55%),
+    radial-gradient(circle at 15% 85%,rgba(201,168,76,.12),transparent 45%);
+  pointer-events:none;
+}
+.cover::after{content:'';position:absolute;bottom:0;left:0;right:0;height:8px;
+  background:linear-gradient(90deg,var(--gold3),var(--gold),var(--gold2),var(--gold),var(--gold3))}
+.cover-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2}
+.cover-mark{font-family:'Shippori Mincho',serif;font-size:11px;letter-spacing:.45em;color:var(--gold2);font-weight:700}
+.cover-year{font-size:10px;letter-spacing:.3em;color:rgba(255,255,255,.5);text-align:right;line-height:1.9}
+.cover-main{position:relative;z-index:2;margin-top:auto;margin-bottom:40px}
+.cover-tag{display:inline-block;font-size:10px;letter-spacing:.4em;color:var(--gold2);
+  border:1px solid var(--gold3);padding:6px 14px;margin-bottom:32px}
+.cover-title-en{font-family:'Shippori Mincho',serif;font-size:13px;letter-spacing:.3em;
+  color:var(--gold2);margin-bottom:18px;font-weight:500}
+.cover-title{font-family:'Shippori Mincho',serif;font-size:48px;font-weight:900;line-height:1.2;margin-bottom:18px;letter-spacing:.05em}
+.cover-title small{display:block;font-size:20px;font-weight:500;color:rgba(255,255,255,.75);margin-top:14px;letter-spacing:.08em}
+.cover-sub{font-size:14px;color:rgba(255,255,255,.7);letter-spacing:.08em;max-width:600px;line-height:2}
+.cover-bottom{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;
+  border-top:1px solid rgba(255,255,255,.12);padding-top:22px}
+.cover-meta{font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.5);line-height:2.2}
+.cover-stamp{font-family:'Shippori Mincho',serif;font-size:11px;letter-spacing:.2em;
+  color:var(--gold2);text-align:right;line-height:2.2}
+
+/* ── TOC ── */
+.toc{background:var(--cream);padding:60px 60px;max-width:900px;margin:0 auto;min-height:100vh}
+.toc-head{font-family:'Shippori Mincho',serif;font-size:11px;letter-spacing:.5em;color:var(--gold3);margin-bottom:8px;font-weight:700}
+.toc-title{font-family:'Shippori Mincho',serif;font-size:36px;color:var(--navy);margin-bottom:6px;font-weight:700}
+.toc-title-en{font-size:11px;letter-spacing:.3em;color:var(--muted);margin-bottom:36px;font-family:'Shippori Mincho',serif}
+.toc-list{border-top:2px solid var(--navy)}
+.toc-item{display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid var(--border);
+  text-decoration:none;color:var(--text);transition:.15s;gap:16px}
+.toc-item:hover{background:rgba(201,168,76,.08);padding-left:10px}
+.toc-num{font-family:'Shippori Mincho',serif;font-size:20px;color:var(--gold3);font-weight:700;min-width:48px}
+.toc-text{flex:1;font-size:14px;font-weight:500}
+.toc-text small{display:block;font-size:10px;letter-spacing:.2em;color:var(--muted);margin-top:2px;font-weight:400}
+.toc-dots{flex:1;border-bottom:1px dotted var(--border2);transform:translateY(-4px)}
+.toc-page{font-family:'Shippori Mincho',serif;font-size:13px;color:var(--navy);font-weight:700}
+
+/* ── CHAPTER ── */
+.chapter{background:#fff;max-width:900px;margin:0 auto 40px;padding:50px 60px;
+  border-left:3px solid var(--gold);box-shadow:0 2px 20px rgba(0,0,0,.04)}
+@media print{.chapter{box-shadow:none;margin:0}}
+
+.ch-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;
+  padding-bottom:18px;border-bottom:2px solid var(--navy)}
+.ch-num{font-family:'Shippori Mincho',serif;font-size:80px;color:var(--gold);line-height:.9;font-weight:900;letter-spacing:-.02em}
+.ch-titles{text-align:right}
+.ch-en{font-size:10px;letter-spacing:.35em;color:var(--gold3);margin-bottom:6px;font-family:'Shippori Mincho',serif;font-weight:500}
+.ch-ja{font-family:'Shippori Mincho',serif;font-size:24px;color:var(--navy);font-weight:700;letter-spacing:.05em}
+
+.ch-lead{font-size:13px;color:var(--muted);line-height:2.2;margin-bottom:28px;
+  padding:16px 20px;background:var(--cream);border-left:3px solid var(--gold2)}
+
+h3{font-family:'Shippori Mincho',serif;font-size:18px;color:var(--navy);margin:32px 0 14px;padding-left:14px;
+  border-left:4px solid var(--gold);letter-spacing:.04em;font-weight:700}
+h3:first-child{margin-top:0}
+h4{font-size:14px;color:var(--navy);margin:22px 0 10px;font-weight:700;
+  display:flex;align-items:center;gap:8px}
+h4::before{content:'';width:6px;height:6px;background:var(--gold);border-radius:50%;flex-shrink:0}
+h5{font-size:13px;color:var(--navy);margin:16px 0 8px;font-weight:700}
+
+p{margin-bottom:14px;line-height:2}
+
+/* ── STEP BOX ── */
+.step-box{background:var(--cream);border:1px solid var(--cream3);border-radius:3px;
+  padding:22px 26px;margin:18px 0;position:relative;counter-reset:step}
+.step-box::before{content:'手順';position:absolute;top:-10px;left:18px;background:var(--navy);color:#fff;
+  font-size:10px;letter-spacing:.3em;padding:3px 12px;font-weight:700}
+.step-box.ritual::before{content:'初回セットアップ'}
+.step{display:flex;gap:14px;margin-bottom:14px;counter-increment:step}
+.step:last-child{margin-bottom:0}
+.step-num{width:28px;height:28px;background:var(--navy);color:#fff;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;
+  font-family:'Shippori Mincho',serif}
+.step-num::before{content:counter(step)}
+.step-body{flex:1;padding-top:3px}
+.step-body strong{color:var(--navy);font-weight:700;display:block;margin-bottom:4px}
+.step-body small{display:block;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.7}
+
+/* ── CALLOUTS ── */
+.tip{background:#f0fdf4;border-left:4px solid var(--green);padding:14px 18px;margin:16px 0;border-radius:0 3px 3px 0}
+.tip strong{color:var(--green);font-size:12px;letter-spacing:.1em;display:block;margin-bottom:4px}
+.warn{background:#fffbeb;border-left:4px solid #f59e0b;padding:14px 18px;margin:16px 0;border-radius:0 3px 3px 0}
+.warn strong{color:#b45309;font-size:12px;letter-spacing:.1em;display:block;margin-bottom:4px}
+.danger{background:#fef2f2;border-left:4px solid var(--red);padding:14px 18px;margin:16px 0;border-radius:0 3px 3px 0}
+.danger strong{color:var(--red);font-size:12px;letter-spacing:.1em;display:block;margin-bottom:4px}
+.info{background:#eff6ff;border-left:4px solid var(--blue);padding:14px 18px;margin:16px 0;border-radius:0 3px 3px 0}
+.info strong{color:var(--blue);font-size:12px;letter-spacing:.1em;display:block;margin-bottom:4px}
+
+/* ── TABLES ── */
+table{width:100%;border-collapse:collapse;font-size:12px;margin:14px 0;background:#fff}
+th{background:var(--navy);color:#fff;padding:9px 12px;text-align:left;font-weight:500;
+  font-size:11px;letter-spacing:.08em}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:nth-child(even) td{background:var(--cream)}
+table code{background:transparent;color:var(--navy);font-weight:700;font-family:var(--mono);font-size:11px}
+
+/* ── CODE ── */
+code{background:var(--cream2);padding:1px 6px;border-radius:2px;font-family:var(--mono);font-size:12px;color:var(--navy);font-weight:600}
+.code-block{background:var(--navy3);color:#d4d4d4;padding:16px 20px;border-radius:4px;margin:14px 0;
+  font-family:var(--mono);font-size:11px;line-height:1.9;position:relative;overflow-x:auto;border-left:3px solid var(--gold)}
+.code-block::before{content:attr(data-lang);position:absolute;top:-10px;left:16px;background:var(--gold);
+  color:var(--navy);font-size:9px;letter-spacing:.25em;padding:3px 10px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif}
+.code-block .comment{color:#6a9955}
+.code-block .str{color:#ce9178}
+.code-block .key{color:#569cd6}
+
+/* ── FEATURE GRID ── */
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media print,(max-width:700px){.feature-grid{grid-template-columns:1fr}}
+.feature-card{background:#fff;border:1px solid var(--border);border-top:3px solid var(--gold);padding:16px 18px;border-radius:2px}
+.feature-card h4{margin-top:0}
+.feature-card ul{list-style:none;padding:0;font-size:12px}
+.feature-card li{padding:4px 0 4px 16px;position:relative;line-height:1.8}
+.feature-card li::before{content:'✓';position:absolute;left:0;color:var(--green);font-weight:700}
+
+/* ── UI MOCK ── */
+.ui-mock{background:var(--navy);color:#fff;padding:18px 22px;border-radius:3px;
+  margin:16px 0;font-family:'Shippori Mincho',serif;position:relative}
+.ui-mock::before{content:'画面イメージ';position:absolute;top:-10px;left:16px;background:var(--gold);
+  color:var(--navy);font-size:9px;letter-spacing:.25em;padding:3px 10px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif}
+.ui-mock-body{font-size:12px;color:rgba(255,255,255,.85);line-height:2;font-family:'Noto Sans JP',sans-serif}
+
+/* ── FAQ ── */
+.faq-item{border:1px solid var(--border);border-radius:3px;margin-bottom:10px;overflow:hidden;background:#fff}
+.faq-q{background:var(--cream);padding:12px 18px;font-weight:700;color:var(--navy);font-size:13px;
+  display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
+.faq-q::before{content:'Q.';color:var(--gold3);font-family:'Shippori Mincho',serif;font-size:16px;font-weight:900;flex-shrink:0}
+.faq-a{padding:14px 18px;font-size:13px;line-height:2;display:flex;align-items:flex-start;gap:10px}
+.faq-a::before{content:'A.';color:var(--navy);font-family:'Shippori Mincho',serif;font-size:16px;font-weight:900;flex-shrink:0}
+
+/* ── FINAL ── */
+.final{background:linear-gradient(135deg,var(--navy3) 0%,var(--navy) 100%);color:#fff;
+  padding:60px;text-align:center;margin-top:40px;position:relative;overflow:hidden}
+.final::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--gold3),var(--gold2),var(--gold3))}
+.final-mark{font-family:'Shippori Mincho',serif;font-size:11px;letter-spacing:.5em;color:var(--gold2);margin-bottom:18px}
+.final-title{font-family:'Shippori Mincho',serif;font-size:30px;margin-bottom:14px;font-weight:700;letter-spacing:.08em}
+.final-sub{font-size:13px;color:rgba(255,255,255,.7);line-height:2;letter-spacing:.05em;max-width:560px;margin:0 auto}
+.final-line{width:60px;height:1px;background:var(--gold);margin:24px auto;opacity:.6}
+.final-stamp{font-family:'Shippori Mincho',serif;font-size:10px;letter-spacing:.3em;color:var(--gold2);margin-top:16px}
+
+/* ── NAV ── */
+.floating-nav{position:fixed;top:20px;right:20px;background:var(--navy);color:#fff;padding:8px 14px;
+  border-radius:3px;font-size:11px;letter-spacing:.1em;text-decoration:none;z-index:100;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);transition:.15s;font-weight:500}
+.floating-nav:hover{background:var(--navy2);transform:translateY(-2px)}
+.print-btn{position:fixed;top:20px;right:120px;background:var(--gold);color:var(--navy);padding:8px 14px;
+  border-radius:3px;font-size:11px;letter-spacing:.1em;cursor:pointer;z-index:100;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);transition:.15s;border:none;font-family:inherit;font-weight:700}
+.print-btn:hover{background:var(--gold2)}
+
+.kbd{display:inline-block;background:#fff;border:1px solid var(--border2);border-bottom-width:2px;
+  border-radius:3px;padding:1px 7px;font-family:var(--mono);font-size:11px;color:var(--navy)}
+
+.list-plain{list-style:none;padding:0}
+.list-plain li{padding:6px 0 6px 22px;position:relative;line-height:2;font-size:13px}
+.list-plain li::before{content:'▸';position:absolute;left:0;color:var(--gold3);font-weight:700}
+
+.checklist{list-style:none;padding:0;background:#fff;border:1px solid var(--cream3);border-radius:3px;padding:16px 20px;margin:16px 0}
+.checklist li{padding:8px 0 8px 28px;position:relative;line-height:1.8;font-size:13px;border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'☐';position:absolute;left:0;color:var(--navy);font-size:16px;font-weight:700}
+</style>
+</head>
+<body>
+
+<a href="#cover" class="floating-nav no-print">↑ 表紙へ</a>
+<button class="print-btn no-print" onclick="window.print()">🖨 印刷する</button>
+
+<!-- ===== COVER ===== -->
+<div id="cover" class="cover">
+  <div class="cover-top">
+    <div class="cover-mark">SUNDAI · INTERNATIONAL NETWORK</div>
+    <div class="cover-year">DEPLOYMENT GUIDE<br>EDITION 2026</div>
+  </div>
+  <div class="cover-main">
+    <div class="cover-tag">FOR NEW SCHOOLS</div>
+    <div class="cover-title-en">SYSTEM DEPLOYMENT &amp; OPERATION GUIDE</div>
+    <h1 class="cover-title">
+      申込システム
+      <small>他校舎向け 導入・運用マニュアル</small>
+    </h1>
+    <div class="cover-sub">
+      初期セットアップから学校設定、講座マスター整備、<br>
+      初回デプロイ、運用開始、アップデートまで――<br>
+      他校舎が独立して運用するための全工程を、体系的に解説します。
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div class="cover-meta">
+      ISSUED / 2026<br>
+      FOR SUNDAI NETWORK SCHOOLS<br>
+      SUMMER SCHOOL ENROLLMENT SYSTEM
+    </div>
+    <div class="cover-stamp">
+      駿台海外校<br>
+      サマースクール申込システム
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <div class="toc-head">CONTENTS</div>
+  <h2 class="toc-title">目次</h2>
+  <div class="toc-title-en">TABLE OF CONTENTS</div>
+  <div class="toc-list">
+    <a href="#ch1" class="toc-item"><span class="toc-num">01</span><span class="toc-text">このシステムでできること<small>WHAT THIS SYSTEM DOES</small></span><span class="toc-dots"></span><span class="toc-page">03</span></a>
+    <a href="#ch2" class="toc-item"><span class="toc-num">02</span><span class="toc-text">導入の全体像<small>DEPLOYMENT OVERVIEW</small></span><span class="toc-dots"></span><span class="toc-page">05</span></a>
+    <a href="#ch3" class="toc-item"><span class="toc-num">03</span><span class="toc-text">初回セットアップ（ステップ1-4）<small>INITIAL SETUP</small></span><span class="toc-dots"></span><span class="toc-page">07</span></a>
+    <a href="#ch4" class="toc-item"><span class="toc-num">04</span><span class="toc-text">学校設定シートの詳細<small>SCHOOL SETTINGS</small></span><span class="toc-dots"></span><span class="toc-page">11</span></a>
+    <a href="#ch5" class="toc-item"><span class="toc-num">05</span><span class="toc-text">講座マスター・料金マスターの入力<small>COURSE &amp; PRICING</small></span><span class="toc-dots"></span><span class="toc-page">14</span></a>
+    <a href="#ch6" class="toc-item"><span class="toc-num">06</span><span class="toc-text">初回デプロイの手順<small>FIRST DEPLOYMENT</small></span><span class="toc-dots"></span><span class="toc-page">17</span></a>
+    <a href="#ch7" class="toc-item"><span class="toc-num">07</span><span class="toc-text">2回目以降のデプロイ更新<small>UPDATE DEPLOYMENT</small></span><span class="toc-dots"></span><span class="toc-page">20</span></a>
+    <a href="#ch8" class="toc-item"><span class="toc-num">08</span><span class="toc-text">校章画像の設定<small>LOGO CONFIGURATION</small></span><span class="toc-dots"></span><span class="toc-page">22</span></a>
+    <a href="#ch9" class="toc-item"><span class="toc-num">09</span><span class="toc-text">よくある問題と対処法<small>TROUBLESHOOTING</small></span><span class="toc-dots"></span><span class="toc-page">24</span></a>
+    <a href="#ch10" class="toc-item"><span class="toc-num">10</span><span class="toc-text">フィードバック・お問い合わせ<small>FEEDBACK &amp; SUPPORT</small></span><span class="toc-dots"></span><span class="toc-page">27</span></a>
+    <a href="#appendix" class="toc-item"><span class="toc-num">A</span><span class="toc-text">付録：導入チェックリスト<small>APPENDIX: CHECKLIST</small></span><span class="toc-dots"></span><span class="toc-page">28</span></a>
+  </div>
+</div>
+
+<!-- ===== CHAPTER 1 ===== -->
+<div id="ch1" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">01</div>
+    <div class="ch-titles">
+      <div class="ch-en">WHAT THIS SYSTEM DOES</div>
+      <div class="ch-ja">このシステムでできること</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    このシステムは、Googleスプレッドシート＋Google Apps Script（GAS）＋HTMLで構築された、サマースクール申込管理システムです。保護者向けの申込サイトと、先生向けの管理画面が一体となっており、スプレッドシートの内容を編集するだけで申込サイトが自動的に更新されます。プログラミングの知識は不要です。
+  </div>
+
+  <h3>システムの3つの柱</h3>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>保護者向け：申込サイト</h4>
+      <ul>
+        <li>講座選択・生徒複数人同時申込</li>
+        <li>ZOOM受講・録画受講の選択</li>
+        <li>兄弟割引・3コマ以上割引の自動計算</li>
+        <li>申込完了後の自動確認メール</li>
+        <li>申込データのスプレッドシート自動保存</li>
+        <li>パンフレットページ（料金表・日程表示）</li>
+        <li>講座リクエスト送信フォーム</li>
+      </ul>
+    </div>
+    <div class="feature-card">
+      <h4>管理者向け：管理画面</h4>
+      <ul>
+        <li>パスワード保護付き</li>
+        <li>申込一覧の確認（外出先からも）</li>
+        <li>講座ごとの募集停止・再開</li>
+        <li>定員到達の自動検知</li>
+        <li>フィードバック送信（第10章）</li>
+      </ul>
+    </div>
+    <div class="feature-card">
+      <h4>先生向け：レポート機能</h4>
+      <ul>
+        <li>先生別時間割（出欠チェックボックス付き）</li>
+        <li>講座別名簿（メールアドレス付き）</li>
+        <li>申込サマリー（売上集計）</li>
+        <li>全レポート一括出力</li>
+        <li>スプレッドシートのカスタムメニューから1クリック</li>
+      </ul>
+    </div>
+    <div class="feature-card">
+      <h4>設計思想：スプレッドシート連動</h4>
+      <ul>
+        <li>校舎名・校章・連絡先：学校設定シート</li>
+        <li>講座情報：講座マスターシート</li>
+        <li>料金体系：料金マスターシート</li>
+        <li>割引ルール：割引マスターシート</li>
+        <li>全て変更は即座に申込サイトに反映</li>
+        <li>コード編集不要、非エンジニアで運用可能</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>このシステムについて</h3>
+  <p>駿台海外校のサマースクール運用を効率化するために作られたシステムです。スプレッドシートを編集するだけで校舎ごとのカスタマイズが完結し、コードに触れることなく運用できます。</p>
+</div>
+
+<!-- ===== CHAPTER 2 ===== -->
+<div id="ch2" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">02</div>
+    <div class="ch-titles">
+      <div class="ch-en">DEPLOYMENT OVERVIEW</div>
+      <div class="ch-ja">導入の全体像</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    このシステムを新しい校舎で使い始めるには、次の4ステップが必要です。所要時間は約1〜2時間。プログラミングの知識は不要ですが、Google Driveの基本操作と、スプレッドシートへのデータ入力ができることが前提です。
+  </div>
+
+  <h3>導入の4ステップ</h3>
+
+  <table>
+    <tr><th style="width:10%">#</th><th style="width:25%">ステップ</th><th style="width:20%">所要時間</th><th>内容</th></tr>
+    <tr><td>1</td><td>スプレッドシートをコピー</td><td>約5分</td><td>共有されたテンプレートをGoogle Driveにコピー</td></tr>
+    <tr><td>2</td><td>初期セットアップ実行</td><td>約10分</td><td>GASメニューから「初期セットアップ」を実行し、権限を付与</td></tr>
+    <tr><td>3</td><td>学校設定・マスター更新</td><td>約30〜60分</td><td>学校設定、講座マスター、料金マスターなどを校舎の内容に書き換え</td></tr>
+    <tr><td>4</td><td>初回デプロイ</td><td>約10分</td><td>GASをWebアプリとしてデプロイし、URLを取得して保護者に案内</td></tr>
+  </table>
+
+  <h3>準備しておくもの</h3>
+
+  <ul class="checklist">
+    <li>校舎で使用する Google アカウント（ログイン済み）</li>
+    <li>校章画像（PNGまたはJPG形式のみ対応。推奨サイズ 200×200px 〜 500×500px）</li>
+    <li>校舎情報（正式名称・電話番号・申込担当者のメールアドレス）</li>
+    <li>講座情報一覧（講座名・対象学年・定員・ターム・時間帯・担当先生・料金）</li>
+    <li>料金体系（学年別・グループ/個別別の基本料金、プレ講習料金）</li>
+    <li>割引制度（兄弟割引・コマ数割引などのルール）</li>
+    <li>このマニュアル（本書）</li>
+  </ul>
+
+  <div class="warn">
+    <strong>CAUTION</strong>
+    このシステムは、Google Driveのアカウントに紐づいて動作します。<strong>個人アカウントよりも、校舎の共有アカウント（G Suite / Google Workspace）で運用することを強く推奨します。</strong>担当者が変わった場合にもシステムを引き継ぎやすくなります。
+  </div>
+
+  <h3>システム構成図</h3>
+
+  <div class="ui-mock">
+    <div class="ui-mock-body" style="font-family:'SFMono-Regular',monospace;font-size:11px;line-height:2">
+    ┌────────────────────────┐ ┌────────────────────────┐<br>
+    │ &nbsp;📱 保護者（ブラウザ）　　　│ │ &nbsp;📱 先生（ブラウザ）　　　　│<br>
+    │ &nbsp;・講座選択・申込　　　　　│ │ &nbsp;・管理画面・募集停止　　　　│<br>
+    └─────────┬──────────────┘ └──────────┬─────────────┘<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ HTTPS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+    ┌──────────────────────────────────────────────────┐<br>
+    │ &nbsp;☁️ Google Apps Script（GAS Webアプリ）　　　　　　│<br>
+    │ &nbsp;・HTML配信（index.html）　　　　　　　　　　　　　│<br>
+    │ &nbsp;・申込受付・メール送信・データ保存　　　　　　　　│<br>
+    └─────────┬────────────────────────────────────────┘<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼<br>
+    ┌──────────────────────────────────────────────────┐<br>
+    │ &nbsp;📊 スプレッドシート（マスターデータ・申込記録）　　│<br>
+    │ &nbsp;・学校設定・講座マスター・料金マスター　　　　　　│<br>
+    │ &nbsp;・申込一覧・申込数集計　　　　　　　　　　　　　　│<br>
+    │ &nbsp;・レポート出力先（時間割・名簿・サマリー）　　　　│<br>
+    └──────────────────────────────────────────────────┘
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    図の通り、保護者も先生も「GAS Webアプリ」にアクセスします。データの実体はすべてスプレッドシートにあり、GASはその橋渡しをしているだけです。だから、スプレッドシートを編集するだけでサイトの内容が変わります。
+  </div>
+</div>
+
+<!-- ===== CHAPTER 3 ===== -->
+<div id="ch3" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">03</div>
+    <div class="ch-titles">
+      <div class="ch-en">INITIAL SETUP</div>
+      <div class="ch-ja">初回セットアップ</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    ここからは、実際にシステムをセットアップしていきます。最初の2ステップ（スプレッドシートコピー・初期セットアップ実行）まで、ここで扱います。
+  </div>
+
+  <h3>STEP 1：スプレッドシートをコピーする</h3>
+
+  <div class="step-box ritual">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>テンプレートスプレッドシートの共有リンクを受け取る</strong>
+      メールで送られてくるGoogleスプレッドシートのURLをクリックします。
+      <small>共有リンクについては、駿台ミシガン国際学院（r-hashikawa@sundai-kaigai.jp）までご連絡ください。</small>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートが開いたら、メニューから「ファイル → コピーを作成」を選択</strong>
+      新しい名前を入力します。例：<code>サマースクール申込システム_駿台ヒューストン校_2026</code>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>保存先を自校舎のGoogle Driveに設定</strong>
+      校舎専用のフォルダ（例：「2026年度サマースクール」）を作って保存するのがおすすめです。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>コピー完了後、新しいスプレッドシートが開きます</strong>
+      以降の作業はすべてこのコピーに対して行います。元のテンプレートは触らないでください。
+    </div></div>
+  </div>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    必ず「コピーを作成」してください。テンプレートそのものを直接編集すると、他校舎のシステムに影響が出たり、将来のアップデートで上書きされる恐れがあります。
+  </div>
+
+  <h3>STEP 2：初期セットアップを実行する</h3>
+
+  <p>スプレッドシートに紐づくGoogle Apps Script（GAS）に、必要な権限（スプレッドシート編集・Gmail送信・Google Drive読み取り）を付与します。初回のみ必要な作業です。</p>
+
+  <div class="step-box ritual">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートを開いた状態で、上部メニューから <span class="kbd">拡張機能</span> → <span class="kbd">Apps Script</span> を選択</strong>
+      新しいタブでコードエディタが開きます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>画面上部の関数選択プルダウンで <code>initialSetup</code> を選ぶ</strong>
+      これは、権限を一括で付与するための関数です。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>▶「実行」ボタンを押す</strong>
+      初回は「承認が必要です」というダイアログが表示されます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「権限を確認」をクリック</strong>
+      Googleアカウント選択画面が出てくるので、運用に使うアカウントを選びます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「このアプリは Google で確認されていません」という警告画面が出た場合</strong>
+      左下の「詳細」をクリック → 「（プロジェクト名）に移動（安全ではありません）」をクリック。これは自分で作成したスクリプトなので安全です。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「許可」をクリック</strong>
+      スプレッドシート・Gmail・Driveへのアクセス権限が付与されます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>実行ログに「✅ 初期セットアップ完了！」が表示されれば成功</strong>
+      画面下部の実行ログ（📋マーク）をクリックすると確認できます。
+    </div></div>
+  </div>
+
+  <h3>STEP 3：カスタムメニューが表示されるか確認</h3>
+
+  <div class="step-box ritual">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートのタブに戻る</strong>
+      ブラウザのタブを切り替えます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートをリロード（<span class="kbd">F5</span> または <span class="kbd">⌘</span>+<span class="kbd">R</span>）</strong>
+      数秒待つと、メニューバーに <strong>📊 サマースクール管理</strong> が追加されます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>メニューが表示されたら、STEP 1-2は完了</strong>
+      次の章（第4章）で、学校の情報を入力していきます。
+    </div></div>
+  </div>
+
+  <div class="warn">
+    <strong>CAUTION</strong>
+    「📊 サマースクール管理」メニューが表示されない場合：① もう一度リロード ② ページを閉じて開き直す ③ それでもダメなら、GASエディタに戻って <code>onOpen</code> 関数を手動で一度実行してから、スプレッドシートをリロードしてください。
+  </div>
+
+  <h3>STEP 4以降の流れ</h3>
+  <p>この後は、以下の章の順で作業を進めてください。</p>
+
+  <ul class="list-plain">
+    <li><strong>第4章</strong>：学校設定シートの詳細（校舎名・連絡先・パスワードなど）</li>
+    <li><strong>第5章</strong>：講座マスター・料金マスターの入力</li>
+    <li><strong>第6章</strong>：初回デプロイ（WebアプリURLの取得）</li>
+    <li><strong>第7章</strong>：2回目以降のデプロイ更新方法</li>
+    <li><strong>第8章</strong>：校章画像の設定</li>
+  </ul>
+</div>
+
+<!-- ===== CHAPTER 4 ===== -->
+<div id="ch4" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">04</div>
+    <div class="ch-titles">
+      <div class="ch-en">SCHOOL SETTINGS</div>
+      <div class="ch-ja">学校設定シートの詳細</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    「学校設定」シートは、システム全体の共通設定を行う中心的なシートです。校舎名・連絡先・管理者パスワードなど、すべてここで定義します。
+  </div>
+
+  <h3>シートの構造</h3>
+  <p>「学校設定」シートは、A列に「項目名」、B列に「値」という2列構成のシンプルなつくりです。</p>
+
+  <h3>各項目の説明</h3>
+
+  <table>
+    <tr><th style="width:26%">項目名</th><th style="width:28%">入力例</th><th>説明</th></tr>
+    <tr><td><code>学校名（日本語）</code></td><td>駿台ヒューストン国際学院</td><td>申込サイトのヘッダーやメールに表示される校舎名</td></tr>
+    <tr><td><code>学校名（英語）</code></td><td>SUNDAI HOUSTON INTL SCHOOL</td><td>サイトのヘッダーの英語表記、すべて大文字で自動変換</td></tr>
+    <tr><td><code>年度</code></td><td>2026</td><td>ヘッダーなどに表示される年度（西暦）</td></tr>
+    <tr><td><code>電話番号</code></td><td>713-555-1234</td><td>フッター・パンフレットの「お問い合わせ」ブロック・請求書エリアに表示。空欄なら電話番号部分は表示されません。</td></tr>
+    <tr><td><code>連絡先メール</code></td><td>houston@sundai.jp</td><td>申込通知・講座リクエストが届くアドレス。カンマ区切りで複数可（例：a@x.com, b@x.com）</td></tr>
+    <tr><td><code>問い合わせメール</code></td><td>info-houston@sundai.jp</td><td>パンフレットの「お問い合わせ」ブロックに<strong>保護者向けに表示する</strong>代表アドレス。空欄の場合は <code>連絡先メール</code> の先頭アドレスが使われます。保護者に知らせたい窓口と、内部通知先を分けたい場合に使用します。</td></tr>
+    <tr><td><code>サイトURL</code></td><td>https://sites.google.com/view/sundai-houston/</td><td>パンフレットのフッターに表示する校舎公式サイトのURL。空欄なら表示されません。</td></tr>
+    <tr><td><code>管理者パスワード</code></td><td>houston2026</td><td>管理画面ログイン時のパスワード。<strong>英字を含む文字列</strong>を推奨（数字のみだとシート側で数値型に自動変換される場合があるため）。<br><strong style="color:#991b1b">⚠ 必ず校舎独自のパスワードに変更してください。</strong>空欄のまま運用すると、誰でも初期値 <code>sundai2026</code> で管理画面に侵入でき、保護者個人情報・申込状況の漏洩リスクとなります。</td></tr>
+    <tr><td><code>校章URL</code></td><td>（Google Driveの共有リンク）</td><td>校章画像のURL（第8章で詳述）</td></tr>
+    <tr><td><code>日曜担当先生</code></td><td>橋川先生</td><td><strong>プレ講習を週末に提供する場合のみ設定。</strong>日曜日のプレ枠を担当する先生名（「〜先生」付き）。空欄なら日曜枠の説明欄に「（〇〇のみ）」表記が消える。プレ講習自体を行わない校舎は空欄でOK。</td></tr>
+    <tr><td><code>先生並び順</code></td><td>坂本先生, 嶋中先生, ゆい先生, 橋川先生</td><td>レポート（先生別時間割）で先生を並べる優先順序。カンマまたは読点区切り。指定されていない先生は末尾に講座マスター出現順で並びます。空欄なら全先生が講座マスター出現順。</td></tr>
+    <tr><td><code>1次〆切日</code></td><td>2026年5月24日（土）</td><td>申込サイト内に表示される1次〆切の日付。<strong>不要な校舎は空欄にしてください</strong>。空欄の場合、〆切表示は一切出ません。</td></tr>
+    <tr><td><code>フィードバック送信先メール</code></td><td>system-fb@sundai-london.example</td><td>システムへのフィードバック（管理画面下部の「📮 システムフィードバック」フォーム）の送信先アドレス。<strong>空欄の場合、フィードバック機能は使えません</strong>（送信時にエラーが出ます）。校舎のシステム担当者やサポート窓口を指定してください。</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    項目名（A列）は完全一致で判定されます。前後のスペースや全角・半角の違いでも認識されなくなるので、A列の値は変更しないでください。変更するのはB列（値）だけです。
+  </div>
+
+  <div class="info">
+    <strong>NOTE：列の追加・削除について</strong>
+    「学校設定」シートはA列（項目名）・B列（値）の2列構成です。C列以降に自由にメモ列を追加しても、システムへの影響はありません。ただし、A列の項目名を変更・削除すると、その設定値がシステムに読み込まれなくなります。既存の項目名は変更しないでください。
+  </div>
+
+  <h3>複数のメールアドレスに申込通知を送りたい場合</h3>
+
+  <p>「申込が来たら、教頭先生・事務担当者・校長先生の3名に同時にメールを届けたい」といった場合は、現在のシステム構造で対応するには2つの方法があります。</p>
+
+  <h4>方法A（推奨）：Google Groupsを使う</h4>
+  <p>G Suite / Google Workspace管理者に依頼して、校舎用のグループアドレスを作成します。例：<code>summerschool-staff@sundai.jp</code>。このグループに担当者全員を追加すれば、そのアドレスに送信するだけで全員に届きます。</p>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>Google Groups で新規グループを作成</strong>
+      「サマースクール担当」など分かりやすい名前で。</div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>グループに校舎の担当者全員を追加</strong></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>「学校設定」シートの「連絡先メール」にグループアドレスを入力</strong>
+      以後、このアドレスに送った全メールが自動的にグループ全員に届きます。</div></div>
+  </div>
+
+  <h4>方法B：Gmailの転送ルールを使う</h4>
+  <p>「連絡先メール」に代表アドレスを1つ設定し、そのアドレスのGmail設定から「転送ルール」を使って複数アドレスへ転送する方法です。Googleアカウントごとに転送設定が必要になりますが、G Suiteが使えない環境でも可能です。</p>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    複数人に通知したい場合は「方法A（Google Groups）」が最もシンプルです。詳しくは次のセクションを参照してください。
+  </div>
+
+  <h3>管理者パスワードの設定</h3>
+  <p>管理画面にアクセスするためのパスワードを設定します。</p>
+
+  <ul class="list-plain">
+    <li><strong>初期値</strong>：空欄の場合は <code>sundai2026</code></li>
+    <li><strong>推奨</strong>：各校舎ごとに独自のパスワードに変更</li>
+    <li><strong>パスワード例</strong>：<code>houston_admin_2026</code>, <code>ny_staff2026!</code></li>
+  </ul>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    パスワードには特殊な記号（&・スペースなど）は使わないでください。英数字とアンダースコア、ハイフン程度に留めるのが安全です。また、管理者パスワードは部外者に渡さないようにご注意ください。パスワードを忘れた場合は、このシートを直接開けば確認・変更できます。
+  </div>
+
+  <h3>学校設定の値に関する注意（重要）</h3>
+  <div class="danger">
+    <strong>HTML特殊文字を入れないでください</strong><br>
+    「学校名（日本語）」「学校名（英語）」「電話番号」「住所」「年度」など、<strong>すべての学校設定の値</strong>には、HTMLの特殊文字（<code>&lt;</code>, <code>&gt;</code>, <code>&quot;</code>, <code>'</code>, <code>&amp;</code>）を含めないでください。<br>
+    また、講座マスターの「対象学年」「日程」「担当先生」列、料金マスターの学年区分列など、<strong>保護者画面に表示されるすべての値</strong>でも同様です。<br>
+    システム側でも自動的にエスケープ処理を行いますが、念のため誤入力を避けてください（&amp;の代わりに「と」、&quot;の代わりに『』など、別の表記を推奨）。
+  </div>
+</div>
+
+<!-- ===== CHAPTER 5 ===== -->
+<div id="ch5" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">05</div>
+    <div class="ch-titles">
+      <div class="ch-en">COURSE &amp; PRICING</div>
+      <div class="ch-ja">講座マスター・料金マスターの入力</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    講座情報・料金体系・割引ルールは、それぞれ専用のシートに入力します。変更はすぐに申込サイトに反映されます。
+  </div>
+
+  <h3>講座マスターシート</h3>
+  <p>開講するすべての講座を登録します。1講座＝1行が原則です。英検対策講座も同じシートに登録します（講座IDを <code>eiken</code> で始めることに注意）。</p>
+
+  <h4>列構成</h4>
+
+  <table>
+    <tr><th style="width:20%">列名</th><th style="width:20%">入力例</th><th>説明</th></tr>
+    <tr><td><code>講座ID</code></td><td>ES101, JH205, eiken_g3</td><td>ユニークなID。以後、このIDで講座を管理します。<strong>半角英数・ハイフン（-）・アンダースコア（_）のみ使用可、60文字以内</strong>。スペース・全角文字・記号（'"&lt;&gt;等）は使用不可で、不正な文字を含む行は読み込まれません（セキュリティ上の制限）</td></tr>
+    <tr><td><code>講座名</code></td><td>英語基礎、数学特訓</td><td>保護者が見る講座名。<strong>講座ごとにユニークにしてください</strong>。一斉メール送信や受講者抽出は講座名で照合するため、講座名が完全に一致する別講座があると区別できません。なお、システム側では「英語基礎」と「英語基礎演習」のような接頭辞関係でも誤マッチしないように完全一致照合を行っていますが、表記揺れ（半角/全角空白の違い、句読点の有無など）を避けるため、入力ミスを起こしにくい簡潔な講座名にすることを推奨します。</td></tr>
+    <tr><td><code>対象学年</code></td><td>小3, 中1, 全学年</td><td>対象の学年。「全学年」も可</td></tr>
+    <tr><td><code>種別(group/ind)</code></td><td>group または ind</td><td>グループ講座なら <code>group</code>、個別講座なら <code>ind</code></td></tr>
+    <tr><td><code>ターム</code></td><td>1, 2, 3, pre</td><td>第何期の講座か。プレ講習は <code>pre</code> または <code>0</code></td></tr>
+    <tr><td><code>日程</code></td><td>6/15〜19, 7/7</td><td>開講日。通常タームは「M/D〜D」形式、プレは「M/D」形式。<br><strong>注意：</strong>同月内の範囲（例：<code>6/15〜19</code>）が標準です。<strong>月をまたぐ範囲（例：<code>7/28〜8/1</code>）の場合、時間割レポートと申込画面では両端の日付（7/28と8/1）のみが表示され、間の日（7/29〜7/31）は省略されます</strong>。月をまたぐ運用が必要な場合は、ターム自体を分割（前半ターム・後半ターム）するか、管理者が手動で時間割を補完してください。</td></tr>
+    <tr><td><code>時間帯</code></td><td>9:00〜10:30</td><td>講座の時間帯。校舎で運用する任意の時間帯を自由に設定可能（例：<code>9:00〜10:30</code>、<code>10:30〜12:00</code> 等）。レポート出力（時間割・名簿・サマリー）では講座マスターに登場する時間帯を時刻順に自動で並べます。</td></tr>
+    <tr><td><code>担当先生</code></td><td>坂本先生</td><td>担当先生の名前。「〜先生」を付ける</td></tr>
+    <tr><td><code>定員</code></td><td>12</td><td>受け入れ人数。空欄の場合は12名</td></tr>
+    <tr><td><code>料金(空欄=学年別標準)</code></td><td>（通常は空欄）</td><td>特別料金がある場合のみ入力。空欄の場合、料金マスターの学年別標準料金が適用</td></tr>
+    <tr><td><code>備考</code></td><td>教材費込み</td><td>任意。保護者には表示されません</td></tr>
+    <tr><td><code>募集状況</code></td><td>（空欄または「停止」）</td><td>「停止」と入力すると募集停止。管理画面からも操作可能</td></tr>
+    <tr><td><code>ZOOM可</code></td><td>○ または ×</td><td>ZOOM・録画受講を許可する場合は <code>○</code>、不可の場合は <code>×</code>。<strong>空欄は「可」として扱われます。</strong>美術・調理実習など対面必須の講座は <code>×</code> にしてください。</td></tr>
+  </table>
+
+  <div class="danger">
+    <strong>IMPORTANT：列名は変更しないこと</strong>
+    ヘッダー行（1行目）の列名はGASコードから参照されています。列名を変更するとシステムが値を読み取れなくなります。<strong>列の並び替えも不可</strong>です。
+  </div>
+
+  <div class="info">
+    <strong>NOTE：列の追加はOK</strong>
+    既存列の右側（例：<code>ZOOM可</code> 列の右）にメモ列や管理用列を自由に追加しても、システムには影響しません。ただしその列をGASが自動で読むことはありません。あくまで先生の手元管理用です。
+  </div>
+
+  <div class="danger">
+    <strong>IMPORTANT：自動生成シートには手を加えないでください</strong>
+    以下の6シートは <strong>システムが自動で生成・更新します</strong>。手動で列の追加・削除・並び替え・ヘッダー名の変更を行うと、レポート出力（時間割・名簿・サマリー）や申込保存が破損します。
+    <ul style="margin:6px 0 0 18px">
+      <li><code>申込一覧</code>（保護者の申込が1件1行で蓄積されるシート）</li>
+      <li><code>申込数集計</code>（講座ごとの申込数を集計）</li>
+      <li><code>変更ログ</code>（管理画面からの操作履歴）</li>
+      <li><code>先生別時間割</code>（レポート出力先・実行のたびに再生成）</li>
+      <li><code>講座別名簿</code>（同上）</li>
+      <li><code>申込サマリー</code>（同上）</li>
+    </ul>
+    手元で確認・編集する必要がある場合は、必ず<strong>シートを別ファイルに複製してから</strong>編集してください。
+  </div>
+
+  <h3>料金マスターシート</h3>
+  <p>学年別・種別別の標準料金を設定します。</p>
+
+  <h4>シート構造</h4>
+
+  <table>
+    <tr><th>種別</th><th>小1〜3</th><th>小4〜6</th><th>中1〜3</th><th>高校生</th></tr>
+    <tr><td>グループ講座</td><td>250</td><td>280</td><td>320</td><td>380</td></tr>
+    <tr><td>個別講座</td><td>420</td><td>450</td><td>500</td><td>600</td></tr>
+    <tr><td>プレ講座（グループ）</td><td>50</td><td>55</td><td>65</td><td>75</td></tr>
+    <tr><td>プレ講座（個別）</td><td>85</td><td>90</td><td>100</td><td>120</td></tr>
+  </table>
+
+  <ul class="list-plain">
+    <li><strong>1列目（種別）</strong>：種別名。「グループ」「個別」「プレ」の文字を含めてください（判別キーとして使用）</li>
+    <li><strong>2列目以降</strong>：学年列。学年名はそのままシステムに使われます</li>
+    <li><strong>値</strong>：USD単位の数字だけ入力（ドル記号・カンマ不要）</li>
+  </ul>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    学年区分は校舎の運用に合わせて自由に変更できます。「Pre-K」「K」「Grade1〜12」など、英語表記も可能です。講座マスターの「対象学年」列の値と一致させてください。
+  </div>
+
+  <h3>割引マスターシート</h3>
+  <p>兄弟割引・3コマ以上割引・友達割引・学校外割引など、適用するすべての割引ルールを登録します。</p>
+
+  <table>
+    <tr><th>種別</th><th>条件</th><th>割引率</th><th>備考</th></tr>
+    <tr><td>兄弟割引</td><td>兄弟同時受講</td><td>0.10</td><td>2人目以降 -10%</td></tr>
+    <tr><td>コマ割引</td><td>3コマ以上受講</td><td>0.05</td><td>5%OFF</td></tr>
+    <tr><td>友達割引</td><td>プレ講習で友達と一緒</td><td>0.10</td><td>10%OFF</td></tr>
+  </table>
+
+  <ul class="list-plain">
+    <li><strong>割引率</strong>：小数で入力（0.10 = 10%）</li>
+    <li><strong>備考</strong>：保護者向けパンフレットページで案内されます</li>
+  </ul>
+
+  <h3>英検対策講座を登録する場合</h3>
+  <p>英検対策講座も「講座マスター」シートに通常の講座と同じように登録します。</p>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    英検対策講座の <code>講座ID</code> は、必ず <code>eiken</code> で始めてください（例：<code>eiken101</code>、<code>eiken_g3</code>）。申込サイトの「🏅 英検対策」フィルターボタンは、講座IDが <code>eiken</code> で始まる講座だけを絞り込む仕組みになっています。この命名ルールを守らないと、英検対策フィルターに表示されません。
+  </div>
+
+  <h3>入力時のコツと注意点</h3>
+
+  <ul class="list-plain">
+    <li><strong>講座IDは変えない</strong>：一度発行した講座IDを途中で変更すると、既存の申込データと紐付かなくなります。</li>
+    <li><strong>時間帯の表記を統一</strong>：<code>9:00〜10:30</code> のように半角・全角・記号を統一してください（<code>〜</code>は全角）。</li>
+    <li><strong>ターム番号の連番性</strong>：1期・2期・3期…と連番にすると見栄えが良くなります。</li>
+    <li><strong>講座を削除したいとき</strong>：一度申込が入った講座の行を削除すると、申込データとの整合性が崩れます。開講しない場合も、「募集状況」列に「停止」と入力するだけにしておくのが安全です。</li>
+  </ul>
+</div>
+
+<!-- ===== CHAPTER 6 ===== -->
+<div id="ch6" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">06</div>
+    <div class="ch-titles">
+      <div class="ch-en">FIRST DEPLOYMENT</div>
+      <div class="ch-ja">初回デプロイの手順</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    スプレッドシートの準備が整ったら、GASをWebアプリとして「デプロイ」し、保護者がアクセスできるURLを取得します。これは初回のみ必要な作業です。
+  </div>
+
+  <h3>なぜデプロイが必要か</h3>
+  <p>GASで書いたコードは、そのままではブラウザからアクセスできません。「Webアプリとして公開」することで、インターネット上から誰でも使えるURLが発行されます。これが保護者向け申込サイトのURLになります。</p>
+
+  <div class="info">
+    <strong>INFO</strong>
+    デプロイ（Deploy）とは、「アプリケーションを実際に使える状態で公開する」という意味の英語です。日本語では「リリース」「公開」とほぼ同じ意味です。
+  </div>
+
+  <h3>デプロイの手順</h3>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートから <span class="kbd">拡張機能</span> → <span class="kbd">Apps Script</span> でGASエディタを開く</strong>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>画面右上の「デプロイ」ボタンをクリック</strong>
+      プルダウンから「新しいデプロイ」を選びます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「種類の選択」で歯車アイコン（⚙）を押し、「ウェブアプリ」を選択</strong>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>以下の設定を入力</strong>
+      <ul class="list-plain" style="margin-top:8px">
+        <li><strong>説明</strong>：<code>サマースクール申込システム v1.0</code>（任意）</li>
+        <li><strong>ウェブアプリとして実行</strong>：<code>自分</code>（必ず）</li>
+        <li><strong>アクセスできるユーザー</strong>：<code>全員</code>（保護者に公開するため）</li>
+      </ul>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「デプロイ」ボタンを押す</strong>
+      初回は再度、権限の承認が求められる場合があります。指示に従って承認してください。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>デプロイ完了画面で「ウェブアプリのURL」をコピー</strong>
+      このURLが保護者向け申込サイトのアドレスです。大切に保管してください。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「完了」ボタンを押してダイアログを閉じる</strong>
+    </div></div>
+  </div>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    「アクセスできるユーザー」を <strong>必ず「全員」</strong> にしてください。「自分のみ」や「組織内」に設定すると、保護者がアクセスしたときにログインを求められてしまいます。
+  </div>
+
+  <h3>動作確認</h3>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>取得したWebアプリURLをブラウザで開く</strong>
+      新しいタブで確認するのがおすすめ。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>申込サイトが正しく表示されることを確認</strong>
+      校舎名・校章・講座一覧・料金がすべて反映されていますか？
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>試しにテスト申込をしてみる</strong>
+      自分のメールアドレスで申込を1件送信し、確認メールが届くか、スプレッドシートに記録されるか確認します。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>管理画面にログインできるか確認</strong>
+      右上の「管理」タブ → パスワード入力 → ログイン成功を確認。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>管理画面のログアウトを確認</strong>
+      ログイン後、右上の「🔓 ログアウト」ボタンをクリックし、ログイン画面に戻ることを確認。共用PCで管理者作業した後は、必ずログアウトしてからPCを離れてください。
+    </div></div>
+  </div>
+
+  <h3>保護者へのURL案内</h3>
+  <p>すべて正常動作することを確認したら、保護者・生徒に案内を開始できます。</p>
+
+  <ul class="list-plain">
+    <li>校舎Webサイトにリンク設置</li>
+    <li>メルマガ・LINE公式・保護者会での告知</li>
+    <li>QRコードを生成してパンフレットに掲載（<a href="https://qr.quel.jp/" target="_blank">QRコード作成</a>など）</li>
+  </ul>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    URLが長くて覚えづらい場合は、短縮URL（Bitly、TinyURLなど）を使うと案内しやすくなります。ただし、短縮URLは信頼性の低いサイトに見えることもあるので、可能であれば校舎ドメインの短縮リダイレクトを用意するのがベストです。
+  </div>
+</div>
+
+<!-- ===== CHAPTER 7 ===== -->
+<div id="ch7" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">07</div>
+    <div class="ch-titles">
+      <div class="ch-en">UPDATE DEPLOYMENT</div>
+      <div class="ch-ja">2回目以降のデプロイ更新</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    コードの更新があったとき、または自校舎で内容を変更したとき、既存のURLを保持したまま内容だけを更新する方法です。絶対に「新しいデプロイ」を選ばないでください。
+  </div>
+
+  <h3>なぜ「新しいデプロイ」を選んではいけないか</h3>
+  <p>「新しいデプロイ」を選ぶと、<strong>別のURLが発行されてしまいます</strong>。既にQRコード・メルマガ・パンフレットで告知済みのURLは旧バージョンのままとなり、新しいURLと既存のURLが混在してしまいます。保護者が古いリンクから申込をしてしまうと、更新した内容（新講座・新料金）が反映されません。</p>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    URLを変えずに内容だけを更新するためには、必ず「<strong>デプロイを管理</strong>」から既存のデプロイを「<strong>編集</strong>」して、バージョンを新しくしてください。この方法なら、同じURLのまま最新の内容を公開できます。
+  </div>
+
+  <h3>デプロイ更新の手順</h3>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>GASエディタを開く</strong>
+      スプレッドシートから <span class="kbd">拡張機能</span> → <span class="kbd">Apps Script</span>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>必要に応じてコードを更新</strong>
+      最新版のコードをコピー＆ペーストで上書き、またはHTMLを新しいバージョンに置き換えます。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>コードを保存（<span class="kbd">⌘</span>+<span class="kbd">S</span> または <span class="kbd">Ctrl</span>+<span class="kbd">S</span>）</strong>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>画面右上の「デプロイ」ボタンをクリック</strong>
+      → <strong>「デプロイを管理」</strong>（※「新しいデプロイ」ではない）を選択
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>既存のデプロイ項目の右にある ✏ 鉛筆アイコン（編集）をクリック</strong>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「バージョン」プルダウンで「新バージョン」を選択</strong>
+      説明に変更内容を記入（例：<code>v1.1 講座追加</code>）
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「デプロイ」ボタンを押す</strong>
+      URLは変わりません。新バージョンが即座に反映されます。
+    </div></div>
+  </div>
+
+  <h3>更新のタイミング</h3>
+
+  <table>
+    <tr><th>更新の種類</th><th>デプロイ更新が必要か</th></tr>
+    <tr><td>スプレッドシートのデータを変更（講座・料金・学校設定など）</td><td><strong>不要</strong>（自動反映）</td></tr>
+    <tr><td>募集停止・再開</td><td><strong>不要</strong>（即時反映）</td></tr>
+    <tr><td>GASのコードを変更（バグ修正・新機能追加など）</td><td><strong>必要</strong></td></tr>
+    <tr><td>HTMLファイル（index.html）を変更</td><td><strong>必要</strong></td></tr>
+    <tr><td>アップデート版を適用</td><td><strong>必要</strong></td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    スプレッドシートのデータ変更は、ブラウザのキャッシュの関係で最大5分程度の遅延があることがあります。すぐに確認したいときは、ブラウザの強制リロード（<span class="kbd">⌘</span>+<span class="kbd">Shift</span>+<span class="kbd">R</span>）をしてください。
+  </div>
+
+  <div class="warn">
+    <strong>CAUTION</strong>
+    コード更新を適用する前に、必ず現在のスプレッドシートを「ファイル → コピーを作成」でバックアップしてください。万が一不具合が発生しても、バックアップから元に戻せます。
+  </div>
+</div>
+
+<!-- ===== CHAPTER 8 ===== -->
+<div id="ch8" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">08</div>
+    <div class="ch-titles">
+      <div class="ch-en">LOGO CONFIGURATION</div>
+      <div class="ch-ja">校章画像の設定</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    校章画像をスプラッシュ画面・ヘッダー・パンフレットページに表示させる設定方法です。画像はGoogle Driveにアップロードし、共有リンクをスプレッドシートに登録します。
+  </div>
+
+  <h3>対応する画像形式</h3>
+
+  <table>
+    <tr><th>形式</th><th>対応状況</th><th>備考</th></tr>
+    <tr><td>PNG（.png）</td><td>✅ 対応</td><td>透過背景に対応。推奨</td></tr>
+    <tr><td>JPG / JPEG</td><td>✅ 対応</td><td>写真・色数の多い画像に</td></tr>
+    <tr><td>SVG</td><td>❌ 非対応</td><td>SVGはスクリプト埋め込みが可能で保護者画面に注入されるリスクがあるため、システム側で拒否</td></tr>
+    <tr><td>GIF</td><td>❌ 非対応</td><td>アニメーションの想定外使用を防ぐため</td></tr>
+    <tr><td>WebP</td><td>❌ 非対応</td><td>一部ブラウザでの互換性の問題があるため</td></tr>
+  </table>
+
+  <div class="warn">
+    <strong>CAUTION</strong>
+    PNG・JPG以外の形式で登録した場合、校章が表示されない可能性があります。必ずPNGまたはJPGでアップロードしてください。
+  </div>
+
+  <h3>推奨サイズ</h3>
+
+  <ul class="list-plain">
+    <li><strong>推奨解像度</strong>：200×200px 〜 500×500px（正方形が望ましい）</li>
+    <li><strong>推奨ファイルサイズ</strong>：100KB以下（読み込みスピードのため）</li>
+    <li><strong>背景</strong>：PNGなら透過、JPGなら白背景を推奨</li>
+  </ul>
+
+  <h3>設定手順</h3>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>校章画像（PNG/JPG）を準備する</strong>
+      ファイル名は英数字（例：<code>sundai_houston_logo.png</code>）を推奨。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>Google Driveに画像をアップロード</strong>
+      運用用のGoogleアカウントと同じDriveにアップしてください。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>アップロードした画像を右クリック → 「共有」</strong>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「一般的なアクセス」を「リンクを知っている全員」に変更</strong>
+      権限は「閲覧者」で問題ありません。
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>「リンクをコピー」をクリック</strong>
+      共有リンクがクリップボードにコピーされます。例：<code>https://drive.google.com/file/d/ABC123XYZ/view?usp=sharing</code>
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>スプレッドシートの「学校設定」シートを開く</strong>
+      「校章URL」行のB列（値列）に、コピーしたURLを貼り付け
+    </div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body">
+      <strong>申込サイトをブラウザで開き（すでに開いている場合は強制リロード）、校章が表示されるか確認</strong>
+      スプラッシュ画面（サイト読込時に一瞬表示）・ヘッダー・パンフレットページで表示されます。
+    </div></div>
+  </div>
+
+  <div class="danger">
+    <strong>IMPORTANT</strong>
+    <strong>共有設定を「リンクを知っている全員」に変更し忘れると、校章が表示されません。</strong>権限が「制限付き」のままだと、一般ユーザー（保護者）のブラウザから画像を読み込めないからです。
+  </div>
+
+  <h3>校章が表示されないときのチェックリスト</h3>
+
+  <ul class="checklist">
+    <li>画像形式はPNGまたはJPGか？</li>
+    <li>Google Driveの共有設定は「リンクを知っている全員」になっているか？</li>
+    <li>「学校設定」シートの「校章URL」に正しいURLが貼られているか？</li>
+    <li>ブラウザを強制リロード（<span class="kbd">⌘</span>+<span class="kbd">Shift</span>+<span class="kbd">R</span>）したか？</li>
+    <li>スプレッドシートを保存したか？（通常は自動保存）</li>
+    <li>Driveでファイルが削除されていないか？</li>
+  </ul>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    画像の背景色を校舎のブランドカラーに合わせると、サイト全体の印象が大きく変わります。金色・ネイビーを基調としたデザインに、校章の赤やエンジ色などの差し色が映えます。
+  </div>
+</div>
+
+<!-- ===== CHAPTER 9 ===== -->
+<div id="ch9" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">09</div>
+    <div class="ch-titles">
+      <div class="ch-en">TROUBLESHOOTING</div>
+      <div class="ch-ja">よくある問題と対処法</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    他校舎の導入・運用で発生しやすいトラブルと、その対処法をまとめました。解決しない場合は、第10章のお問い合わせ窓口からご連絡ください。
+  </div>
+
+  <h3>セットアップ関連</h3>
+
+  <div class="faq-item">
+    <div class="faq-q">「📊 サマースクール管理」メニューが表示されない</div>
+    <div class="faq-a">
+      ① 初期セットアップを実行しましたか？GASエディタで <code>initialSetup</code> を選んで実行してください。② それでも表示されない場合、スプレッドシートを一度閉じて開き直してください。③ 最後に、GASエディタで <code>onOpen</code> 関数を手動で実行してからスプレッドシートをリロードしてください。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">「権限を確認」の画面で先に進めない</div>
+    <div class="faq-a">
+      「このアプリはGoogleで確認されていません」という警告は、自作のGASスクリプトでは正常な表示です。左下の「詳細」をクリック → 「（プロジェクト名）に移動（安全ではありません）」をクリックして進めてください。組織のGoogle Workspaceで厳しい制限がかかっている場合は、IT管理者に「このスクリプトを承認してほしい」と依頼してください。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">デプロイ時に「承認が必要」と繰り返し表示される</div>
+    <div class="faq-a">
+      Googleアカウントが複数ログインされていると起こりやすい症状です。一度すべてのGoogleアカウントからログアウトし、運用に使うアカウントだけでログインしてから再度試してください。
+    </div>
+  </div>
+
+  <h3>申込サイト関連</h3>
+
+  <div class="faq-item">
+    <div class="faq-q">申込サイトを開くと真っ白になる、またはエラーになる</div>
+    <div class="faq-a">
+      ① デプロイの「アクセスできるユーザー」が「全員」になっているか確認。② コードにエラーがないか、GASエディタで該当関数を一度実行してログを確認。③ スプレッドシートの「講座マスター」や「学校設定」シートが存在し、名前が変わっていないか確認。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">講座が申込サイトに表示されない</div>
+    <div class="faq-a">
+      ① 「講座マスター」シートに講座が入力されているか確認。② ヘッダー行の列名（「講座ID」「講座名」など）が変更されていないか確認。③ 「募集状況」列に「停止」と入力されていないか確認。④ 「対象学年」が保護者が選択できる値になっているか（料金マスターの学年区分と一致しているか）確認。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">校舎名が初期の「駿台ミシガン国際学院」のまま表示される</div>
+    <div class="faq-a">
+      ① 「学校設定」シートの「学校名（日本語）」「学校名（英語）」を校舎名に変更。② デプロイ更新（第7章）が必要な場合があります。③ ブラウザのキャッシュが残っている可能性もあるので、強制リロード（<span class="kbd">⌘</span>+<span class="kbd">Shift</span>+<span class="kbd">R</span>）を試してください。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">料金が正しく計算されない</div>
+    <div class="faq-a">
+      ① 「料金マスター」シートの学年列名と、「講座マスター」シートの「対象学年」、実際の申込フォームで生徒が選ぶ学年が全て一致しているか確認。② 金額欄に数字以外（カンマ・ドル記号・スペース）が入っていないか確認。③ 種別行（1列目）に「グループ」「個別」「プレ」の文字が含まれているか確認。
+    </div>
+  </div>
+
+  <h3>メール・通知関連</h3>
+
+  <div class="faq-item">
+    <div class="faq-q">申込通知メールが全く届かない</div>
+    <div class="faq-a">
+      ① 「学校設定」シートの「連絡先メール」に通知先アドレスが正しく入力されているか確認してください。複数人に送りたい場合はカンマ区切りで入力できます（例：<code>a@x.com, b@x.com</code>）。② 初期セットアップが正常に完了していないとGmail送信権限がありません。GASエディタで再度 <code>initialSetup</code> を実行してください。③ 1日のメール送信上限（無料アカウントで100通、Workspaceで1500通）に達していないか確認。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">保護者への確認メールが迷惑メールに入ってしまう</div>
+    <div class="faq-a">
+      Gmailから送信されるメールの差出人はあなた（運用アカウント）のアドレスになります。保護者に「@gmail.comからのメールが迷惑メールに入っていないか確認してください」と事前に案内することをおすすめします。また、校舎ドメインでGmail（Workspace）を運用している場合は、SPF/DKIM/DMARCの設定も確認すると到達率が上がります。
+    </div>
+  </div>
+
+  <h3>レポート出力関連</h3>
+
+  <div class="faq-item">
+    <div class="faq-q">時間割出力中にタイムアウトする</div>
+    <div class="faq-a">
+      GASの実行時間制限（無料アカウントで6分、Workspaceで30分）に達している可能性があります。申込が多い場合は、時間割・名簿・サマリーを個別に出力してください。それでも解決しない場合は、申込データを複数シートに分割するなどの対応をご検討ください。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">レポート出力後、色分けが正しくない</div>
+    <div class="faq-a">
+      色分けは「申込数 / 定員」の比率で決まります。定員が設定されていない（空欄の）講座は定員12として扱われます。「講座マスター」シートの「定員」列を確認してください。
+    </div>
+  </div>
+
+  <h3>管理画面関連</h3>
+
+  <div class="faq-item">
+    <div class="faq-q">管理画面のパスワードが分からなくなった</div>
+    <div class="faq-a">
+      「学校設定」シートの「管理者パスワード」行を確認してください。空欄の場合、初期パスワードは <code>sundai2026</code> です。<br>
+      <strong style="color:#991b1b">⚠ 重要：運用開始前に必ず校舎独自のパスワードに変更してください。</strong> 空欄のままだと、誰でも初期パスワード <code>sundai2026</code> で管理画面にログインでき、保護者の個人情報や申込状況が漏洩する重大なリスクとなります。
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">管理画面で募集停止を押しても反応しない</div>
+    <div class="faq-a">
+      ① ブラウザをリロードして再試行。② それでもダメな場合、「講座マスター」シートの「募集状況」列に直接「停止」と入力しても同じ効果が得られます。
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHAPTER 10 ===== -->
+<div id="ch10" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">10</div>
+    <div class="ch-titles">
+      <div class="ch-en">FEEDBACK &amp; SUPPORT</div>
+      <div class="ch-ja">フィードバック・お問い合わせ</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    操作方法の質問・バグ報告・新機能の要望など、お気軽にご連絡ください。
+  </div>
+
+  <h3>フィードバックをお送りいただくべきとき</h3>
+
+  <ul class="list-plain">
+    <li>🛠️ 新機能の要望（例：キャンセル管理機能、保護者アンケート機能など）</li>
+    <li>❓ 操作方法の質問</li>
+    <li>🐛 バグ・不具合の報告</li>
+    <li>📊 スプレッドシートの設定についての相談</li>
+    <li>💬 運用改善の提案・感想</li>
+  </ul>
+
+  <h3>フィードバックの送り方</h3>
+
+  <h4>方法A：管理画面から送信（推奨）</h4>
+
+  <div class="step-box">
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>申込サイトの「管理」タブを開く</strong></div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>「募集管理」タブを選択</strong>
+      画面下部に「📮 システムフィードバック」セクションがあります。</div></div>
+    <div class="step"><div class="step-num"></div><div class="step-body"><strong>カテゴリ・校舎名・件名・詳細を入力して送信</strong></div></div>
+  </div>
+
+  <h4>方法B：メールで直接連絡</h4>
+
+  <div class="info">
+    <strong>CONTACT</strong>
+    駿台ミシガン国際学院　橋川<br>
+    メール：<code>r-hashikawa@sundai-kaigai.jp</code>
+  </div>
+
+  <h3>良いフィードバックの書き方</h3>
+
+  <table>
+    <tr><th style="width:22%">項目</th><th>書くべき内容の例</th></tr>
+    <tr><td>いつ発生したか</td><td>2026年3月15日 14:20 頃</td></tr>
+    <tr><td>何をしていたか</td><td>申込サイトで講座を選択し、個人情報を入力した後、送信ボタンを押した</td></tr>
+    <tr><td>何が起きたか</td><td>「送信エラー」と表示され、メールが届かなかった</td></tr>
+    <tr><td>エラーメッセージ</td><td>「TypeError: Cannot read properties of undefined (reading 'length')」</td></tr>
+    <tr><td>試したこと</td><td>ブラウザを再読込、別のブラウザで試した、でも同じエラー</td></tr>
+    <tr><td>環境</td><td>Windows 11, Chrome 123 / iPhone 15, Safari</td></tr>
+    <tr><td>頻度</td><td>毎回発生 / たまに発生</td></tr>
+    <tr><td>緊急度</td><td>緊急（申込が全く受け付けられない） / 今すぐでなくてよい</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    可能ならスクリーンショットを添付してください。エラー画面・スプレッドシート画面など、視覚的な情報があれば原因の特定が格段に早くなります。
+  </div>
+</div>
+
+<!-- ===== APPENDIX ===== -->
+<div id="appendix" class="chapter">
+  <div class="ch-head">
+    <div class="ch-num">A</div>
+    <div class="ch-titles">
+      <div class="ch-en">APPENDIX: CHECKLIST</div>
+      <div class="ch-ja">付録：導入チェックリスト</div>
+    </div>
+  </div>
+  <div class="ch-lead">
+    本書に沿って作業を進めるとき、完了確認用に使えるチェックリストです。印刷して手元に置きながら進めてください。
+  </div>
+
+  <h3>ステップ1：準備</h3>
+  <ul class="checklist">
+    <li>運用用Googleアカウント（共有アカウント推奨）が用意されている</li>
+    <li>校章画像（PNG/JPG）が準備されている</li>
+    <li>校舎情報（名称・電話・メール）が手元にある</li>
+    <li>講座情報一覧（講座名・学年・定員・ターム・時間帯・先生・料金）が確定している</li>
+    <li>料金体系（学年別・種別別）が確定している</li>
+    <li>割引ルールが確定している</li>
+  </ul>
+
+  <h3>ステップ2：初期セットアップ（第3章）</h3>
+  <ul class="checklist">
+    <li>テンプレートスプレッドシートをコピー</li>
+    <li>自校舎のGoogle Driveに保存</li>
+    <li>Apps Scriptエディタを開いた</li>
+    <li><code>initialSetup</code> 関数を実行</li>
+    <li>権限を承認した</li>
+    <li>実行ログに「✅ 初期セットアップ完了！」を確認</li>
+    <li>スプレッドシートをリロード</li>
+    <li>「📊 サマースクール管理」メニューが表示される</li>
+  </ul>
+
+  <h3>ステップ3：学校設定（第4章）</h3>
+  <ul class="checklist">
+    <li>学校名（日本語）</li>
+    <li>学校名（英語）</li>
+    <li>年度</li>
+    <li>電話番号</li>
+    <li>連絡先メール（カンマ区切りで複数可）</li>
+    <li>問い合わせメール（保護者向け公開アドレス／空欄なら連絡先メールの先頭を流用）</li>
+    <li>サイトURL（校舎公式サイト／不要な場合は空欄のまま）</li>
+    <li>管理者パスワード</li>
+    <li>日曜担当先生（プレ講習を週末に提供する場合のみ／不要な場合は空欄）</li>
+    <li>先生並び順（レポート表示順をカスタマイズしたい場合のみ／不要な場合は空欄）</li>
+    <li>1次〆切日（不要な場合は空欄のまま）</li>
+    <li><strong>フィードバック送信先メール</strong>（システム改善要望の送信先／空欄だとフィードバック機能が使えません。校舎担当者・本部サポートのアドレスを推奨）</li>
+    <li>校章URL（第8章で後から設定でも可）</li>
+  </ul>
+
+  <h3>ステップ4：講座マスター・料金マスター（第5章）</h3>
+  <ul class="checklist">
+    <li>講座マスターシートに全講座を登録（英検対策講座はIDを <code>eiken</code> で始める）</li>
+    <li>ZOOM・録画受講を不可にしたい講座の「ZOOM可」列に <code>×</code> を入力</li>
+    <li>料金マスターシートに学年別・種別別料金を登録</li>
+    <li>割引マスターシートに割引ルールを登録</li>
+    <li>講座マスターの学年と料金マスターの学年列が一致している</li>
+  </ul>
+
+  <h3>ステップ5：校章画像の設定（第8章）</h3>
+  <ul class="checklist">
+    <li>校章画像をGoogle Driveにアップロード</li>
+    <li>共有設定を「リンクを知っている全員」に変更</li>
+    <li>共有リンクを「学校設定」の「校章URL」に貼り付け</li>
+  </ul>
+
+  <h3>ステップ6：初回デプロイ（第6章）</h3>
+  <ul class="checklist">
+    <li>GASエディタから「新しいデプロイ」</li>
+    <li>ウェブアプリを選択</li>
+    <li>「ウェブアプリとして実行」＝「自分」</li>
+    <li>「アクセスできるユーザー」＝「全員」</li>
+    <li>デプロイ完了 → URLをコピー＆保管</li>
+  </ul>
+
+  <h3>ステップ7：動作確認</h3>
+  <ul class="checklist">
+    <li>申込サイトが正しく表示される</li>
+    <li>校舎名・校章・講座一覧が反映されている</li>
+    <li>料金計算が正しい</li>
+    <li>割引が正しく適用される</li>
+    <li>テスト申込を実行し、確認メールが届く</li>
+    <li>スプレッドシート「申込一覧」にテスト申込が記録される</li>
+    <li>管理画面にパスワードでログインできる</li>
+    <li>レポート（時間割・名簿・サマリー）が出力できる</li>
+  </ul>
+
+  <h3>ステップ8：公開</h3>
+  <ul class="checklist">
+    <li>保護者・生徒への案内文を用意</li>
+    <li>校舎Webサイト・メルマガ・保護者会で告知</li>
+    <li>QRコードを生成してパンフレット掲載（任意）</li>
+    <li>フィードバック窓口（管理画面）を周知</li>
+  </ul>
+
+  <div class="tip">
+    <strong>TIP</strong>
+    このチェックリストを印刷して、一項目ずつチェックしながら進めれば、抜け漏れなくシステムをセットアップできます。完了後は、校舎内の運用マニュアル（別冊の「先生向け運用マニュアル」）と合わせて保管してください。
+  </div>
+</div>
+
+<!-- ===== FINAL ===== -->
+<div class="final">
+  <div class="final-mark">SUNDAI INTERNATIONAL NETWORK</div>
+  <div class="final-title">ご不明な点はお気軽にご連絡ください</div>
+  <div class="final-sub">
+    駿台海外校 サマースクール申込システム<br>
+    お問い合わせ：駿台ミシガン国際学院　橋川<br>
+    <code style="font-size:14px;color:var(--gold2)">r-hashikawa@sundai-kaigai.jp</code>
+  </div>
+  <div class="final-line"></div>
+  <div class="final-stamp">
+    SUNDAI INTERNATIONAL NETWORK · 2026
+  </div>
+</div>
+
+</body>
+</html>
