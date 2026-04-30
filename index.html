@@ -1344,6 +1344,62 @@ function setActiveStudent(idx){
   renderCourses();
 }
 
+// 他の生徒の講座を現在の生徒にコピー
+function copyCoursesFromStudent(targetIdx){
+  if(students.length<2){
+    alert('他に生徒がいません');
+    return;
+  }
+  // コピー元の選択肢を作る
+  const candidates=students.map((s,i)=>({idx:i,name:s.name||'生徒'+(i+1),count:s.courses.length+s.preSlots.length}))
+    .filter(x=>x.idx!==targetIdx&&x.count>0);
+  if(candidates.length===0){
+    alert('コピー元になる、講座を選択している他の生徒がいません');
+    return;
+  }
+  // ドロップダウンが望ましいが prompt で十分
+  let promptMsg='どの生徒の講座をコピーしますか？\n番号を入力してください:\n\n';
+  candidates.forEach((x,i)=>{
+    promptMsg+=(i+1)+'. '+x.name+'（'+x.count+'講座）\n';
+  });
+  const choice=prompt(promptMsg,'1');
+  if(!choice) return;
+  const choiceIdx=parseInt(choice)-1;
+  if(!isFinite(choiceIdx)||choiceIdx<0||choiceIdx>=candidates.length){
+    alert('番号が不正です');
+    return;
+  }
+  const src=students[candidates[choiceIdx].idx];
+  const target=students[targetIdx];
+  // 学年/レベルが合わない講座は警告だけして全部コピー
+  let skippedConflict=0;
+  src.courses.forEach(cid=>{
+    if(target.courses.includes(cid))return; // 既に持っているならスキップ
+    // 時間帯重複チェック
+    const conflict=getConflict(targetIdx,cid);
+    if(conflict&&conflict.id!==cid){
+      skippedConflict++;
+      return;
+    }
+    target.courses.push(cid);
+    if(src.courseDetails&&src.courseDetails[cid]){
+      if(!target.courseDetails) target.courseDetails={};
+      // 詳細はコピーしない（個別なため）
+    }
+  });
+  // プレ講習も同様に
+  src.preSlots.forEach(sl=>{
+    if(target.preSlots.some(t=>t.key===sl.key))return;
+    target.preSlots.push({...sl});
+  });
+  let msg='✅ '+src.name+'の講座を'+target.name+'にコピーしました';
+  if(skippedConflict>0) msg+='\n⚠️ 時間帯重複により '+skippedConflict+' 講座はスキップしました';
+  alert(msg);
+  renderStudents();
+  renderCourses();
+  updateAll();
+}
+
 function renderStudents(){
   const wrap=document.getElementById('students-wrap');
   const tabs=document.getElementById('student-tabs');
@@ -1355,10 +1411,12 @@ function renderStudents(){
     // card
     const card=document.createElement('div');
     card.className='student-card'+(i===activeStudent?' active-student':'');
-    card.innerHTML=`<div class="student-header" onclick="setActiveStudent(${i})">
-      <div class="student-num">${i+1}</div>
+    const sc=getStudentColor(i);
+    card.innerHTML=`<div class="student-header" onclick="setActiveStudent(${i})" style="border-left:4px solid ${sc.border}">
+      <div class="student-num" style="background:${sc.border}">${i+1}</div>
       <div class="student-name-display">${s.name||'氏名未入力'}</div>
       <div class="student-summary">${s.courses.length+s.preSlots.length}講座　$${total.toFixed(0)}</div>
+      ${students.length>1?`<button onclick="event.stopPropagation();copyCoursesFromStudent(${i})" title="他の生徒の講座をコピー" style="background:#fff;border:1px solid var(--border);color:var(--navy);padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;font-family:inherit;margin-right:4px">📋 コピー</button>`:''}
       <button class="student-del" onclick="event.stopPropagation();removeStudent(${i})">削除</button>
     </div>
     <div class="student-body">
@@ -3705,7 +3763,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.15 / 2026-04-30 22:30 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.16 / 2026-04-30 22:50 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
