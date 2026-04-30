@@ -219,16 +219,30 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
   #req-cats,#req-terms,#req-grades{gap:5px}
 }
 @media print{
-  @page{margin:1cm}
-  /* 印刷時はbody直下のすべての要素を非表示にし、専用テンプレ #formal-invoice-print のみを表示 */
-  body > *{display:none!important}
-  body > #formal-invoice-print{display:block!important}
+  @page{margin:1cm;size:A4 portrait}
+  /* visibilityベース（Apps Scriptのラッパー要素の有無に関わらず動作）：
+     全要素を非表示 → #formal-invoice-print とその子孫のみ表示 */
+  body *{visibility:hidden!important}
+  #formal-invoice-print,#formal-invoice-print *{visibility:visible!important}
+  /* 印刷時は印刷ブロックを左上から全幅で配置（他要素のレイアウト空間を上書き） */
+  #formal-invoice-print{
+    display:block!important;
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:24px 32px!important;
+    background:#fff!important;
+    z-index:9999!important;
+  }
   body{background:#fff;margin:0;padding:0}
 }
 .print-only{display:none}
-/* 印刷専用の請求書テンプレート（通常時は非表示） */
+/* 印刷専用の請求書テンプレート（通常時は非表示／印刷時のみ visibility で表示） */
 /* 見本（Tuition Receipt）参考: 中央タイトル / 右上に校舎情報 / 学年・氏名フィールド形式 / 2列の項目-金額表 */
-#formal-invoice-print{display:none;font-family:'Yu Mincho','Hiragino Mincho Pro','Yu Gothic','Hiragino Kaku Gothic Pro',serif;color:#222;padding:32px 40px;font-size:12px;line-height:1.7;background:#fff;max-width:820px;margin:0 auto}
+#formal-invoice-print{position:absolute;left:-99999px;top:-99999px;font-family:'Yu Mincho','Hiragino Mincho Pro','Yu Gothic','Hiragino Kaku Gothic Pro',serif;color:#222;padding:32px 40px;font-size:12px;line-height:1.7;background:#fff;max-width:820px;margin:0 auto;width:780px}
 .fi-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:24px}
 .fi-title-block{flex:1;text-align:center;padding-top:20px}
 .fi-title-jp{font-family:'Yu Mincho','Hiragino Mincho Pro',serif;font-size:28px;color:#1b2a4a;letter-spacing:.05em;font-weight:400}
@@ -3455,7 +3469,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.6 / 2026-04-30 11:40 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.7 / 2026-04-30 19:10 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
