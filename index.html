@@ -2656,17 +2656,35 @@ function buildEmailBody(){
 // PHASE U-2: 請求書として申込画面を印刷
 // 領収書フォーマット参考。印刷時に管理パネル/送信フォームを隠し、宛先ヘッダを表示する
 // ============================================================
-function printInvoice(){
-  // 宛先・発行日・請求書Noを印刷用ヘッダに反映してから印刷ダイアログを開く
-  const parent=(document.getElementById('f-parent').value||'').trim()||'(保護者氏名未入力)';
-  const issueDate=document.getElementById('f-date').value||new Date().toLocaleDateString('ja-JP');
+// 印刷直前/直後に申込画面のみを強制表示し、終了後は元のページに戻す
+// （ブラウザのCmd+P / メニュー印刷でも自動的に適用される）
+window.addEventListener('beforeprint', function(){
+  // 印刷時の宛先ヘッダを更新
+  const parent=(document.getElementById('f-parent')?.value||'').trim()||'(保護者氏名未入力)';
+  const issueDate=document.getElementById('f-date')?.value||new Date().toLocaleDateString('ja-JP');
   const invNo='S26-'+Date.now().toString().slice(-8);
-  const recipientEl=document.getElementById('print-recipient');
-  const issueDateEl=document.getElementById('print-issue-date');
-  const invNoEl=document.getElementById('print-invoice-no');
-  if(recipientEl) recipientEl.textContent=parent;
-  if(issueDateEl) issueDateEl.textContent=issueDate;
-  if(invNoEl) invNoEl.textContent=invNo;
+  const r=document.getElementById('print-recipient'); if(r) r.textContent=parent;
+  const i=document.getElementById('print-issue-date'); if(i) i.textContent=issueDate;
+  const n=document.getElementById('print-invoice-no'); if(n) n.textContent=invNo;
+  // 全ページの display を保存し、申込画面以外を強制非表示
+  document.querySelectorAll('.page').forEach(p=>{
+    p.dataset.preprintDisplay=p.style.display||'';
+    p.style.setProperty('display', p.id==='pg-invoice'?'block':'none', 'important');
+  });
+});
+window.addEventListener('afterprint', function(){
+  // 元のページ状態に戻す
+  document.querySelectorAll('.page').forEach(p=>{
+    p.style.removeProperty('display');
+    if(p.dataset.preprintDisplay!==undefined){
+      if(p.dataset.preprintDisplay) p.style.display=p.dataset.preprintDisplay;
+      delete p.dataset.preprintDisplay;
+    }
+  });
+});
+
+function printInvoice(){
+  // beforeprint で申込画面のみが表示される設計のため、ここでは window.print() を呼ぶだけでよい
   setTimeout(()=>window.print(),50);
 }
 
