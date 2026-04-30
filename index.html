@@ -967,6 +967,62 @@ let COURSES=[
 ];
 
 // ============================================================
+// 学年マスタ（ドロップダウン選択肢 + 対象区分の自動マッピング）
+// 表記揺れ（小5 / 小学5年 / 5年生 等）を一本化するため、保存値は左の value に統一
+// ============================================================
+const GRADE_OPTIONS=[
+  {value:'小1',label:'小学1年',level:'elem_lo'},
+  {value:'小2',label:'小学2年',level:'elem_lo'},
+  {value:'小3',label:'小学3年',level:'elem_lo'},
+  {value:'小4',label:'小学4年',level:'elem_hi'},
+  {value:'小5',label:'小学5年',level:'elem_hi'},
+  {value:'小6',label:'小学6年',level:'elem_hi'},
+  {value:'中1',label:'中学1年',level:'jhs'},
+  {value:'中2',label:'中学2年',level:'jhs'},
+  {value:'中3',label:'中学3年',level:'jhs'},
+  {value:'高1',label:'高校1年',level:'hs'},
+  {value:'高2',label:'高校2年',level:'hs'},
+  {value:'高3',label:'高校3年',level:'hs'}
+];
+
+// 既存テキスト（小学5年、5年生 等）を学年マスタの value（小5）に正規化
+function normalizeGrade(text){
+  if(!text) return '';
+  const t=String(text).trim();
+  // すでに正規化済み（小5 など）
+  if(GRADE_OPTIONS.find(o=>o.value===t)) return t;
+  // 「小5」「小学5」「小学校5年」「小学校5年生」など
+  let m=t.match(/(小|中|高)(?:学(?:校)?|校|等(?:学校)?)?\s*([1-6])/);
+  if(m){
+    const prefix=m[1];
+    const num=parseInt(m[2]);
+    if(prefix==='小'&&num>=1&&num<=6) return prefix+num;
+    if(prefix==='中'&&num>=1&&num<=3) return prefix+num;
+    if(prefix==='高'&&num>=1&&num<=3) return prefix+num;
+  }
+  // 「5年」「5年生」（プレフィックスなし）→ 学年範囲だけ拾うが小か中かは不明なのでそのまま返す
+  return '';
+}
+
+// 学年→対象区分の自動マッピング
+function gradeToLevel(grade){
+  const opt=GRADE_OPTIONS.find(o=>o.value===grade);
+  return opt?opt.level:'';
+}
+
+// ドロップダウン選択時のハンドラ：学年と対象区分を同時に更新し、講座を再描画
+function onGradeChange(i,value){
+  const s=students[i];
+  if(!s) return;
+  s.grade=value;
+  const lv=gradeToLevel(value);
+  if(lv) s.level=lv;
+  if(typeof saveDraftDebounced==='function')saveDraftDebounced();
+  renderCourses();
+  updateAll();
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let students=[];   // [{id, name, grade, level, courses:[id,...], preSlots:[{date,time},...]}]
@@ -1158,7 +1214,10 @@ function renderStudents(){
             onfocus="this.select()">
         </div>
         <div class="field"><label>学年</label>
-          <input value="${s.grade}" placeholder="例：中学2年" oninput="students[${i}].grade=this.value;if(typeof saveDraftDebounced==='function')saveDraftDebounced()" onblur="updateAll()">
+          <select onchange="onGradeChange(${i},this.value)">
+            <option value="">選択してください</option>
+            ${GRADE_OPTIONS.map(o=>`<option value="${o.value}" ${normalizeGrade(s.grade)===o.value?'selected':''}>${o.label}</option>`).join('')}
+          </select>
         </div>
         <div class="field"><label>対象区分</label>
           <select onchange="students[${i}].level=this.value;renderCourses();updateAll()">
@@ -3396,7 +3455,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.5 / 2026-04-30 11:25 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.6 / 2026-04-30 11:40 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
