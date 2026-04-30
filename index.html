@@ -3510,6 +3510,7 @@ async function sendEmail(){
         status.textContent='✅ 送信しました！' + email + ' に確認メールが届きます。';
         launchConfetti();
         if(typeof clearDraft==='function')clearDraft();
+        if(typeof savePrevParent==='function')savePrevParent();
         if(typeof showPostSendActions==='function') showPostSendActions();
         btn.disabled=false;btn.textContent='📧 申込内容を送信する';
       })
@@ -3530,6 +3531,7 @@ async function sendEmail(){
         status.textContent=`✅ 送信しました！${email} に確認メールが届きます。`;
         launchConfetti();
         if(typeof clearDraft==='function')clearDraft();
+        if(typeof savePrevParent==='function')savePrevParent();
         if(typeof showPostSendActions==='function') showPostSendActions();
       } else {
         throw new Error(result.message||'送信に失敗しました');
@@ -3578,6 +3580,8 @@ loadCapacityOverrides().then(()=>{
   // Phase U-1 / Feature A: 途中保存があれば復元モーダル、なければ通常通り生徒を1名追加
   tryRestoreDraft();
   fetchCourseCounts(); // GASから申込数を取得
+  // Phase U-2: 前年度の保護者情報があれば空欄に提案フィルイン
+  setTimeout(()=>{ if(typeof fillPrevParentIfEmpty==='function')fillPrevParentIfEmpty(); },200);
 });
 
 
@@ -3816,6 +3820,43 @@ function clearDraft(){
   try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
 }
 
+// 前年度の保護者情報（送信成功時に保存、次回訪問時に自動復元）
+const PREV_PARENT_KEY='summer_prev_parent_v1';
+function savePrevParent(){
+  try{
+    const data={
+      name:document.getElementById('f-parent')?.value||'',
+      email:document.getElementById('f-email')?.value||'',
+      tel:document.getElementById('f-tel')?.value||'',
+      emergencyTel:document.getElementById('f-emergency-tel')?.value||'',
+      emergencyRel:document.getElementById('f-emergency-rel')?.value||'',
+      ts:Date.now()
+    };
+    localStorage.setItem(PREV_PARENT_KEY,JSON.stringify(data));
+  }catch(e){}
+}
+function loadPrevParent(){
+  try{
+    const raw=localStorage.getItem(PREV_PARENT_KEY);
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+// 新規セッション時に前年度の保護者情報を提案フィルイン（ユーザーが空欄の場合のみ）
+function fillPrevParentIfEmpty(){
+  const prev=loadPrevParent();
+  if(!prev) return;
+  const setIfEmpty=(id,v)=>{
+    const el=document.getElementById(id);
+    if(el&&!el.value&&v) el.value=v;
+  };
+  setIfEmpty('f-parent',prev.name);
+  setIfEmpty('f-email',prev.email);
+  setIfEmpty('f-tel',prev.tel);
+  setIfEmpty('f-emergency-tel',prev.emergencyTel);
+  setIfEmpty('f-emergency-rel',prev.emergencyRel);
+}
+
 function loadDraft(){
   try{
     const raw=localStorage.getItem(DRAFT_KEY);
@@ -3950,7 +3991,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.18 / 2026-04-30 23:30 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.19 / 2026-04-30 23:50 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
