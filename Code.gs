@@ -1,9 +1,16 @@
 // ============================================================
 // 駿台ミシガン国際学院 サマースクール – GAS バックエンド
-// ★マージ版 v2（2026-04-29）
-// 4/29セキュリティ強化版 + バージョン77マスターデータ機能
-// 修正: getMasterDataの学年を日本語のまま返す
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📅 最終更新: 2026-04-30 10:21 JST
+// 🔖 バージョン: Phase U-2.1（動的集計対応版）
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 主な履歴:
+//   2026-04-29 ★マージ版 v2: セキュリティ強化 + マスターデータ機能
+//   2026-04-30 Phase U-2:    HTML確認メール / Zelle案内 / 印刷フォーマット
+//   2026-04-30 Phase U-2.1:  申込数集計を動的化 / 時間割タームor先生別出力 /
+//                            申込一覧の編集で自動再計算するトリガー追加
 // ============================================================
+const APP_VERSION = 'Phase U-2.1 / 2026-04-30 10:21 JST';
 
 const S_SETTINGS  = '学校設定';
 const S_COURSES   = '講座マスター';
@@ -762,10 +769,25 @@ function onChangeAutoRefresh(e) {
     const lock = LockService.getScriptLock();
     if (!lock.tryLock(2000)) return;
     try {
-      updateCourseCounts();
-      // 重いレポート3つは時間がかかるため、申込数集計のみ即時更新
-      // 名簿/サマリー/時間割は手動メニューで再生成してもらう
-      console.log('自動再生成完了: ' + e.changeType + ' on ' + sheet.getName());
+      // デバウンス: 直近30秒以内に重いレポートが走っていればスキップ
+      const props = PropertiesService.getScriptProperties();
+      const lastFull = parseInt(props.getProperty('LAST_AUTO_FULL_REFRESH') || '0');
+      const now = Date.now();
+      const heavyOk = (now - lastFull) > 30000;
+
+      // 申込数集計は毎回（軽い）
+      try { updateCourseCounts(); } catch (err) { console.warn('updateCourseCounts:', err && err.message); }
+
+      // 重いレポート3つはデバウンス付きで実行
+      if (heavyOk) {
+        props.setProperty('LAST_AUTO_FULL_REFRESH', String(now));
+        try { outputRoster(true); }   catch (err) { console.warn('outputRoster:',   err && err.message); }
+        try { outputSummary(true); }  catch (err) { console.warn('outputSummary:',  err && err.message); }
+        try { outputTimetable(null, true); } catch (err) { console.warn('outputTimetable:', err && err.message); }
+        console.log('全レポート自動再生成完了: ' + e.changeType);
+      } else {
+        console.log('申込数集計のみ更新（30秒デバウンス中）: ' + e.changeType);
+      }
     } finally {
       lock.releaseLock();
     }
@@ -790,16 +812,20 @@ function installAutoRefreshTrigger() {
   SpreadsheetApp.getUi().alert(
     '✅ 自動更新トリガーを設定しました。\n\n' +
     '今後、申込一覧シートで行の追加・削除・編集をすると、\n' +
-    '申込数集計シートが自動的に再計算されます。\n\n' +
-    '※ 講座別名簿・申込サマリー・先生別時間割は重いため自動更新しません。\n' +
-    '　 必要時にメニューから手動で再出力してください。'
+    '以下のレポートが自動的に再生成されます：\n' +
+    '  • 申込数集計（毎回更新／軽量）\n' +
+    '  • 講座別名簿（30秒デバウンス）\n' +
+    '  • 申込サマリー（30秒デバウンス）\n' +
+    '  • 先生別時間割（30秒デバウンス）\n\n' +
+    '※ 短時間に複数回編集した場合、重いレポートは30秒待って一度だけ更新されます。\n' +
+    '※ ターム別/先生別の時間割サブシートは自動更新しません（必要時にメニューから出力してください）。'
   );
 }
 
 // ============================================================
 // 講座別名簿出力
 // ============================================================
-function outputRoster() {
+function outputRoster(silent) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const courses = getCourses();
   const enrollSheet = ss.getSheetByName(S_ENROLL);
@@ -897,13 +923,13 @@ function outputRoster() {
   outSheet.setColumnWidth(4, 200);
   outSheet.setColumnWidth(5, 80);
   ss.setActiveSheet(outSheet);
-  SpreadsheetApp.getUi().alert('✅ 講座別名簿を出力しました！');
+  if (!silent) SpreadsheetApp.getUi().alert('✅ 講座別名簿を出力しました！');
 }
 
 // ============================================================
 // 申込サマリー出力
 // ============================================================
-function outputSummary() {
+function outputSummary(silent) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const enrollSheet = ss.getSheetByName(S_ENROLL);
   const courses = getCourses();
@@ -972,14 +998,15 @@ function outputSummary() {
   outSheet.setColumnWidth(5, 50);
   outSheet.setColumnWidth(6, 50);
   ss.setActiveSheet(outSheet);
-  SpreadsheetApp.getUi().alert('✅ 申込サマリーを出力しました！');
+  if (!silent) SpreadsheetApp.getUi().alert('✅ 申込サマリーを出力しました！');
 }
 
 // ============================================================
 // 先生別時間割出力
 // ============================================================
-function outputTimetable(filter) {
+function outputTimetable(filter, silent) {
   // filter: { term?: number, teacher?: string } 指定時はそのターム/先生のみで出力
+  // silent: true の場合は完了アラートを出さない（トリガーから呼ぶ時に使う）
   filter = filter || {};
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const courses = getCourses();
@@ -1034,11 +1061,11 @@ function outputTimetable(filter) {
   if (filter.term)    TERMS    = TERMS.filter(t => t === Number(filter.term));
   if (filter.teacher) TEACHERS = TEACHERS.filter(t => t === filter.teacher);
   if (TERMS.length === 0) {
-    SpreadsheetApp.getUi().alert('指定されたターム ' + filter.term + ' は存在しません');
+    if (!silent) SpreadsheetApp.getUi().alert('指定されたターム ' + filter.term + ' は存在しません');
     return;
   }
   if (TEACHERS.length === 0) {
-    SpreadsheetApp.getUi().alert('指定された先生 ' + filter.teacher + ' は存在しません');
+    if (!silent) SpreadsheetApp.getUi().alert('指定された先生 ' + filter.teacher + ' は存在しません');
     return;
   }
   const TC = 6;
@@ -1199,7 +1226,7 @@ function outputTimetable(filter) {
   }
   out.setFrozenRows(3);
   ss.setActiveSheet(out);
-  SpreadsheetApp.getUi().alert('✅ 先生別時間割を出力しました！');
+  if (!silent) SpreadsheetApp.getUi().alert('✅ 先生別時間割を出力しました！');
 }
 
 // ============================================================
