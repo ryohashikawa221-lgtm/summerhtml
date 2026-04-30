@@ -833,7 +833,7 @@ let COURSES=[
   {id:'t1-c49',label:'小6国語',level:'elem_hi',type:'group',term:1,date:'6/22〜26',time:'14:00〜15:30',teacher:'ゆい先生'},
   {id:'t1-c50',label:'文系個別（中学生）',level:'jhs',type:'ind',term:1,date:'6/22〜26',time:'15:30〜17:00',teacher:'ゆい先生',maxStudents:3},
   {id:'t1-c51',label:'小3算数',level:'elem_lo',type:'group',term:1,date:'6/22〜26',time:'9:00〜10:30',teacher:'宮嶋先生'},
-  {id:'t1-c52',label:'時計をマスターしよう',level:'elem_lo',type:'group',term:1,date:'6/22〜26',time:'10:30〜12:00',teacher:'宮嶋先生'},
+  {id:'t1-c52',label:'時計をマスターしよう',level:['elem_lo','elem_hi'],type:'group',term:1,date:'6/22〜26',time:'10:30〜12:00',teacher:'宮嶋先生',gradeMaxElem:4,gradeNote:'※小4まで'},
   {id:'t1-c53',label:'理科実験',level:'elem_lo',type:'group',term:1,date:'6/22〜26',time:'12:30〜14:00',teacher:'宮嶋先生',maxStudents:6},
   {id:'t1-c53h',label:'理科実験',level:'elem_hi',type:'group',term:1,date:'6/22〜26',time:'12:30〜14:00',teacher:'宮嶋先生',maxStudents:6},
   {id:'t1-c54',label:'書道',level:'elem_lo',type:'group',term:1,date:'6/22〜26',time:'14:00〜15:30',teacher:'宮嶋先生',maxStudents:6},
@@ -931,7 +931,7 @@ let COURSES=[
   {id:'t5-c138',label:'文系個別（中学生）',level:'jhs',type:'ind',term:5,date:'7/27〜31',time:'12:30〜14:00',teacher:'ゆい先生',maxStudents:3},
   {id:'t5-c139',label:'小2国語',level:'elem_lo',type:'group',term:5,date:'7/27〜31',time:'14:00〜15:30',teacher:'ゆい先生'},
   {id:'t5-c140',label:'品詞マスター',level:'jhs',type:'group',term:5,date:'7/27〜31',time:'15:30〜17:00',teacher:'ゆい先生'},
-  {id:'t5-c141',label:'時計をマスターしよう',level:'elem_lo',type:'group',term:5,date:'7/27〜31',time:'9:00〜10:30',teacher:'宮嶋先生'},
+  {id:'t5-c141',label:'時計をマスターしよう',level:['elem_lo','elem_hi'],type:'group',term:5,date:'7/27〜31',time:'9:00〜10:30',teacher:'宮嶋先生',gradeMaxElem:4,gradeNote:'※小4まで'},
   {id:'t5-c142',label:'書道',level:'elem_lo',type:'group',term:5,date:'7/27〜31',time:'10:30〜12:00',teacher:'宮嶋先生',maxStudents:6},
   {id:'t5-c142h',label:'書道',level:'elem_hi',type:'group',term:5,date:'7/27〜31',time:'10:30〜12:00',teacher:'宮嶋先生',maxStudents:6},
   {id:'t5-c143',label:'小6算数 図形',level:'elem_hi',type:'group',term:5,date:'7/27〜31',time:'12:30〜14:00',teacher:'宮嶋先生'},
@@ -1447,6 +1447,7 @@ if (!levels.includes('all') && !levels.includes(s.level)) return false;
                         </div>
                         ${ss.label&&!on?`<div style="font-size:9px;color:${ss.labelColor};font-weight:700;margin-top:1px">⚠ ${ss.label}</div>`:''}
                         ${c.note?`<div style="font-size:9px;color:${on?'rgba(255,255,255,.6)':'#d97706'};margin-top:1px">${c.note}</div>`:''}
+                        ${c.gradeNote?`<div style="font-size:9px;color:${on?'rgba(255,255,255,.7)':'#b91c1c'};font-weight:700;margin-top:1px">${c.gradeNote}</div>`:''}
                         <div style="font-size:10px;margin-top:3px;color:${on?'rgba(255,255,255,.75)':'var(--muted)'}">
                           ${on?fmtUSD(fp)+(dRate>0?` <span style="color:#86efac;font-weight:700">-${dRate}%</span>`:''):fmtUSD(base)}
                           <span style="font-size:9px;opacity:.6">${c.teacher}</span>
@@ -1656,6 +1657,19 @@ function showConflictError(msg){
   conflictTimer=setTimeout(()=>{el.style.display='none';},4000);
 }
 
+// 学年テキストから小学校の学年番号を抽出（小1〜小6）。該当しなければ null
+function extractElemGrade(gradeText){
+  if(!gradeText) return null;
+  const g=String(gradeText);
+  // 小1 / 小学1 / 小学校1 / 小学校1年生 など
+  let m=g.match(/小(?:学(?:校)?)?\s*([1-6])/);
+  if(m) return parseInt(m[1]);
+  // 「1年」「1年生」のみ（小プレフィックスなし）
+  m=g.match(/^\s*([1-6])\s*年/);
+  if(m) return parseInt(m[1]);
+  return null;
+}
+
 function toggleCourse(si,cid){
   const s=students[si];
   const idx=s.courses.indexOf(cid);
@@ -1663,6 +1677,15 @@ function toggleCourse(si,cid){
     s.courses.splice(idx,1);
     if(s.courseDetails) delete s.courseDetails[cid];
   } else {
+    const c=COURSES.find(x=>x.id===cid);
+    // 学年制限チェック（gradeMaxElem 指定があれば、小N年が上限を超えていないか確認）
+    if(c&&c.gradeMaxElem){
+      const g=extractElemGrade(s.grade);
+      if(g!==null&&g>c.gradeMaxElem){
+        showConflictError(`「${c.label}」は${c.gradeNote||'小'+c.gradeMaxElem+'まで'}の講座です。${s.grade}の生徒さんは選択できません。`);
+        return;
+      }
+    }
     // 時間帯重複チェック
     const conflict=getConflict(si,cid);
   if(conflict && conflict.id !== cid){ // ← ここに「自分自身ではない」という条件を追加
@@ -1671,7 +1694,6 @@ function toggleCourse(si,cid){
       return;
     }
     s.courses.push(cid);
-    const c=COURSES.find(x=>x.id===cid);
     if(c&&c.type==='ind'){
       if(!s.courseDetails) s.courseDetails={};
       if(!s.courseDetails[cid]) s.courseDetails[cid]={content:'',material:'own'};
@@ -3372,7 +3394,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.3 / 2026-04-30 10:55 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.4 / 2026-04-30 11:10 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
