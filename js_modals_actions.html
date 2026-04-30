@@ -215,8 +215,7 @@ function showCourseDetail(courseId){
         '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">日程</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.date||'-')+'</td></tr>'+
         '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">時間</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.time||'-')+'</td></tr>'+
         '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">担当先生</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.teacher||'-')+'</td></tr>'+
-        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">定員</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+max+'名</td></tr>'+
-        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">残席状況</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+status+'（残り '+remaining+'名）</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">残席状況</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+status+'</td></tr>'+
         (c.note?'<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">備考</td><td style="padding:5px 8px;border-bottom:1px solid #eee;color:#d97706">'+_escHtml(c.note)+'</td></tr>':'')+
         (c.gradeNote?'<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">学年制限</td><td style="padding:5px 8px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700">'+_escHtml(c.gradeNote)+'</td></tr>':'')+
       '</table>'+
