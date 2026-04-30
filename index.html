@@ -469,6 +469,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
       <div id="dp-school" style="font-size:11px;display:none"></div>
     </div>
     <div id="dp-progress" style="margin-top:8px;display:none"></div>
+    <div id="dp-breakdown" style="margin-top:8px;display:none;padding-top:8px;border-top:1px dashed var(--border)"></div>
   </div>
 
   <div id="course-list"></div>
@@ -1723,11 +1724,12 @@ if (!levels.includes('all') && !levels.includes(s.level)) return false;
                   const ss=full?statusStyle[status==='closed'?'closed':'full']:statusStyle[status]||statusStyle.ok;
 
                   if(full){
-                    return`<div style="border-radius:3px;margin:2px;overflow:hidden;border:1.5px solid ${ss.border};background:${ss.bg};cursor:not-allowed;opacity:.75">
+                    return`<div style="border-radius:3px;margin:2px;overflow:hidden;border:1.5px solid ${ss.border};background:${ss.bg}">
                       <div style="height:4px;background:${ss.bar}"></div>
                       <div style="padding:5px 7px">
                         <div style="font-size:11px;font-weight:600;color:#6b7280">${c.label}</div>
                         <div style="font-size:10px;color:${ss.labelColor};font-weight:700;margin-top:3px">🚫 ${ss.label}</div>
+                        ${status!=='closed'?`<button onclick="event.stopPropagation();openWaitingModal('${c.id}')" style="margin-top:5px;width:100%;padding:4px 6px;background:#fff;border:1px solid ${ss.border};color:${ss.labelColor};font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;font-family:inherit">🕐 ウェイティング登録</button>`:''}
                       </div>
                     </div>`;
                   }
@@ -2034,6 +2036,88 @@ function updateAll(){
   if(typeof updateFloatingTotal==='function')updateFloatingTotal();
 }
 
+// ウェイティング登録モーダル
+function openWaitingModal(courseId){
+  const c=COURSES.find(x=>x.id===courseId);
+  if(!c){alert('講座が見つかりません');return;}
+  const s=students[activeStudent];
+  if(!s){alert('生徒を追加してから操作してください');return;}
+  const overlay=document.createElement('div');
+  overlay.id='waiting-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9997;padding:20px';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:480px;width:100%;border-radius:6px;border-top:4px solid #f97316;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:var(--navy);margin-bottom:6px">🕐 ウェイティング登録</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">満員の講座にウェイティング登録します。キャンセル発生時に学校から個別にご連絡いたします。</div>'+
+      '<div style="background:#fff7ed;border-left:3px solid #f97316;padding:10px 12px;margin-bottom:14px">'+
+        '<div style="font-size:11px;color:#9a3412">対象講座</div>'+
+        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">'+_escHtml(c.label)+'</div>'+
+        '<div style="font-size:11px;color:#666;margin-top:2px">'+c.term+'T '+_escHtml(c.date||'')+' '+_escHtml(c.time||'')+'　'+_escHtml(c.teacher||'')+'</div>'+
+      '</div>'+
+      '<table style="width:100%;font-size:12px;line-height:1.7;border-collapse:collapse;margin-bottom:14px">'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600;width:30%">生徒名</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(s.name||'未入力')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">学年</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(s.grade||'未選択')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">保護者名</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-parent")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">メール</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-email")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">電話</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-tel")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+      '</table>'+
+      '<div style="margin-bottom:12px">'+
+        '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">備考（任意）</label>'+
+        '<textarea id="wm-note" rows="2" placeholder="希望事項などあればご記入ください" style="width:100%;border:1px solid var(--border);padding:6px 8px;font-size:12px;border-radius:3px;font-family:inherit;outline:none;resize:vertical"></textarea>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+        '<button id="wm-cancel" style="padding:8px 18px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px">キャンセル</button>'+
+        '<button id="wm-submit" style="padding:8px 18px;background:#f97316;border:1px solid #f97316;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px;font-weight:700">この内容で登録する</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#wm-cancel').onclick=()=>{document.body.removeChild(overlay);};
+  overlay.querySelector('#wm-submit').onclick=()=>submitWaiting(courseId);
+}
+
+function submitWaiting(courseId){
+  const c=COURSES.find(x=>x.id===courseId);
+  const s=students[activeStudent];
+  const parent=(document.getElementById('f-parent')?.value||'').trim();
+  const email=(document.getElementById('f-email')?.value||'').trim();
+  if(!parent||!email){alert('保護者氏名とメールアドレスを入力してください');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){alert('メールアドレスの形式が不正です');return;}
+  if(!s.name||!s.grade){alert('生徒の氏名と学年を入力してください');return;}
+  const note=document.getElementById('wm-note')?.value||'';
+  const payload={
+    course_id:c.id,
+    course_label:c.label,
+    student_name:s.name,
+    student_grade:s.grade,
+    parent_name:parent,
+    email:email,
+    phone:(document.getElementById('f-tel')?.value||'').trim(),
+    note:note
+  };
+  const submitBtn=document.querySelector('#waiting-modal-overlay #wm-submit');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='送信中...';}
+  const onOk=()=>{
+    const o=document.getElementById('waiting-modal-overlay');
+    if(o) document.body.removeChild(o);
+    alert('✅ ウェイティングリストに登録しました。\n受付確認メールを送信しています。\nキャンセル発生時に学校から個別にご連絡いたします。');
+  };
+  const onErr=(msg)=>{
+    alert('❌ 登録エラー: '+(msg||'不明'));
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='この内容で登録する';}
+  };
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(r=>{ if(r&&r.status==='ok') onOk(); else onErr(r&&r.message); })
+      .withFailureHandler(e=>onErr(e&&e.message))
+      .addWaitingEntry(payload);
+  } else {
+    fetch(getGasUrl(),{method:'POST',body:JSON.stringify({type:'waiting',...payload})})
+      .then(r=>r.json())
+      .then(r=>{ if(r&&r.status==='ok') onOk(); else onErr(r&&r.message); })
+      .catch(e=>onErr(e&&e.message));
+  }
+}
+
 // 講座詳細モーダル
 function showCourseDetail(courseId){
   const c=COURSES.find(x=>x.id===courseId);
@@ -2275,6 +2359,30 @@ function renderDiscountPanel(){
     schoolEl.innerHTML=`<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px">🏫 補習校・AS生割引 -10% 適用</span>`;
   } else {
     schoolEl.style.display='none';
+  }
+
+  // #18 詳細価格内訳（合計の計算ステップを表示）
+  const breakdownEl=document.getElementById('dp-breakdown');
+  if(breakdownEl){
+    const rawBase=rawStudentTotal(activeStudent);
+    const stTotal=calcStudentTotal(activeStudent);
+    const sibAmount=Math.round(rawBase*sib);
+    const schoolAmount=s.schoolDisc?Math.round(rawBase*(1-sib)*0.10):0;
+    const komaAmount=Math.round(rawBase*(1-sib)*(1-(s.schoolDisc?0.10:0))*koma);
+    if(rawBase>0&&stTotal!==rawBase){
+      const lines=['<div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">💡 価格の内訳（'+(s.name||'生徒')+'）</div>',
+        '<div style="font-size:11px;color:#444;line-height:1.7">',
+        '<span style="display:inline-block">定価 '+fmtUSD(rawBase)+'</span>'];
+      if(sib>0) lines.push('<span style="color:#1e40af"> → きょうだい-'+Math.round(sib*100)+'% (-'+fmtUSD(sibAmount)+')</span>');
+      if(s.schoolDisc) lines.push('<span style="color:#166534"> → 補習校-10% (-'+fmtUSD(schoolAmount)+')</span>');
+      if(koma>0) lines.push('<span style="color:var(--green)"> → コマ数-'+Math.round(koma*100)+'% (-'+fmtUSD(komaAmount)+')</span>');
+      lines.push(' <strong style="color:var(--navy);font-size:12px">= '+fmtUSD(stTotal)+'</strong>');
+      lines.push('</div>');
+      breakdownEl.innerHTML=lines.join('');
+      breakdownEl.style.display='block';
+    } else {
+      breakdownEl.style.display='none';
+    }
   }
 }
 
@@ -3991,7 +4099,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.19 / 2026-04-30 23:50 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.20 / 2026-05-01 00:30 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">

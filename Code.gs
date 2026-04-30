@@ -1,8 +1,8 @@
 // ============================================================
 // 駿台ミシガン国際学院 サマースクール – GAS バックエンド
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📅 最終更新: 2026-04-30 20:15 JST
-// 🔖 バージョン: Phase U-2.11（領収書発行A案・手動）
+// 📅 最終更新: 2026-05-01 00:30 JST
+// 🔖 バージョン: Phase U-2.20（ウェイティング + 未払いリスト + 領収書A案）
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 主な履歴:
 //   2026-04-29 ★マージ版 v2: セキュリティ強化 + マスターデータ機能
@@ -10,7 +10,7 @@
 //   2026-04-30 Phase U-2.1:  申込数集計を動的化 / 時間割タームor先生別出力 /
 //                            申込一覧の編集で自動再計算するトリガー追加
 // ============================================================
-const APP_VERSION = 'Phase U-2.11 / 2026-04-30 20:15 JST';
+const APP_VERSION = 'Phase U-2.20 / 2026-05-01 00:30 JST';
 
 const S_SETTINGS  = '学校設定';
 const S_COURSES   = '講座マスター';
@@ -18,6 +18,7 @@ const S_EIKEN     = '英検マスター';
 const S_PRICE     = '料金マスター';
 const S_DISCOUNT  = '割引マスター';
 const S_ENROLL    = '申込一覧';
+const S_WAITING   = 'ウェイティング一覧';
 const S_COUNTS    = '申込数集計';
 const S_TIMETABLE = '先生別時間割';
 const S_ROSTER    = '講座別名簿';
@@ -641,6 +642,149 @@ function getAdminDataWithPass(pass) {
 
 function checkAdminPass(pass) {
   return _checkAdminPass(pass);
+}
+
+// ============================================================
+// G: ウェイティングリスト登録
+// ============================================================
+function addWaitingEntry(data) {
+  try {
+    if (!_rateLimitOk('waiting_run', 200)) {
+      return { status: 'error', message: '本日の受付上限に達しました。' };
+    }
+    if (!data || !data.parent_name || !data.email || !data.course_id) {
+      return { status: 'error', message: '必須項目が不足しています' };
+    }
+    if (!_validString(data.parent_name, 200)) return { status: 'error', message: '保護者名が長すぎます' };
+    if (!_validEmail(data.email))             return { status: 'error', message: 'メールアドレスの形式が不正です' };
+    if (!_validString(data.student_name, 200)) return { status: 'error', message: '生徒名が長すぎます' };
+    if (!_validString(data.course_id, 100))    return { status: 'error', message: '講座IDが不正です' };
+    if (!_validString(data.course_label, 200)) return { status: 'error', message: '講座名が長すぎます' };
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(S_WAITING);
+    if (!sheet) {
+      sheet = ss.insertSheet(S_WAITING);
+      sheet.appendRow(['申込ID','登録日時','講座ID','講座名','生徒名','学年','保護者名','メール','電話','備考','ステータス']);
+      sheet.getRange(1,1,1,11).setBackground('#1b2a4a').setFontColor('#ffffff').setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+    const waitId = 'W' + new Date().getTime() + '-' + Utilities.getUuid().slice(0, 4);
+    sheet.appendRow([
+      waitId,
+      new Date().toLocaleString('ja-JP'),
+      data.course_id,
+      data.course_label || '',
+      data.student_name || '',
+      data.student_grade || '',
+      data.parent_name,
+      data.email,
+      data.phone || '',
+      data.note || '',
+      '待機'
+    ]);
+
+    // 学校への通知メール
+    const subject = '【ウェイティング登録】' + data.course_label + ' - ' + data.parent_name + ' 様';
+    const body =
+      'ウェイティングリストに登録がありました。\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '講座: ' + data.course_label + ' (' + data.course_id + ')\n' +
+      '生徒: ' + data.student_name + ' (' + data.student_grade + ')\n' +
+      '保護者: ' + data.parent_name + '\n' +
+      'メール: ' + data.email + '\n' +
+      '電話: ' + (data.phone || '未入力') + '\n' +
+      '備考: ' + (data.note || 'なし') + '\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━\n' +
+      'キャンセル発生時は手動で連絡してください。\n' + SCHOOL_NAME;
+    GmailApp.sendEmail(SCHOOL_EMAIL, subject, body, { replyTo: data.email, name: SCHOOL_NAME });
+
+    // 保護者への自動返信
+    GmailApp.sendEmail(data.email,
+      '【ウェイティング受付】サマースクール - ' + data.parent_name + ' 様',
+      data.parent_name + ' 様\n\n' +
+      'ウェイティングリストへのご登録ありがとうございます。\n' +
+      '下記の講座にてキャンセルが発生した際、学校から個別にご連絡いたします。\n\n' +
+      '■ 登録内容\n' +
+      '講座: ' + data.course_label + '\n' +
+      '生徒: ' + data.student_name + ' (' + data.student_grade + ')\n\n' +
+      'ご連絡をお待ちください。\n\n' + SCHOOL_NAME + '\nTEL: 248-349-5234',
+      { name: SCHOOL_NAME });
+
+    return { status: 'ok', wait_id: waitId };
+  } catch (err) {
+    console.error(err);
+    return { status: 'error', message: 'サーバーエラーが発生しました' };
+  }
+}
+
+// ============================================================
+// F: 未払いリスト取得（管理画面用）
+// ============================================================
+function getUnpaidList(pass) {
+  if (!_checkAdminPass(pass)) return { status: 'error', message: 'パスワードが違います' };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(S_ENROLL);
+    if (!sheet) return { status: 'ok', unpaid: [], paid: [] };
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return { status: 'ok', unpaid: [], paid: [] };
+    const headers = data[0];
+    const colId = headers.indexOf('申込ID');
+    const colTs = headers.indexOf('申込日時');
+    const colParent = headers.indexOf('保護者名');
+    const colEmail = headers.indexOf('メール');
+    const colPhone = headers.indexOf('電話');
+    const colStudents = headers.indexOf('生徒情報');
+    const colTotal = headers.indexOf('合計金額');
+    const colPaid = headers.indexOf('支払日');
+    const unpaid = [];
+    const paid = [];
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      if (!r[colParent] && !r[colEmail]) continue;
+      const row = {
+        rowNumber: i + 1,
+        id: colId>=0?r[colId]:'',
+        ts: colTs>=0?(r[colTs] instanceof Date?r[colTs].toLocaleString('ja-JP'):r[colTs]):'',
+        parent: colParent>=0?r[colParent]:'',
+        email: colEmail>=0?r[colEmail]:'',
+        phone: colPhone>=0?r[colPhone]:'',
+        students: colStudents>=0?r[colStudents]:'',
+        total: colTotal>=0?r[colTotal]:'',
+        paidDate: colPaid>=0?(r[colPaid] instanceof Date?r[colPaid].toLocaleDateString('ja-JP'):r[colPaid]):''
+      };
+      if (row.paidDate) paid.push(row);
+      else unpaid.push(row);
+    }
+    return { status: 'ok', unpaid: unpaid, paid: paid };
+  } catch (err) {
+    console.error(err);
+    return { status: 'error', message: 'サーバーエラー' };
+  }
+}
+
+// 管理画面から「支払日」を直接更新
+function markRowAsPaid(pass, rowNumber, paidDate) {
+  if (!_checkAdminPass(pass)) return { status: 'error', message: 'パスワードが違います' };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(S_ENROLL);
+    if (!sheet) return { status: 'error', message: 'シートが見つかりません' };
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    let colPaid = headers.indexOf('支払日') + 1;
+    if (colPaid === 0) {
+      colPaid = sheet.getLastColumn() + 1;
+      sheet.getRange(1, colPaid).setValue('支払日')
+        .setBackground('#1b2a4a').setFontColor('#fff').setFontWeight('bold');
+    }
+    sheet.getRange(rowNumber, colPaid).setValue(paidDate || new Date().toLocaleDateString('ja-JP'));
+    SpreadsheetApp.flush();
+    return { status: 'ok' };
+  } catch (err) {
+    console.error(err);
+    return { status: 'error', message: 'サーバーエラー' };
+  }
 }
 
 // ============================================================
