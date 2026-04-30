@@ -458,6 +458,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
       <button class="btn btn-outline btn-sm" onclick="printTimetable()">🖨 時間割を印刷</button>
     </div>
   </div>
+  <!-- 生徒切替タブ（複数生徒時のみ表示） -->
+  <div id="tt-student-tabs" style="display:none;background:#fff;border:1px solid var(--border);padding:8px 12px;margin-bottom:10px;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-size:11px;color:var(--muted);margin-right:6px">表示切替:</span>
+  </div>
   <div id="tt-content"></div>
 </div>
 
@@ -1083,6 +1087,25 @@ function onGradeChange(i,value){
   if(typeof saveDraftDebounced==='function')saveDraftDebounced();
   renderCourses();
   updateAll();
+}
+
+// ============================================================
+// 時間割ビュー設定（生徒切替+色分け）
+// ============================================================
+// 生徒に割り当てる色パレット（順番に配色）
+const STUDENT_COLORS=[
+  {bg:'#dbeafe',border:'#1e40af',text:'#1e3a8a',name:'青'},   // 太郎=青
+  {bg:'#fce7f3',border:'#be185d',text:'#9d174d',name:'ピンク'},
+  {bg:'#dcfce7',border:'#15803d',text:'#14532d',name:'緑'},
+  {bg:'#fed7aa',border:'#c2410c',text:'#7c2d12',name:'橙'},
+  {bg:'#e9d5ff',border:'#7e22ce',text:'#581c87',name:'紫'},
+  {bg:'#fef3c7',border:'#a16207',text:'#713f12',name:'黄'}
+];
+function getStudentColor(idx){return STUDENT_COLORS[(idx||0)%STUDENT_COLORS.length];}
+let timetableViewStudent='all'; // 'all' or student index (number)
+function setTimetableView(val){
+  timetableViewStudent=val;
+  renderTimetable();
 }
 
 // ============================================================
@@ -1964,13 +1987,39 @@ function renderTimetable(){
   const activeStudents=students.filter(s=>s.level&&(s.courses.length>0||s.preSlots.length>0));
   if(activeStudents.length===0){
     cont.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">講座を選択すると表示されます</div>';
+    document.getElementById('tt-student-tabs').style.display='none';
     return;
   }
 
-  // 生徒別小計
+  // ===== 生徒切替タブ（複数生徒時のみ） =====
+  const tabsEl=document.getElementById('tt-student-tabs');
+  if(activeStudents.length>=2){
+    tabsEl.style.display='flex';
+    const allActive=timetableViewStudent==='all';
+    const tabsHtml=['<span style="font-size:11px;color:var(--muted);margin-right:6px">表示切替:</span>',
+      `<button onclick="setTimetableView('all')" style="padding:5px 12px;border-radius:14px;border:1.5px solid ${allActive?'var(--navy)':'#ccc'};background:${allActive?'var(--navy)':'#fff'};color:${allActive?'#fff':'#666'};font-size:12px;font-weight:${allActive?'700':'500'};cursor:pointer;font-family:inherit">👨‍👩‍👧 全員</button>`
+    ];
+    activeStudents.forEach(s=>{
+      const idx=students.indexOf(s);
+      const isOn=timetableViewStudent===idx;
+      const c=getStudentColor(idx);
+      tabsHtml.push(`<button onclick="setTimetableView(${idx})" style="padding:5px 12px;border-radius:14px;border:1.5px solid ${isOn?c.border:'#ccc'};background:${isOn?c.bg:'#fff'};color:${isOn?c.text:'#666'};font-size:12px;font-weight:${isOn?'700':'500'};cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${c.border};display:inline-block"></span>${_escHtml(s.name||'生徒'+(idx+1))}</button>`);
+    });
+    tabsEl.innerHTML=tabsHtml.join('');
+  } else {
+    tabsEl.style.display='none';
+    timetableViewStudent='all'; // 生徒1人なら強制 all
+  }
+
+  // 表示対象の生徒（フィルタ適用）
+  const viewStudents=timetableViewStudent==='all'?activeStudents:activeStudents.filter(s=>students.indexOf(s)===timetableViewStudent);
+
+  // 生徒別小計（色分け）
   const studentSummary=activeStudents.map(s=>{
     const idx=students.indexOf(s);
-    return`<span style="font-size:12px;color:var(--muted)">${s.name}：<strong style="color:var(--navy)">${fmtUSD(calcStudentTotal(idx))}</strong></span>`;
+    const c=getStudentColor(idx);
+    const dim=timetableViewStudent!=='all'&&timetableViewStudent!==idx;
+    return`<span style="font-size:12px;color:${dim?'#bbb':'var(--muted)'};${dim?'opacity:.5':''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.border};margin-right:4px;${dim?'opacity:.4':''}"></span>${s.name}：<strong style="color:${dim?'#bbb':'var(--navy)'}">${fmtUSD(calcStudentTotal(idx))}</strong></span>`;
   }).join('　');
 
   let html=`<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${studentSummary}</div>`;
@@ -1982,11 +2031,18 @@ function renderTimetable(){
     const usedSlots=new Set();
     students.forEach((s,si)=>{
       if(!s.level)return;
+      // 表示フィルタ：個別生徒ビュー時は対象外スキップ
+      if(timetableViewStudent!=='all'&&timetableViewStudent!==si)return;
       const sLabel=s.name||`生徒${si+1}`;
+      const sc=getStudentColor(si);
       s.preSlots.forEach(sl=>{
         const key=`${sl.date}|${sl.time}`;
         if(!preCells[key])preCells[key]=[];
-        preCells[key].push({sLabel,color:LEVEL_LESSON[s.level]||''});
+        // 「全員」ビューでは生徒色、個別ビューでは従来のレベル色
+        const cellColor=timetableViewStudent==='all'
+          ?`background:${sc.bg};color:${sc.text};border-left:3px solid ${sc.border}`
+          :LEVEL_LESSON[s.level]||'';
+        preCells[key].push({sLabel,color:cellColor,studentIdx:si});
         usedDates.add(sl.date);
         usedSlots.add(sl.time);
       });
@@ -2016,7 +2072,13 @@ function renderTimetable(){
               const isSun=info?.dow==='日';
               const validSlots=isSun?PRE_SUN_SLOTS:PRE_WEEKDAY_SLOTS;
               if(!validSlots.includes(slot)) return`<td style="border:1px solid var(--border);background:#f5f5f5"></td>`;
-              if(items.length===0) return`<td style="border:1px solid var(--border)"></td>`;
+              if(items.length===0){
+                // 個別生徒ビュー時は空き時間マーカー表示
+                if(timetableViewStudent!=='all'){
+                  return`<td style="border:1px solid var(--border);background:#f9fafb;text-align:center;color:#9ca3af;font-size:9px;padding:6px 4px">⊘ 空き</td>`;
+                }
+                return`<td style="border:1px solid var(--border)"></td>`;
+              }
               return`<td style="border:1px solid var(--border);padding:3px;vertical-align:top">
                 ${items.map(it=>`<div style="${it.color};border-radius:2px;padding:3px 5px;margin:1px;font-size:10px;line-height:1.4">
                   <div style="font-weight:600">プレ講習</div>
@@ -2037,7 +2099,10 @@ function renderTimetable(){
 
     students.forEach((s,si)=>{
       if(!s.level)return;
+      // 表示フィルタ：個別生徒ビュー時は対象外スキップ
+      if(timetableViewStudent!=='all'&&timetableViewStudent!==si)return;
       const sLabel=s.name||`生徒${si+1}`;
+      const sc=getStudentColor(si);
       s.courses.filter(id=>{
         const c=COURSES.find(x=>x.id===id);
         return c&&c.term===term;
@@ -2056,8 +2121,12 @@ function renderTimetable(){
           zoomLabel=zoomScope==='dates'&&zoomDates&&zoomDates.length>0
             ?'🎬録画:'+zoomDates.join(','):'🎬録画（全日）';
         }
+        // 「全員」ビュー時は生徒色を使用、個別ビュー時はレベル色
+        const cellColor=timetableViewStudent==='all'
+          ?`background:${sc.bg};color:${sc.text};border-left:3px solid ${sc.border}`
+          :LEVEL_LESSON[c.level]||'';
         if(tc&&cells[c.time][tc]!==undefined)
-          cells[c.time][tc].push({label:c.label,color:LEVEL_LESSON[c.level]||'',sLabel,zoomLabel});
+          cells[c.time][tc].push({label:c.label,color:cellColor,sLabel,zoomLabel,studentIdx:si});
       });
     });
 
@@ -2085,7 +2154,12 @@ function renderTimetable(){
               <td style="border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:700;text-align:center;background:${bg};color:${col};white-space:nowrap;vertical-align:middle">${tc}</td>
               ${ALL_TIME_SLOTS.map(slot=>{
                 const items=cells[slot][tc]||[];
-                if(items.length===0) return`<td style="border:1px solid var(--border);background:#f7f7f7"></td>`;
+                if(items.length===0){
+                  if(timetableViewStudent!=='all'){
+                    return`<td style="border:1px solid var(--border);background:#f9fafb;text-align:center;color:#9ca3af;font-size:9px;padding:6px 4px">⊘ 空き</td>`;
+                  }
+                  return`<td style="border:1px solid var(--border);background:#f7f7f7"></td>`;
+                }
                 return`<td style="border:1px solid var(--border);padding:3px;vertical-align:top">
                   ${items.map(it=>`<div style="${it.color};border-radius:3px;padding:5px 7px;margin:2px;font-size:11px;line-height:1.4">
                     <div style="font-weight:600">${it.label}</div>
@@ -3508,7 +3582,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.12 / 2026-04-30 21:30 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.13 / 2026-04-30 21:50 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
