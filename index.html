@@ -1726,6 +1726,8 @@ function updateAll(){
   document.getElementById('hd-total').textContent=fmtUSD(total);
   document.getElementById('tab-badge').textContent=students.reduce((s,st)=>s+st.courses.length+st.preSlots.length,0);
   if(typeof saveDraftDebounced==='function')saveDraftDebounced();
+  // 印刷専用フォーマット請求書を常に最新状態に保つ（Cmd+P でも空にならないように）
+  if(typeof buildFormalInvoiceForPrint==='function')buildFormalInvoiceForPrint();
 }
 
 function renderDiscountPanel(){
@@ -3394,7 +3396,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.4 / 2026-04-30 11:10 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.5 / 2026-04-30 11:25 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
