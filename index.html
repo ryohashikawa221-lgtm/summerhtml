@@ -239,6 +239,27 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
   .print-only{display:block!important}
   /* タイトル下に「請求書」を明記 */
   .inv-title::after{content:" / 請求書 INVOICE";font-size:14px;color:#888;font-weight:normal;margin-left:8px}
+  /* 印刷時：請求書テーブル内の入力欄・お友達割引ボックスを非表示にしてフォーマット風に */
+  #pg-invoice .inv-table textarea,
+  #pg-invoke .inv-table select,
+  #pg-invoice .inv-table input,
+  #pg-invoice .inv-table label,
+  #pg-invoice .inv-table button{display:none!important}
+  /* お友達割引のイエローボックス全体（背景色・ボーダーで識別） */
+  #pg-invoice .inv-table div[style*="#fef9c3"],
+  #pg-invoice .inv-table div[style*="#fbbf24"]{display:none!important}
+  /* 「📝 希望する内容」「📚 教材・テキスト」などのラベル小見出し div */
+  #pg-invoice .inv-table div[style*="font-size:10px"]{display:none!important}
+  /* ラジオボタン行コンテナ */
+  #pg-invoice .inv-table div[style*="display:flex"][style*="gap:8px"]{display:none!important}
+  /* 余白整理 */
+  #pg-invoice .inv-table td > div[style*="margin-top:6px"],
+  #pg-invoice .inv-table td > div[style*="margin-top:8px"]{margin-top:0!important}
+  /* 講座名セルの余分な内側余白を詰める */
+  #pg-invoice .inv-table td{padding:6px 10px!important;vertical-align:top}
+  /* 印刷用ヘッダの余白調整 */
+  #pg-invoice .inv-wrap{padding:0!important}
+  #pg-invoice .inv-head{padding-top:0!important}
 }
 .print-only{display:none}
 </style>
@@ -1042,14 +1063,18 @@ function seatStatus(c){
   const max=getMaxStudents(c);
   const remaining=max-enrolled;
   if(enrolled>=max) return 'full';
+  // 警告タイミングを後ろ倒しに：本当に残席が少ない時だけ表示する
+  // (オオカミ少年化を避けて希少性メッセージの信ぴょう性を保つ)
   if(max<=3){
+    if(remaining<=1) return 'danger';
     if(remaining<=2) return 'warning';
   } else if(max<=6){
     if(remaining<=1) return 'danger';
-    if(remaining<=3) return 'warning';
+    if(remaining<=2) return 'warning';
   } else {
-    if(remaining<=2) return 'danger';
-    if(remaining<=6) return 'warning';
+    // 12人定員クラス：残り1人で「あとわずか」、残り3人で「残りわずか」
+    if(remaining<=1) return 'danger';
+    if(remaining<=3) return 'warning';
   }
   return 'ok';
 }
@@ -2569,7 +2594,15 @@ function launchConfetti(){
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
   const ctx=canvas.getContext('2d');
-  const pieces=Array.from({length:160},()=>({
+  // 申込合計金額に応じて紙吹雪の量をスケール
+  // $0   → 80枚（最低保証）
+  // $500 → 約180枚
+  // $1000→ 約280枚
+  // $2000→ 約480枚（上限）
+  let total=0;
+  try{ total=calcGrandTotal()||0; }catch(e){}
+  const pieceCount=Math.min(480, Math.max(80, Math.round(80 + total*0.2)));
+  const pieces=Array.from({length:pieceCount},()=>({
     x:Math.random()*canvas.width,
     y:-20-Math.random()*100,
     r:4+Math.random()*6,
