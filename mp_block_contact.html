@@ -1,0 +1,29 @@
+<!-- Block 5: 問い合わせ・変更希望 -->
+<div class="mp-panel">
+  <div class="mp-panel-title">📬 変更・キャンセル希望 / お問い合わせ</div>
+  <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+    講座の変更・キャンセル・その他のご要望は、下記フォームから送信してください。<br>
+    <strong>※ 自動でキャンセル処理はされません。</strong>学校から2営業日以内にご返信いたします。
+  </div>
+  <div class="mp-form">
+    <div class="mp-form-field">
+      <label>ご希望の種類 <span class="mp-required">*</span></label>
+      <div class="mp-contact-types">
+        <label><input type="radio" name="mp-req-type" value="講座を追加"> 講座を追加</label>
+        <label><input type="radio" name="mp-req-type" value="講座を変更"> 講座を変更</label>
+        <label><input type="radio" name="mp-req-type" value="講座をキャンセル"> 講座をキャンセル</label>
+        <label><input type="radio" name="mp-req-type" value="支払いについて"> 支払いについて</label>
+        <label><input type="radio" name="mp-req-type" value="その他"> その他</label>
+      </div>
+    </div>
+    <div class="mp-form-field">
+      <label>詳細内容 <span class="mp-required">*</span></label>
+      <textarea id="mp-req-content" rows="5" placeholder="例：1ターム目の英検3級を中3公立入試演習に変更希望です。理由は..."
+        style="resize:vertical;min-height:90px"></textarea>
+    </div>
+    <div id="mp-req-result"></div>
+    <div class="mp-form-actions">
+      <button class="mp-btn mp-btn-primary" id="mp-req-submit-btn" onclick="mpSubmitRequest()">📧 学校に送信する</button>
+    </div>
+  </div>
+</div>

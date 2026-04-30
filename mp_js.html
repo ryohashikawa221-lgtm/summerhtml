@@ -1,0 +1,211 @@
+<script>
+// マイページ JS - 認証 + データ表示 + 各種アクション
+const IS_GAS_MP = typeof google !== 'undefined' && google.script && google.script.run;
+
+let mpData = null; // 認証成功後の data
+let mpAppId = '';
+let mpEmail = '';
+
+function _esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// ログイン
+function mpLogin(){
+  const appId = document.getElementById('mp-app-id').value.trim().toUpperCase();
+  const email = document.getElementById('mp-email').value.trim();
+  const errEl = document.getElementById('mp-login-error');
+  errEl.style.display = 'none';
+  if(!appId || !email){
+    errEl.textContent = '申込番号とメールアドレスを入力してください';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    errEl.textContent = 'メールアドレスの形式が正しくありません';
+    errEl.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('mp-login-btn');
+  btn.disabled = true;
+  btn.textContent = '確認中...';
+
+  const onResult = (r) => {
+    btn.disabled = false;
+    btn.textContent = '確認する';
+    if(r && r.status === 'ok'){
+      mpData = r.data;
+      mpAppId = appId;
+      mpEmail = email;
+      _renderMyPage();
+    } else {
+      errEl.textContent = (r && r.message) || '該当する申込が見つかりません';
+      errEl.style.display = 'block';
+    }
+  };
+  const onErr = (e) => {
+    btn.disabled = false;
+    btn.textContent = '確認する';
+    errEl.textContent = 'エラー: ' + ((e && e.message) || '通信に失敗しました');
+    errEl.style.display = 'block';
+  };
+
+  if(IS_GAS_MP){
+    google.script.run.withSuccessHandler(onResult).withFailureHandler(onErr).getMyApplication(appId, email);
+  } else {
+    onErr({message: 'GAS環境ではないため動作しません'});
+  }
+}
+
+function mpLogout(){
+  mpData = null;
+  mpAppId = '';
+  mpEmail = '';
+  document.getElementById('mp-content').style.display = 'none';
+  document.getElementById('mp-login').style.display = 'block';
+  document.getElementById('mp-login-error').style.display = 'none';
+  document.getElementById('mp-app-id').value = '';
+  document.getElementById('mp-email').value = '';
+  window.scrollTo(0, 0);
+}
+
+function _renderMyPage(){
+  const d = mpData;
+  if(!d) return;
+  document.getElementById('mp-login').style.display = 'none';
+  document.getElementById('mp-content').style.display = 'block';
+
+  // ウェルカム
+  document.getElementById('mp-greeting').textContent = d.parent_name + ' 様、ようこそ';
+  document.getElementById('mp-app-num-display').textContent = d.application_id;
+
+  // Block 1: 申込内容サマリー
+  document.getElementById('mp-submit-date').textContent = d.submit_date;
+  document.getElementById('mp-parent-name').textContent = d.parent_name;
+  document.getElementById('mp-students').textContent = d.students_info || '(未登録)';
+  document.getElementById('mp-courses').textContent = d.courses_text || '(なし)';
+  document.getElementById('mp-total').textContent = d.total || '$0';
+
+  // Block 2: 入金状況
+  const payStatusEl = document.getElementById('mp-payment-status');
+  if(d.is_paid){
+    payStatusEl.innerHTML = '<span class="mp-status-badge mp-status-paid">✅ 入金確認済み</span>';
+    document.getElementById('mp-payment-paid').style.display = 'block';
+    document.getElementById('mp-payment-unpaid').style.display = 'none';
+    document.getElementById('mp-paid-date').textContent = d.paid_date;
+    if(d.receipt_issued_date){
+      document.getElementById('mp-receipt-issued').textContent = '（前回発行: ' + d.receipt_issued_date + '）';
+    } else {
+      document.getElementById('mp-receipt-issued').textContent = '';
+    }
+  } else {
+    payStatusEl.innerHTML = '<span class="mp-status-badge mp-status-unpaid">⏳ 入金確認待ち</span>';
+    document.getElementById('mp-payment-paid').style.display = 'none';
+    document.getElementById('mp-payment-unpaid').style.display = 'block';
+    document.getElementById('mp-zelle-email').textContent = d.zelle_email || '';
+    document.getElementById('mp-zelle-name').textContent = d.zelle_name || '';
+    document.getElementById('mp-zelle-total').textContent = d.total || '';
+    document.getElementById('mp-check-payable').textContent = d.check_payable_to || '';
+    document.getElementById('mp-check-addr').textContent = d.check_mail_to || '';
+  }
+
+  // Block 3: ウェイティング状況
+  const waitPanel = document.getElementById('mp-waiting-panel');
+  const waitList = document.getElementById('mp-waiting-list');
+  if(d.waitings && d.waitings.length > 0){
+    waitPanel.style.display = 'block';
+    waitList.innerHTML = d.waitings.map(w => {
+      return '<div class="mp-waiting-item">' +
+        '<div style="font-weight:700;color:var(--navy);font-size:13px">' + _esc(w.course_label) + '</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:2px">' +
+          '生徒: ' + _esc(w.student) + '　/　登録日: ' + _esc(w.registered_date) +
+        '</div>' +
+        '<div style="font-size:11px;color:#9a3412;margin-top:4px">' +
+          'ステータス: <strong>' + _esc(w.status) + '</strong>　/　キャンセル発生時に学校からご連絡します' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } else {
+    waitPanel.style.display = 'none';
+  }
+
+  window.scrollTo(0, 0);
+}
+
+// 領収書再送
+function mpResendReceipt(){
+  const btn = document.getElementById('mp-resend-btn');
+  const result = document.getElementById('mp-receipt-result');
+  result.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+  const onResult = (r) => {
+    btn.disabled = false;
+    btn.textContent = '📧 領収書を再送する';
+    if(r && r.status === 'ok'){
+      result.innerHTML = '<div class="mp-success">' + _esc(r.message || '領収書を再送しました') + '</div>';
+    } else {
+      result.innerHTML = '<div class="mp-error">' + _esc((r && r.message) || 'エラーが発生しました') + '</div>';
+    }
+  };
+  const onErr = (e) => {
+    btn.disabled = false;
+    btn.textContent = '📧 領収書を再送する';
+    result.innerHTML = '<div class="mp-error">エラー: ' + _esc((e && e.message) || '通信失敗') + '</div>';
+  };
+  if(IS_GAS_MP){
+    google.script.run.withSuccessHandler(onResult).withFailureHandler(onErr).resendReceipt(mpAppId, mpEmail);
+  } else {
+    onErr({message: 'GAS環境必須'});
+  }
+}
+
+// 変更・キャンセル希望送信
+function mpSubmitRequest(){
+  const radios = document.getElementsByName('mp-req-type');
+  let reqType = '';
+  for(const r of radios){ if(r.checked){ reqType = r.value; break; } }
+  const content = document.getElementById('mp-req-content').value.trim();
+  const result = document.getElementById('mp-req-result');
+  result.innerHTML = '';
+  if(!reqType){
+    result.innerHTML = '<div class="mp-error">ご希望の種類を選んでください</div>';
+    return;
+  }
+  if(!content){
+    result.innerHTML = '<div class="mp-error">詳細内容を入力してください</div>';
+    return;
+  }
+  const btn = document.getElementById('mp-req-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+  const onResult = (r) => {
+    btn.disabled = false;
+    btn.textContent = '📧 学校に送信する';
+    if(r && r.status === 'ok'){
+      result.innerHTML = '<div class="mp-success">' + _esc(r.message || '送信しました') + '</div>';
+      // フォームクリア
+      for(const r of radios){ r.checked = false; }
+      document.getElementById('mp-req-content').value = '';
+    } else {
+      result.innerHTML = '<div class="mp-error">' + _esc((r && r.message) || 'エラーが発生しました') + '</div>';
+    }
+  };
+  const onErr = (e) => {
+    btn.disabled = false;
+    btn.textContent = '📧 学校に送信する';
+    result.innerHTML = '<div class="mp-error">エラー: ' + _esc((e && e.message) || '通信失敗') + '</div>';
+  };
+  if(IS_GAS_MP){
+    google.script.run.withSuccessHandler(onResult).withFailureHandler(onErr).submitChangeRequest(mpAppId, mpEmail, reqType, content);
+  } else {
+    onErr({message: 'GAS環境必須'});
+  }
+}
+
+// Enterキーでログイン
+document.addEventListener('DOMContentLoaded', () => {
+  ['mp-app-id','mp-email'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); mpLogin(); } });
+  });
+});
+</script>

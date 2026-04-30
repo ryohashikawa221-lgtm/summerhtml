@@ -1,0 +1,42 @@
+<!-- Block 2: 入金状況 -->
+<div class="mp-panel">
+  <div class="mp-panel-title">
+    💳 入金状況
+    <span id="mp-payment-status"></span>
+  </div>
+  <!-- 入金済の場合 -->
+  <div id="mp-payment-paid" style="display:none">
+    <div class="mp-success">
+      ✅ <strong id="mp-paid-date"></strong> にお支払いを確認いたしました。誠にありがとうございます。
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">領収書を再送する場合は下のボタンを押してください。</div>
+      <button class="mp-btn mp-btn-outline" onclick="mpResendReceipt()" id="mp-resend-btn">📧 領収書を再送する</button>
+      <span id="mp-receipt-issued" style="font-size:11px;color:var(--muted);margin-left:12px"></span>
+    </div>
+    <div id="mp-receipt-result" style="margin-top:10px"></div>
+  </div>
+  <!-- 未入金の場合 -->
+  <div id="mp-payment-unpaid" style="display:none">
+    <div class="mp-info">
+      お支払いをお待ちしています。お支払い確認まで2〜3営業日いただきます。
+    </div>
+    <div class="mp-payment-info">
+      <strong>お支払い方法 / Payment</strong>
+      <table>
+        <tr><td>Zelle 受取アドレス</td><td id="mp-zelle-email"></td></tr>
+        <tr><td>受取口座名</td><td id="mp-zelle-name"></td></tr>
+        <tr><td>お支払金額</td><td><strong id="mp-zelle-total"></strong></td></tr>
+      </table>
+      <div style="margin-top:10px;padding:8px 10px;background:#fff3cd;border-left:3px solid #e65100;border-radius:3px;font-size:11px;line-height:1.7">
+        ⚠️ <strong>U.S. Bank をご利用の方へ</strong><br>
+        一部のU.S. Bank の Zelle では金額制限や送金エラーが発生することがあります。エラー時は学校までご連絡ください。
+      </div>
+      <div style="margin-top:10px;padding:8px 10px;background:#f5f5f5;border-radius:3px;font-size:11px;line-height:1.7">
+        💡 <strong>Check（小切手）でお支払いの場合</strong><br>
+        宛名: <span id="mp-check-payable"></span><br>
+        送付先: <span id="mp-check-addr"></span>
+      </div>
+    </div>
+  </div>
+</div>

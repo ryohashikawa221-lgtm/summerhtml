@@ -1,0 +1,26 @@
+<!-- Block 1: 申込内容サマリー -->
+<div class="mp-panel">
+  <div class="mp-panel-title">📋 申込内容</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:2px">申込日</div>
+      <div id="mp-submit-date" style="font-size:13px;color:var(--text);font-weight:500"></div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:2px">代表保護者</div>
+      <div id="mp-parent-name" style="font-size:13px;color:var(--text);font-weight:500"></div>
+    </div>
+  </div>
+  <div style="margin-bottom:6px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:2px">受講生徒</div>
+    <div id="mp-students" style="font-size:13px;color:var(--text);font-weight:500"></div>
+  </div>
+  <div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">受講内容</div>
+    <div id="mp-courses" class="mp-summary-courses"></div>
+  </div>
+  <div class="mp-row">
+    <span class="mp-row-label">合計金額</span>
+    <span id="mp-total" class="mp-row-value">$0</span>
+  </div>
+</div>

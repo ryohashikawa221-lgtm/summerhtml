@@ -48,8 +48,10 @@ SCHOOL_NAME + '  TEL: 248-349-5234';
 
   // 保護者向け: HTMLメール + 領収書PDF添付 + Zelle案内
   const parentSubject = '【申込受付完了】サマースクール - ' + d.parent_name + ' 様';
+  const appNum = d._appNumber || '';
   const parentText =
 d.parent_name + ' 様\n\nお申し込みありがとうございます。\n内容確認後、改めてご連絡いたします。\n\n' +
+(appNum ? '━━━━━━━━━━━━━━━━━━━━━━\n■ 申込番号: ' + appNum + '\n  この番号は申込内容の照会・領収書再送等で使用します。\n  大切に保管してください。\n━━━━━━━━━━━━━━━━━━━━━━\n\n' : '') +
 d.courses + '\n\n合計金額：' + d.total + '\n\n' +
 '■ お支払いについて\n' +
 '  Zelle 受取アドレス: ' + ZELLE_RECIPIENT_EMAIL + '\n' +
@@ -121,8 +123,17 @@ function _buildEnrollmentEmailHtml(d) {
     '<p style="margin:0 0 14px">' + _esc(d.parent_name) + ' 様</p>' +
     '<p style="margin:0 0 14px">この度はサマースクールへのお申し込みをいただき、誠にありがとうございます。<br>下記の内容で承りました。お支払いをもって正式受付となります。</p>' +
     '<div style="background:' + cream + ';border-left:3px solid ' + gold + ';padding:10px 14px;margin:14px 0">' +
-      '<div style="font-size:11px;color:#888">申込日</div>' +
-      '<div style="font-size:13px;color:' + navy + ';font-weight:700">' + _esc(d.submit_date) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">' +
+        '<div>' +
+          '<div style="font-size:11px;color:#888">申込日</div>' +
+          '<div style="font-size:13px;color:' + navy + ';font-weight:700">' + _esc(d.submit_date) + '</div>' +
+        '</div>' +
+        (d._appNumber ? '<div>' +
+          '<div style="font-size:11px;color:#888">申込番号 / Application No.</div>' +
+          '<div style="font-size:14px;color:' + navy + ';font-weight:700;font-family:Georgia,monospace">' + _esc(d._appNumber) + '</div>' +
+          '<div style="font-size:10px;color:#888;margin-top:2px">マイページ照会・領収書再送等で使用します</div>' +
+        '</div>' : '') +
+      '</div>' +
     '</div>' +
     '<div style="margin:18px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">■ 申込内容</div>' +
     '<div style="font-size:12px;line-height:1.9;white-space:pre-wrap;background:#fff;border:1px solid #eee;padding:12px;border-radius:3px">' + _nl2br(d.courses) + '</div>' +

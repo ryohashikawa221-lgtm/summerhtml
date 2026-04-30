@@ -34,8 +34,8 @@ function saveEnrollment(d) {
   let sheet = ss.getSheetByName(SHEET_ENROLL);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_ENROLL);
-    sheet.appendRow(['申込ID','申込日時','保護者名','メール','電話','生徒情報','講座詳細','合計金額','備考']);
-    sheet.getRange(1,1,1,9).setBackground('#1b2a4a').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.appendRow(['申込ID','申込日時','保護者名','メール','電話','生徒情報','講座詳細','合計金額','備考','申込番号']);
+    sheet.getRange(1,1,1,10).setBackground('#1b2a4a').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
   // 二重申込検知（Phase U-3-A 1-1）
@@ -44,14 +44,24 @@ function saveEnrollment(d) {
     d._duplicateWarning = dupResult.warning;
   }
   const enrollId = 'E' + new Date().getTime() + '-' + Utilities.getUuid().slice(0, 4);
-  // 申込番号 (Phase U-3-B で利用、ここでベース実装)
+  // 申込番号 (Phase U-3-B マイページ照会用)
   d._appNumber = _generateAppNumber(sheet);
+  // 「申込番号」列が無ければ自動追加
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  let appNumCol = headers.indexOf('申込番号') + 1;
+  if (appNumCol === 0) {
+    appNumCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, appNumCol).setValue('申込番号')
+      .setBackground('#1b2a4a').setFontColor('#fff').setFontWeight('bold');
+  }
   sheet.appendRow([
     enrollId,
     new Date().toLocaleString('ja-JP'),
     d.parent_name, d.reply_to, d.phone || '',
     d.students_info, d.courses, d.total, d.note || ''
   ]);
+  const newRow = sheet.getLastRow();
+  sheet.getRange(newRow, appNumCol).setValue(d._appNumber);
   // SpreadsheetApp.flush() で書き込み確定（Phase U-3-A 1-3 (C)）
   SpreadsheetApp.flush();
   if (d.course_counts) updateCourseCounts(d.course_counts);

@@ -38,6 +38,13 @@ function doGet(e) {
     return buildResponse({ status: 'ok', data: getAdminData() });
   }
 
+  // Phase U-3-B: マイページ表示（?page=mypage）
+  if (e.parameter.page === 'mypage') {
+    return HtmlService.createTemplateFromFile('mypage').evaluate()
+      .setTitle('2026 サマースクール マイページ')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   // Phase U-4: createTemplateFromFile + evaluate() で <?!= include() ?> を処理する
   return HtmlService.createTemplateFromFile('index').evaluate()
     .setTitle('2026 サマースクール 受講申込')

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サマースクール マイページ">
+<title>2026 サマースクール マイページ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<?!= include('mp_styles') ?>
+</head>
+<body>
+
+<!-- ヘッダ -->
+<div class="mp-header">
+  <div class="mp-header-inner">
+    <div>
+      <span class="mp-logo-en">SUNDAI MICHIGAN INTERNATIONAL ACADEMY — SUMMER 2026</span>
+      <span class="mp-logo-ja">サマースクール マイページ</span>
+    </div>
+    <div class="mp-back-link">
+      <a href="?">← 申込画面に戻る</a>
+    </div>
+  </div>
+</div>
+
+<div class="mp-main">
+  <!-- ログインフォーム -->
+  <div id="mp-login" class="mp-panel">
+    <div class="mp-panel-title">🔍 申込内容の確認</div>
+    <div class="mp-login-desc">
+      申込確認メールに記載された <strong>申込番号</strong> と <strong>メールアドレス</strong> を入力してください。
+    </div>
+    <div class="mp-form">
+      <div class="mp-form-field">
+        <label>申込番号 <span class="mp-required">*</span></label>
+        <input type="text" id="mp-app-id" placeholder="例：SS26-0123-A7K" autocomplete="off"
+          oninput="this.value=this.value.toUpperCase()">
+        <div class="mp-form-hint">申込確認メールの上部に記載されています</div>
+      </div>
+      <div class="mp-form-field">
+        <label>メールアドレス <span class="mp-required">*</span></label>
+        <input type="email" id="mp-email" placeholder="parent@example.com" autocomplete="email">
+        <div class="mp-form-hint">申込時に登録したメールアドレス</div>
+      </div>
+      <div id="mp-login-error" class="mp-error" style="display:none"></div>
+      <div class="mp-form-actions">
+        <button class="mp-btn mp-btn-primary" id="mp-login-btn" onclick="mpLogin()">確認する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- マイページ本体（ログイン後表示） -->
+  <div id="mp-content" style="display:none">
+    <div class="mp-welcome">
+      <div class="mp-welcome-text">
+        <span id="mp-greeting"></span>
+      </div>
+      <div class="mp-app-num">
+        申込番号: <strong id="mp-app-num-display"></strong>
+      </div>
+      <button class="mp-btn mp-btn-outline mp-btn-sm" onclick="mpLogout()">ログアウト</button>
+    </div>
+
+    <?!= include('mp_block_summary') ?>
+    <?!= include('mp_block_payment') ?>
+    <?!= include('mp_block_waiting') ?>
+    <?!= include('mp_block_contact') ?>
+  </div>
+</div>
+
+<?!= include('mp_js') ?>
+
+</body>
+</html>
