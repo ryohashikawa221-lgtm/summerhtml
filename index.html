@@ -225,9 +225,23 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
   #pg-brochure{display:block!important}
   body{background:#fff}.main{padding:0}
   #brochure-content{max-width:100%!important;box-shadow:none!important}
+  /* 申込画面（請求書）印刷モード */
   body.print-invoice #pg-invoice{display:block!important}
   body.print-invoice #pg-brochure{display:none!important}
+  body.print-invoice #pg-invoice #cap-panel,
+  body.print-invoice #pg-invoice .form-grid,
+  body.print-invoice #pg-invoice #send-status,
+  body.print-invoice #pg-invoice [onclick*="cap-panel"],
+  body.print-invoice #pg-invoice .diff-section,
+  body.print-invoice #pg-invoice #diff-toggle-btn{display:none!important}
+  /* 申込画面の親要素（管理者パネル・フォーム部分）コンテナを丸ごと非表示 */
+  body.print-invoice #pg-invoice .inv-wrap > .inv-body > div[style*="border-top:1px solid var(--border)"]{display:none!important}
+  /* 印刷用の宛先・発行日ヘッダ（通常時は非表示） */
+  body.print-invoice .print-only{display:block!important}
+  /* タイトル下に「請求書」と明記 */
+  body.print-invoice .inv-title::after{content:" / 請求書 INVOICE";font-size:14px;color:#888;font-weight:normal;margin-left:8px}
 }
+.print-only{display:none}
 </style>
 </head>
 <body>
@@ -373,7 +387,21 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
   <div class="inv-wrap">
     <div class="inv-head">
       <div><div class="inv-title">受講申込書・請求書<small>ENROLLMENT / INVOICE</small></div></div>
-      <div class="inv-school">駿台ミシガン国際学院<br>Sundai Michigan International Academy<br>TEL: 248-349-5234</div>
+      <div class="inv-school">駿台ミシガン国際学院<br>Sundai Michigan International Academy<br>24277 Novi Rd, Novi, MI 48375<br>TEL: 248-349-5234</div>
+    </div>
+    <!-- 印刷時のみ表示される宛先ヘッダ（領収書フォーマット参考） -->
+    <div class="print-only" style="display:none;border-bottom:2px solid #1b2a4a;padding:12px 0 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+        <div style="flex:1">
+          <div style="font-size:11px;color:#888;letter-spacing:.1em">宛先 / TO</div>
+          <div id="print-recipient" style="font-size:18px;font-weight:700;color:#1b2a4a;border-bottom:1px solid #888;padding:6px 0 4px;min-width:280px">　</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">様</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#555;line-height:1.7">
+          <div>発行日 / Date: <span id="print-issue-date">　</span></div>
+          <div>No. <span id="print-invoice-no">　</span></div>
+        </div>
+      </div>
     </div>
     <div class="inv-body">
       <div id="inv-students-section"></div>
@@ -429,7 +457,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
         </div>
         <div id="send-status" class="status-msg"></div>
         <div class="btn-row">
-          <button class="btn btn-outline" onclick="window.print()">🖨 印刷 / PDF保存</button>
+          <button class="btn btn-outline" onclick="printInvoice()">🖨 印刷 / PDF保存</button>
           <button class="btn btn-gold" onclick="openConfirmModal()" id="btn-send">📧 申込内容を送信する</button>
         </div>
       </div>
@@ -2629,6 +2657,34 @@ function buildEmailBody(){
     lines.push(`追加請求額：${fmtUSD(Math.max(0,diff))}`);
   }
   return lines.join('\n');
+}
+
+// ============================================================
+// PHASE U-2: 請求書として申込画面を印刷
+// 領収書フォーマット参考。印刷時に管理パネル/送信フォームを隠し、宛先ヘッダを表示する
+// ============================================================
+function printInvoice(){
+  // 宛先・発行日・請求書Noを印刷用ヘッダに反映
+  const parent=(document.getElementById('f-parent').value||'').trim()||'(保護者氏名未入力)';
+  const issueDate=document.getElementById('f-date').value||new Date().toLocaleDateString('ja-JP');
+  const invNo='S26-'+Date.now().toString().slice(-8);
+  const recipientEl=document.getElementById('print-recipient');
+  const issueDateEl=document.getElementById('print-issue-date');
+  const invNoEl=document.getElementById('print-invoice-no');
+  if(recipientEl) recipientEl.textContent=parent;
+  if(issueDateEl) issueDateEl.textContent=issueDate;
+  if(invNoEl) invNoEl.textContent=invNo;
+
+  document.body.classList.add('print-invoice');
+  // 印刷ダイアログ後にクラスを外す
+  const cleanup=()=>{
+    document.body.classList.remove('print-invoice');
+    window.removeEventListener('afterprint',cleanup);
+  };
+  window.addEventListener('afterprint',cleanup);
+  // ダイアログがキャンセルされた場合の保険として、3秒後にも必ずクラスを外す
+  setTimeout(()=>document.body.classList.remove('print-invoice'),3000);
+  setTimeout(()=>window.print(),50);
 }
 
 // ============================================================

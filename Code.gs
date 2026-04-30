@@ -459,24 +459,18 @@ d.courses + '\n\n合計金額：' + d.total + '\n\n' +
 '  受取口座名: ' + ZELLE_RECIPIENT_NAME + '\n' +
 '  お支払金額: ' + d.total + '\n' +
 '  ※ U.S. Bank をご利用の場合は別途ご相談ください。\n\n' +
+'■ 申込内容の控え（請求書）について\n' +
+'  申込画面の「印刷 / PDF保存」ボタンから請求書として保存・印刷できます。\n' +
+'  お支払い確認後、改めて領収書をメールにてお送りいたします。\n\n' +
 SCHOOL_NAME + '\nTEL: 248-349-5234';
 
   const parentHtml = _buildEnrollmentEmailHtml(d);
 
-  // 領収書PDFを生成
-  let attachments = [];
-  try {
-    const pdfBlob = _buildReceiptPdf(d);
-    if (pdfBlob) attachments.push(pdfBlob);
-  } catch (e) {
-    console.error('領収書PDF生成失敗:', e && e.message);
-    // PDF失敗時もメール本文だけは送る
-  }
-
+  // 申込画面そのものが請求書フォーマットになっているため、保護者は申込画面の
+  // 「🖨 印刷 / PDF保存」ボタンから自分で控えを取得できる設計（PDF添付しない）
   GmailApp.sendEmail(d.reply_to, parentSubject, parentText, {
     name: SCHOOL_NAME,
-    htmlBody: parentHtml,
-    attachments: attachments
+    htmlBody: parentHtml
   });
 }
 
@@ -540,8 +534,8 @@ function _buildEnrollmentEmailHtml(d) {
       '宛名: ' + _esc(CHECK_PAYABLE_TO) + '<br>' +
       '送付先: ' + _esc(CHECK_MAIL_TO) +
     '</div>' +
-    '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">📎 添付ファイル</div>' +
-    '<p style="margin:8px 0;font-size:12px">領収書(PDF)を添付しております。お支払い後の証憑としてご利用ください。</p>' +
+    '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">📄 申込内容の控え（請求書）</div>' +
+    '<p style="margin:8px 0;font-size:12px">申込画面の右上にある「🖨 印刷 / PDF保存」ボタンから、申込内容を請求書として PDF 保存・印刷していただけます。<br><strong>お支払い確認後、改めて領収書をメールにてお送りいたします。</strong></p>' +
   '</div>' +
   '<div style="background:' + navy + ';color:#fff;padding:14px 24px;font-size:11px;line-height:1.8">' +
     '<div style="font-weight:700;font-size:13px;margin-bottom:4px">' + _esc(SCHOOL_NAME) + '</div>' +
@@ -551,71 +545,10 @@ function _buildEnrollmentEmailHtml(d) {
 }
 
 // ============================================================
-// 領収書PDF生成（Phase U-2 / Feature N）
+// 請求書PDFは生成しません。申込画面そのものが請求書フォーマットになっており、
+// 保護者は画面の「🖨 印刷 / PDF保存」ボタンで自分で控えを取れる設計です。
+// 領収書（入金確認後）は Phase U-6 で別途実装予定。
 // ============================================================
-function _buildReceiptHtml(d) {
-  const navy = '#1b2a4a';
-  const gold = '#c9a84c';
-  const issueDate = d.submit_date || new Date().toLocaleDateString('ja-JP');
-
-  return '' +
-'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-'body{font-family:\'Yu Gothic\',\'Hiragino Kaku Gothic Pro\',sans-serif;color:#222;padding:36px;font-size:12px;line-height:1.7}' +
-'.title{font-family:serif;font-size:32px;color:' + navy + ';text-align:center;letter-spacing:.4em;margin:0 0 4px;border-bottom:3px double ' + navy + ';padding-bottom:12px}' +
-'.title-en{font-size:11px;color:#888;letter-spacing:.3em;text-align:center;margin:0 0 24px}' +
-'.meta-row{display:flex;justify-content:space-between;margin-bottom:18px;font-size:11px;color:#555}' +
-'.recipient-box{margin:18px 0;font-size:14px}' +
-'.recipient-name{font-size:18px;font-weight:700;color:' + navy + ';border-bottom:1px solid #888;padding-bottom:6px;margin-bottom:4px;min-width:280px;display:inline-block}' +
-'.amount-box{margin:24px 0;border:2px solid ' + navy + ';padding:14px 18px;background:#faf8f3}' +
-'.amount-label{font-size:11px;color:#888;letter-spacing:.1em}' +
-'.amount-value{font-family:Georgia,serif;font-size:32px;color:' + gold + ';font-weight:700;text-align:center;letter-spacing:.05em}' +
-'.purpose-box{margin:14px 0;font-size:12px;color:#333;border-bottom:1px solid #ccc;padding-bottom:6px}' +
-'.detail-table{width:100%;border-collapse:collapse;margin:18px 0;font-size:11px}' +
-'.detail-table th{background:' + navy + ';color:#fff;padding:6px 8px;text-align:left;font-weight:500;font-size:10px;letter-spacing:.08em}' +
-'.detail-table td{padding:6px 8px;border-bottom:1px solid #eee}' +
-'.issuer-box{margin-top:36px;display:flex;justify-content:space-between;align-items:flex-end}' +
-'.issuer-info{font-size:11px;line-height:1.8;color:#333}' +
-'.stamp-box{width:80px;height:80px;border:2px solid ' + gold + ';border-radius:50%;display:flex;align-items:center;justify-content:center;color:' + gold + ';font-weight:700;font-size:13px;font-family:serif}' +
-'.note{margin-top:18px;font-size:10px;color:#888;border-top:1px dashed #ccc;padding-top:8px;line-height:1.6}' +
-'</style></head><body>' +
-'<div class="title">領 収 書</div>' +
-'<div class="title-en">RECEIPT</div>' +
-'<div class="meta-row"><div>発行日: ' + _esc(issueDate) + '</div><div>No. ' + _esc('S26-' + new Date().getTime().toString().slice(-8)) + '</div></div>' +
-'<div class="recipient-box"><span class="recipient-name">' + _esc(d.parent_name) + '</span> 様</div>' +
-'<div class="amount-box">' +
-  '<div class="amount-label">金額 / Amount</div>' +
-  '<div class="amount-value">' + _esc(d.total) + '</div>' +
-'</div>' +
-'<div class="purpose-box">' +
-  '<strong>但し</strong> 2026年度サマースクール受講料として / Summer School 2026 Tuition Fee' +
-'</div>' +
-'<div style="margin:18px 0 6px;font-size:11px;color:' + navy + ';font-weight:700">■ 受講内容明細</div>' +
-'<div style="font-size:11px;line-height:1.8;background:#fafafa;border:1px solid #eee;padding:12px;border-radius:3px;white-space:pre-wrap">' + _nl2br(d.courses) + '</div>' +
-'<div class="issuer-box">' +
-  '<div class="issuer-info">' +
-    '<div style="font-weight:700;font-size:13px;color:' + navy + ';margin-bottom:4px">' + _esc(SCHOOL_NAME) + '</div>' +
-    'Sundai Michigan International Academy<br>' +
-    '24277 Novi Rd, Novi, MI 48375<br>' +
-    'TEL: 248-349-5234' +
-  '</div>' +
-  '<div class="stamp-box">領収印</div>' +
-'</div>' +
-'<div class="note">※ お支払いの確認をもちまして正式な領収書とさせていただきます。本書面は申込時点での仮領収となります。</div>' +
-'</body></html>';
-}
-
-function _buildReceiptPdf(d) {
-  try {
-    const html = _buildReceiptHtml(d);
-    const blob = Utilities.newBlob(html, 'text/html', 'receipt.html')
-      .getAs('application/pdf')
-      .setName('領収書_' + (d.parent_name || 'recipient') + '_' + (d.submit_date || '').replace(/[^\d]/g,'') + '.pdf');
-    return blob;
-  } catch (e) {
-    console.error('_buildReceiptPdf:', e && e.message);
-    return null;
-  }
-}
 
 // ============================================================
 // メール送信（リクエスト）
