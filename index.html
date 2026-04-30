@@ -219,27 +219,26 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
   #req-cats,#req-terms,#req-grades{gap:5px}
 }
 @media print{
+  /* 印刷時は常に申込画面（請求書）のみを表示。他のページ・装飾は全て非表示 */
   .no-print,.site-header,.nav-tabs,.total-bar,.btn-row,.ejs-note,.ejs-cfg,.status-msg,.diff-section,
-  #pg-pamphlet,#pg-timetable,#pg-invoice,#pg-request,#pg-admin,#discount-panel,
+  #pg-brochure,#pg-pamphlet,#pg-timetable,#pg-request,#pg-admin,#discount-panel,
   #admin-footer{display:none!important}
-  #pg-brochure{display:block!important}
   body{background:#fff}.main{padding:0}
-  #brochure-content{max-width:100%!important;box-shadow:none!important}
-  /* 申込画面（請求書）印刷モード */
-  body.print-invoice #pg-invoice{display:block!important}
-  body.print-invoice #pg-brochure{display:none!important}
-  body.print-invoice #pg-invoice #cap-panel,
-  body.print-invoice #pg-invoice .form-grid,
-  body.print-invoice #pg-invoice #send-status,
-  body.print-invoice #pg-invoice [onclick*="cap-panel"],
-  body.print-invoice #pg-invoice .diff-section,
-  body.print-invoice #pg-invoice #diff-toggle-btn{display:none!important}
-  /* 申込画面の親要素（管理者パネル・フォーム部分）コンテナを丸ごと非表示 */
-  body.print-invoice #pg-invoice .inv-wrap > .inv-body > div[style*="border-top:1px solid var(--border)"]{display:none!important}
-  /* 印刷用の宛先・発行日ヘッダ（通常時は非表示） */
-  body.print-invoice .print-only{display:block!important}
-  /* タイトル下に「請求書」と明記 */
-  body.print-invoice .inv-title::after{content:" / 請求書 INVOICE";font-size:14px;color:#888;font-weight:normal;margin-left:8px}
+  /* 申込画面は確実に表示 */
+  #pg-invoice{display:block!important}
+  /* 申込画面内の管理者パネル・フォーム・送信ボタン・差額計算は印刷時非表示 */
+  #pg-invoice #cap-panel,
+  #pg-invoice .form-grid,
+  #pg-invoice #send-status,
+  #pg-invoice [onclick*="cap-panel"],
+  #pg-invoice .diff-section,
+  #pg-invoice #diff-toggle-btn{display:none!important}
+  /* 申込画面の「申込フォーム + 管理者パネル」を含むコンテナを丸ごと非表示 */
+  #pg-invoice .inv-wrap > .inv-body > div[style*="border-top:1px solid var(--border)"]{display:none!important}
+  /* 印刷用の宛先・発行日ヘッダのみ印刷時表示 */
+  .print-only{display:block!important}
+  /* タイトル下に「請求書」を明記 */
+  .inv-title::after{content:" / 請求書 INVOICE";font-size:14px;color:#888;font-weight:normal;margin-left:8px}
 }
 .print-only{display:none}
 </style>
@@ -516,12 +515,6 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 
 <!-- ⑥ 概要・パンフレット -->
 <div class="page active" id="pg-brochure">
-
-  <!-- 印刷コントロール（印刷時非表示） -->
-  <div class="no-print" style="display:flex;gap:10px;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid var(--border)">
-    <span style="font-size:13px;color:var(--muted)">このページはそのまま印刷してパンフレットとして使用できます</span>
-    <button class="btn btn-gold btn-sm" onclick="window.print()" style="margin-left:auto">🖨 印刷 / PDF保存</button>
-  </div>
 
   <!-- パンフレット本体 -->
   <div id="brochure-content" style="background:#fff;max-width:860px;margin:0 auto;font-family:'Noto Sans JP',sans-serif">
@@ -2664,7 +2657,7 @@ function buildEmailBody(){
 // 領収書フォーマット参考。印刷時に管理パネル/送信フォームを隠し、宛先ヘッダを表示する
 // ============================================================
 function printInvoice(){
-  // 宛先・発行日・請求書Noを印刷用ヘッダに反映
+  // 宛先・発行日・請求書Noを印刷用ヘッダに反映してから印刷ダイアログを開く
   const parent=(document.getElementById('f-parent').value||'').trim()||'(保護者氏名未入力)';
   const issueDate=document.getElementById('f-date').value||new Date().toLocaleDateString('ja-JP');
   const invNo='S26-'+Date.now().toString().slice(-8);
@@ -2674,16 +2667,6 @@ function printInvoice(){
   if(recipientEl) recipientEl.textContent=parent;
   if(issueDateEl) issueDateEl.textContent=issueDate;
   if(invNoEl) invNoEl.textContent=invNo;
-
-  document.body.classList.add('print-invoice');
-  // 印刷ダイアログ後にクラスを外す
-  const cleanup=()=>{
-    document.body.classList.remove('print-invoice');
-    window.removeEventListener('afterprint',cleanup);
-  };
-  window.addEventListener('afterprint',cleanup);
-  // ダイアログがキャンセルされた場合の保険として、3秒後にも必ずクラスを外す
-  setTimeout(()=>document.body.classList.remove('print-invoice'),3000);
   setTimeout(()=>window.print(),50);
 }
 

@@ -493,7 +493,7 @@ function _buildEnrollmentEmailHtml(d) {
   } else {
     qrBlock =
       '<div style="text-align:center;margin:14px 0;padding:20px;border:2px dashed #c9a84c;border-radius:6px;background:#fff7e0">' +
-        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">📱 Zelle QRコード</div>' +
+        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">Zelle QRコード</div>' +
         '<div style="font-size:11px;color:#888;margin-top:6px">下記受取アドレスを Zelle アプリで指定してください</div>' +
       '</div>';
   }
@@ -517,7 +517,7 @@ function _buildEnrollmentEmailHtml(d) {
       '<div style="font-size:13px;color:' + navy + ';font-weight:700">合計金額</div>' +
       '<div style="font-size:22px;color:' + gold + ';font-weight:700;font-family:Georgia,serif">' + _esc(d.total) + '</div>' +
     '</div>' +
-    '<div style="margin:24px 0 6px;font-size:14px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + gold + ';padding-bottom:4px">💳 お支払いはこちらから / Payment</div>' +
+    '<div style="margin:24px 0 6px;font-size:14px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + gold + ';padding-bottom:4px">■ お支払いはこちらから / Payment</div>' +
     '<p style="margin:8px 0;font-size:12px">Zelle (ゼル) でのお振込みをお願いいたします。下記の情報をご利用ください。</p>' +
     qrBlock +
     '<table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px">' +
@@ -526,16 +526,16 @@ function _buildEnrollmentEmailHtml(d) {
       '<tr><td style="padding:6px 8px;background:#f5f5f5;font-weight:600;border:1px solid #eee">お支払金額</td><td style="padding:6px 8px;border:1px solid #eee;font-weight:700">' + _esc(d.total) + '</td></tr>' +
     '</table>' +
     '<div style="margin:12px 0;padding:10px 12px;background:#fff3cd;border-left:3px solid #e65100;border-radius:3px;font-size:11px;color:#555;line-height:1.7">' +
-      '⚠️ <strong>U.S. Bank をご利用の方へ</strong><br>' +
+      '<strong>U.S. Bank をご利用の方へ</strong><br>' +
       '一部のU.S. Bank の Zelle では金額制限や送金エラーが発生することがあります。エラー時は学校までご連絡ください。' +
     '</div>' +
     '<div style="margin:12px 0;padding:10px 12px;background:#f5f5f5;border-radius:3px;font-size:11px;color:#555;line-height:1.7">' +
-      '💡 <strong>Check（小切手）でお支払いの場合</strong><br>' +
+      '<strong>Check（小切手）でお支払いの場合</strong><br>' +
       '宛名: ' + _esc(CHECK_PAYABLE_TO) + '<br>' +
       '送付先: ' + _esc(CHECK_MAIL_TO) +
     '</div>' +
-    '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">📄 申込内容の控え（請求書）</div>' +
-    '<p style="margin:8px 0;font-size:12px">申込画面の右上にある「🖨 印刷 / PDF保存」ボタンから、申込内容を請求書として PDF 保存・印刷していただけます。<br><strong>お支払い確認後、改めて領収書をメールにてお送りいたします。</strong></p>' +
+    '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">■ 申込内容の控え（請求書）</div>' +
+    '<p style="margin:8px 0;font-size:12px">申込画面の右上にある「印刷 / PDF保存」ボタンから、申込内容を請求書として PDF 保存・印刷していただけます。<br><strong>お支払い確認後、改めて領収書をメールにてお送りいたします。</strong></p>' +
   '</div>' +
   '<div style="background:' + navy + ';color:#fff;padding:14px 24px;font-size:11px;line-height:1.8">' +
     '<div style="font-weight:700;font-size:13px;margin-bottom:4px">' + _esc(SCHOOL_NAME) + '</div>' +
