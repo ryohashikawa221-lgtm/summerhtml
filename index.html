@@ -430,7 +430,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
         <div id="send-status" class="status-msg"></div>
         <div class="btn-row">
           <button class="btn btn-outline" onclick="window.print()">🖨 印刷 / PDF保存</button>
-          <button class="btn btn-gold" onclick="sendEmail()" id="btn-send">📧 申込内容を送信する</button>
+          <button class="btn btn-gold" onclick="openConfirmModal()" id="btn-send">📧 申込内容を送信する</button>
         </div>
       </div>
     </div>
@@ -2629,6 +2629,102 @@ function buildEmailBody(){
     lines.push(`追加請求額：${fmtUSD(Math.max(0,diff))}`);
   }
   return lines.join('\n');
+}
+
+// ============================================================
+// PHASE U-2 / FEATURE B: 最終確認モーダル
+// ============================================================
+function openConfirmModal(){
+  const status=document.getElementById('send-status');
+  const parent=document.getElementById('f-parent').value.trim();
+  const email=document.getElementById('f-email').value.trim();
+  // 既存の必須項目チェック
+  if(!parent||!email){
+    status.className='status-msg status-ng';
+    status.textContent='保護者氏名とメールアドレスは必須です。';
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    status.className='status-msg status-ng';
+    status.textContent='メールアドレスの形式が正しくありません。';
+    return;
+  }
+  if(students.every(s=>s.courses.length===0&&s.preSlots.length===0)){
+    status.className='status-msg status-ng';
+    status.textContent='講座が選択されていません。';
+    return;
+  }
+  status.className='status-msg';
+  status.textContent='';
+
+  // サマリー生成
+  const activeStudents=students.filter(s=>s.level&&(s.courses.length>0||s.preSlots.length>0));
+  const studentRows=activeStudents.map(s=>{
+    const idx=students.indexOf(s);
+    const cnt=s.courses.length+s.preSlots.length;
+    const total=calcStudentTotal(idx);
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">${s.name||'(氏名未入力)'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">${s.grade||'-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${cnt}講座</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:700">${fmtUSD(total)}</td>
+    </tr>`;
+  }).join('');
+  const grandTotal=calcGrandTotal();
+  const tel=document.getElementById('f-tel').value.trim();
+
+  const overlay=document.createElement('div');
+  overlay.id='confirm-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px;overflow-y:auto';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:560px;width:100%;border-radius:6px;border-top:4px solid #c9a84c;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,0.25);max-height:90vh;overflow-y:auto">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:#1b2a4a;margin-bottom:6px">📧 以下の内容で送信します</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:16px">送信前に内容をご確認ください</div>'+
+      '<div style="background:#faf8f3;border:1px solid #e7e0c8;border-radius:4px;padding:10px 14px;margin-bottom:14px">'+
+        '<div style="font-size:11px;color:#888;margin-bottom:4px">代表保護者</div>'+
+        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">'+_escHtml(parent)+'</div>'+
+        '<div style="font-size:11px;color:#666;margin-top:4px">'+_escHtml(email)+(tel?'　/　'+_escHtml(tel):'')+'</div>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'+
+        '<thead><tr style="background:#1b2a4a;color:#fff">'+
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:500">生徒</th>'+
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:500">学年</th>'+
+          '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:500">講座数</th>'+
+          '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:500">小計</th>'+
+        '</tr></thead>'+
+        '<tbody>'+studentRows+'</tbody>'+
+        '<tfoot><tr style="background:#fff7e0">'+
+          '<td colspan="3" style="padding:10px;font-family:\'Shippori Mincho\',serif;font-size:14px;color:#1b2a4a;font-weight:700">合計金額</td>'+
+          '<td style="padding:10px;text-align:right;font-family:\'Shippori Mincho\',serif;font-size:18px;color:#c9a84c;font-weight:700">'+fmtUSD(grandTotal)+'</td>'+
+        '</tr></tfoot>'+
+      '</table>'+
+      '<div style="font-size:11px;color:#666;line-height:1.6;background:#f5f5f5;padding:8px 12px;border-radius:3px;margin-bottom:16px">'+
+        '送信後、確認メールが '+_escHtml(email)+' に届きます。'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'+
+        '<button id="confirm-cancel" style="padding:9px 22px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px">戻る（編集）</button>'+
+        '<button id="confirm-send" style="padding:9px 22px;background:#c9a84c;border:1px solid #c9a84c;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px;font-weight:700">この内容で送信する</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#confirm-cancel').onclick=closeConfirmModal;
+  overlay.querySelector('#confirm-send').onclick=()=>{
+    closeConfirmModal();
+    sendEmail();
+  };
+  // ESCキーで閉じる
+  overlay.tabIndex=-1;
+  overlay.focus();
+  overlay.addEventListener('keydown',e=>{ if(e.key==='Escape') closeConfirmModal(); });
+}
+
+function closeConfirmModal(){
+  const o=document.getElementById('confirm-modal-overlay');
+  if(o&&o.parentNode) o.parentNode.removeChild(o);
+}
+
+function _escHtml(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 async function sendEmail(){
