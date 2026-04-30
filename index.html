@@ -421,8 +421,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy);margin-bottom:14px">申込者情報・送信</div>
         <div class="form-grid">
-          <div class="form-field"><label>代表保護者氏名</label><input id="f-parent" placeholder="山田 花子"></div>
-          <div class="form-field"><label>連絡先メールアドレス</label><input id="f-email" type="email" placeholder="parent@example.com"></div>
+          <div class="form-field"><label>代表保護者氏名</label><input id="f-parent" placeholder="山田 花子"><span id="err-parent" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
+          <div class="form-field"><label>連絡先メールアドレス</label><input id="f-email" type="email" placeholder="parent@example.com"><span id="err-email" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
           <div class="form-field"><label>電話番号</label><input id="f-tel" type="tel" placeholder="000-000-0000"></div>
           <div class="form-field"><label>発行日</label><input id="f-date" type="text"></div>
           <div class="form-field form-full"><label>備考・ご要望</label><textarea id="f-note" placeholder="特記事項があればご記入ください"></textarea></div>
@@ -1056,7 +1056,24 @@ function updateStudentHeader(i){
 
 function addStudent(){
   const sid=nextSid++;
-  students.push({id:sid,name:`生徒${sid}`,grade:'',level:'',schoolDisc:false,courses:[],preSlots:[]});
+  // 兄弟自動継承: 直前生徒から姓と補習校・AS生割引を引き継ぐ（Phase U-1, Feature E）
+  const lastStudent=students[students.length-1];
+  let inheritedName=`生徒${sid}`;
+  let inheritedSchoolDisc=false;
+  if(lastStudent){
+    const rawName=(lastStudent.name||'').trim();
+    // デフォルトの「生徒N」プレースホルダ名は継承元としない
+    const isPlaceholder=/^生徒\d+$/.test(rawName);
+    if(rawName&&!isPlaceholder){
+      const parts=rawName.split(/\s+/);
+      inheritedName=parts.length>1?parts[0]+' ':'';
+    } else if(students.length>0){
+      // 1人目が空 or プレースホルダのままなら2人目以降は空欄スタート
+      inheritedName='';
+    }
+    inheritedSchoolDisc=!!lastStudent.schoolDisc;
+  }
+  students.push({id:sid,name:inheritedName,grade:'',level:'',schoolDisc:inheritedSchoolDisc,courses:[],preSlots:[]});
   activeStudent=students.length-1;
   renderStudents();
   updateAll();
@@ -1096,11 +1113,11 @@ function renderStudents(){
     <div class="student-body">
       <div class="student-fields">
         <div class="field"><label>氏名</label>
-          <input value="${s.name}" placeholder="例：山田 太郎" oninput="students[${i}].name=this.value;updateStudentHeader(${i})"
+          <input value="${s.name}" placeholder="例：山田 太郎" oninput="students[${i}].name=this.value;updateStudentHeader(${i});if(typeof saveDraftDebounced==='function')saveDraftDebounced()"
             onfocus="this.select()">
         </div>
         <div class="field"><label>学年</label>
-          <input value="${s.grade}" placeholder="例：中学2年" oninput="students[${i}].grade=this.value">
+          <input value="${s.grade}" placeholder="例：中学2年" oninput="students[${i}].grade=this.value;if(typeof saveDraftDebounced==='function')saveDraftDebounced()" onblur="updateAll()">
         </div>
         <div class="field"><label>対象区分</label>
           <select onchange="students[${i}].level=this.value;renderCourses();updateAll()">
@@ -1110,6 +1127,7 @@ function renderStudents(){
             <option value="jhs"     ${s.level==='jhs'    ?'selected':''}>中学生</option>
             <option value="hs"      ${s.level==='hs'     ?'selected':''}>高校生</option>
           </select>
+          ${gradeLevelMismatch(s.grade,s.level)?'<span style="color:var(--red);font-size:11px;margin-top:2px">学年と対象区分が一致していません。確認してください</span>':''}
         </div>
         <div class="field" style="justify-content:flex-end">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:18px">
@@ -1644,6 +1662,7 @@ function updateAll(){
   const total=calcGrandTotal();
   document.getElementById('hd-total').textContent=fmtUSD(total);
   document.getElementById('tab-badge').textContent=students.reduce((s,st)=>s+st.courses.length+st.preSlots.length,0);
+  if(typeof saveDraftDebounced==='function')saveDraftDebounced();
 }
 
 function renderDiscountPanel(){
@@ -2649,6 +2668,7 @@ async function sendEmail(){
         status.className='status-msg status-ok';
         status.textContent='✅ 送信しました！' + email + ' に確認メールが届きます。';
         launchConfetti();
+        if(typeof clearDraft==='function')clearDraft();
         btn.disabled=false;btn.textContent='📧 申込内容を送信する';
       })
       .withFailureHandler(function(e){
@@ -2667,6 +2687,7 @@ async function sendEmail(){
         status.className='status-msg status-ok';
         status.textContent=`✅ 送信しました！${email} に確認メールが届きます。`;
         launchConfetti();
+        if(typeof clearDraft==='function')clearDraft();
       } else {
         throw new Error(result.message||'送信に失敗しました');
       }
@@ -2711,7 +2732,8 @@ loadGasUrl();
 })();
 
 loadCapacityOverrides().then(()=>{
-  addStudent();
+  // Phase U-1 / Feature A: 途中保存があれば復元モーダル、なければ通常通り生徒を1名追加
+  tryRestoreDraft();
   fetchCourseCounts(); // GASから申込数を取得
 });
 
@@ -2795,6 +2817,241 @@ function getTermDates(dateStr) {
   for (let d = start; d <= end; d++) dates.push(month + '/' + d);
   return dates;
 }
+
+// ============================================================
+// PHASE U-1 / FEATURE D: 入力バリデーション強化
+// ============================================================
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TEL_ALLOWED_RE = /[^\d\-\(\)\s\+]/g;
+
+function validateParent(){
+  const el=document.getElementById('f-parent');
+  const errEl=document.getElementById('err-parent');
+  if(!el||!errEl) return;
+  // 入力済みかつ trim 後に空(空白文字のみ)はエラー
+  if(el.value.length>0 && el.value.trim().length===0){
+    errEl.textContent='代表保護者氏名を入力してください';
+    errEl.style.display='block';
+  } else {
+    errEl.textContent='';
+    errEl.style.display='none';
+  }
+}
+
+function validateEmail(){
+  const el=document.getElementById('f-email');
+  const errEl=document.getElementById('err-email');
+  if(!el||!errEl) return;
+  const v=el.value.trim();
+  if(v && !EMAIL_RE.test(v)){
+    errEl.textContent='メールアドレスの形式が正しくありません';
+    errEl.style.display='block';
+  } else {
+    errEl.textContent='';
+    errEl.style.display='none';
+  }
+}
+
+function formatTel(){
+  const el=document.getElementById('f-tel');
+  if(!el) return;
+  const cleaned=el.value.replace(TEL_ALLOWED_RE,'');
+  if(cleaned!==el.value){
+    const pos=el.selectionStart;
+    el.value=cleaned;
+    try{ el.setSelectionRange(pos-1,pos-1); }catch(e){}
+  }
+}
+
+// 学年テキストと対象区分(level)の整合性チェック。明確に矛盾するときのみ true。
+function gradeLevelMismatch(grade, level){
+  if(!grade||!level) return false;
+  const g=String(grade).replace(/\s/g,'');
+  const detect={
+    elem_lo:/小(学(校)?)?[1-3１-３一二三]/,
+    elem_hi:/小(学(校)?)?[4-6４-６四五六]/,
+    jhs:/中(学(校|生)?)?[1-3１-３一二三]/,
+    hs:/高(校|等学校)?[1-3１-３一二三]/
+  };
+  const re=detect[level];
+  if(re && re.test(g)) return false;
+  // 自レベルと一致しない、かつ他レベルとは明確に一致 → 不整合
+  for(const lv of Object.keys(detect)){
+    if(lv!==level && detect[lv].test(g)) return true;
+  }
+  return false;
+}
+
+// ============================================================
+// PHASE U-1 / FEATURE A: 途中保存・再開機能
+// ============================================================
+const DRAFT_KEY='summer2026_draft_v1';
+const DRAFT_VERSION=1;
+const DRAFT_TTL_MS=30*24*60*60*1000; // 30日
+
+let _draftSaveTimer=null;
+let _draftRestoreInProgress=false;
+
+function _draftStorageAvailable(){
+  try{
+    const k='__draft_probe__';
+    localStorage.setItem(k,'1');
+    localStorage.removeItem(k);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function saveDraftDebounced(){
+  if(_draftRestoreInProgress) return;
+  if(_draftSaveTimer) clearTimeout(_draftSaveTimer);
+  _draftSaveTimer=setTimeout(saveDraftNow,500);
+}
+
+function saveDraftNow(){
+  try{
+    const payload={
+      _v:DRAFT_VERSION,
+      ts:Date.now(),
+      students:students,
+      activeStudent:activeStudent,
+      parent:{
+        name:document.getElementById('f-parent')?.value||'',
+        email:document.getElementById('f-email')?.value||'',
+        tel:document.getElementById('f-tel')?.value||'',
+        note:document.getElementById('f-note')?.value||''
+      }
+    };
+    localStorage.setItem(DRAFT_KEY,JSON.stringify(payload));
+  }catch(e){
+    // localStorage 無効環境(プライベートブラウジング等)では無視
+    console.warn('[draft] save skipped:',e&&e.message);
+  }
+}
+
+function clearDraft(){
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+}
+
+function loadDraft(){
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    const data=JSON.parse(raw);
+    if(!data||data._v!==DRAFT_VERSION) return null;
+    if(!data.ts||Date.now()-data.ts>DRAFT_TTL_MS){
+      clearDraft();
+      return null;
+    }
+    if(!Array.isArray(data.students)||data.students.length===0) return null;
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+
+function _showRestoreModal(savedAt){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+    const ts=new Date(savedAt).toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    overlay.innerHTML=
+      '<div style="background:#fff;max-width:420px;width:100%;border-radius:6px;border-top:4px solid #c9a84c;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,0.25)">'+
+        '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:#1b2a4a;margin-bottom:12px">📝 入力中の内容があります</div>'+
+        '<div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:18px">'+
+          '前回入力中の内容が保存されています。<br>'+
+          '<span style="color:#888;font-size:11px">保存日時：'+ts+'</span><br><br>'+
+          '続きから再開しますか？'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'+
+          '<button id="draft-discard" style="padding:8px 18px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:12px;cursor:pointer;border-radius:3px">破棄して新規</button>'+
+          '<button id="draft-restore" style="padding:8px 18px;background:#c9a84c;border:1px solid #c9a84c;color:#fff;font-family:inherit;font-size:12px;cursor:pointer;border-radius:3px;font-weight:700">復元する</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#draft-restore').onclick=()=>{ document.body.removeChild(overlay); resolve(true); };
+    overlay.querySelector('#draft-discard').onclick=()=>{ document.body.removeChild(overlay); resolve(false); };
+  });
+}
+
+async function tryRestoreDraft(){
+  if(!_draftStorageAvailable()){
+    // localStorage 利用不可 → 通常起動のみ
+    addStudent();
+    return;
+  }
+  const draft=loadDraft();
+  if(!draft){ addStudent(); return; }
+  const wantRestore=await _showRestoreModal(draft.ts);
+  if(!wantRestore){
+    clearDraft();
+    addStudent();
+    return;
+  }
+  _draftRestoreInProgress=true;
+  try{
+    // 構造ガード：必須キーが欠けていれば破棄して新規
+    const restored=draft.students.map(s=>({
+      id:s.id||0,
+      name:s.name||'',
+      grade:s.grade||'',
+      level:s.level||'',
+      schoolDisc:!!s.schoolDisc,
+      courses:Array.isArray(s.courses)?s.courses:[],
+      preSlots:Array.isArray(s.preSlots)?s.preSlots:[],
+      courseDetails:s.courseDetails||{},
+      preDetails:s.preDetails||{},
+      zoomCourses:Array.isArray(s.zoomCourses)?s.zoomCourses:[],
+      zoomType:s.zoomType||{},
+      zoomScope:s.zoomScope||{},
+      zoomDates:s.zoomDates||{}
+    }));
+    students=restored;
+    activeStudent=Math.min(Math.max(0,draft.activeStudent||0),students.length-1);
+    const maxId=students.reduce((m,s)=>Math.max(m,s.id||0),0);
+    nextSid=Math.max(nextSid,maxId+1);
+    if(draft.parent){
+      const setVal=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+      setVal('f-parent',draft.parent.name);
+      setVal('f-email',draft.parent.email);
+      setVal('f-tel',draft.parent.tel);
+      setVal('f-note',draft.parent.note);
+    }
+  }catch(e){
+    console.warn('[draft] restore failed:',e&&e.message);
+    clearDraft();
+    students=[];
+    addStudent();
+    _draftRestoreInProgress=false;
+    return;
+  }
+  _draftRestoreInProgress=false;
+  renderStudents();
+  updateAll();
+  validateParent();
+  validateEmail();
+  formatTel();
+}
+
+// 親フォームの入力ハンドラ（バリデーション + 下書き保存）
+(function attachParentFieldListeners(){
+  const map=[
+    ['f-parent', validateParent],
+    ['f-email',  validateEmail],
+    ['f-tel',    formatTel],
+    ['f-note',   null]
+  ];
+  map.forEach(([id,fn])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input',()=>{
+      if(fn) fn();
+      saveDraftDebounced();
+    });
+    el.addEventListener('blur',()=>{ if(fn) fn(); });
+  });
+})();
 
 </script>
 
