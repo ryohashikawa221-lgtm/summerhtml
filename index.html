@@ -423,6 +423,19 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
       <div class="fsep"></div>
       <button class="pill" onclick="setFP('eiken',this)">🏅 英検対策</button>
     </div>
+    <!-- 検索バー + 先生フィルタ -->
+    <div style="display:flex;gap:8px;padding:6px 12px 8px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border)">
+      <span style="font-size:11px;color:var(--muted);font-weight:600">🔍 検索</span>
+      <input type="text" id="course-search" placeholder="講座名・先生名で絞り込み（例：英検、橋川、数学）"
+        oninput="setSearchKeyword(this.value)"
+        style="flex:1;min-width:160px;border:1px solid var(--border);padding:5px 8px;font-size:12px;border-radius:3px;font-family:inherit;outline:none">
+      <span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:6px">先生</span>
+      <select id="course-teacher-filter" onchange="setTeacherFilter(this.value)"
+        style="border:1px solid var(--border);padding:5px 8px;font-size:12px;border-radius:3px;font-family:inherit;background:#fff">
+        <option value="">全員</option>
+      </select>
+      <button onclick="clearCourseFilters()" style="border:1px solid var(--border);background:#fff;color:var(--muted);padding:4px 10px;font-size:11px;border-radius:3px;cursor:pointer;font-family:inherit">✕ クリア</button>
+    </div>
   </div>
 
   <!-- 残席カラー凡例 -->
@@ -1090,6 +1103,51 @@ function onGradeChange(i,value){
 }
 
 // ============================================================
+// 講座検索バー + 先生フィルタ
+// ============================================================
+let courseSearchKeyword=''; // 講座名・先生名のキーワード検索
+let courseTeacherFilter=''; // 先生名（完全一致）フィルタ
+function setSearchKeyword(v){
+  courseSearchKeyword=String(v||'').trim().toLowerCase();
+  renderCourses();
+}
+function setTeacherFilter(v){
+  courseTeacherFilter=String(v||'').trim();
+  renderCourses();
+}
+function clearCourseFilters(){
+  courseSearchKeyword='';
+  courseTeacherFilter='';
+  const s=document.getElementById('course-search');
+  if(s) s.value='';
+  const t=document.getElementById('course-teacher-filter');
+  if(t) t.value='';
+  renderCourses();
+}
+// 先生プルダウンを動的生成（COURSESから抽出）
+function _populateTeacherFilter(){
+  const sel=document.getElementById('course-teacher-filter');
+  if(!sel) return;
+  if(sel.options.length>1) return; // 既に生成済
+  const teachers=[...new Set(COURSES.map(c=>c.teacher).filter(Boolean))];
+  // ベテラン順でソート（既知の優先順）
+  const order=['坂本先生','嶋中先生','ゆい先生','宮嶋先生','八反田先生','橋川先生'];
+  teachers.sort((a,b)=>{
+    const ai=order.indexOf(a),bi=order.indexOf(b);
+    if(ai>=0&&bi>=0) return ai-bi;
+    if(ai>=0) return -1;
+    if(bi>=0) return 1;
+    return a.localeCompare(b);
+  });
+  teachers.forEach(t=>{
+    const opt=document.createElement('option');
+    opt.value=t;
+    opt.textContent=t;
+    sel.appendChild(opt);
+  });
+}
+
+// ============================================================
 // 時間割ビュー設定（生徒切替+色分け）
 // ============================================================
 // 生徒に割り当てる色パレット（順番に配色）
@@ -1465,6 +1523,9 @@ function setFP(v,btn){
 const COURSE_TIME_ORDER=['9:00〜10:30','10:30〜12:00','12:30〜14:00','14:00〜15:30','15:30〜17:00'];
 
 function renderCourses(){
+  // 先生フィルタのプルダウンを初回のみ生成
+  _populateTeacherFilter();
+
   const container=document.getElementById('course-list');
   const s=students[activeStudent];
   if(!s){container.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">生徒を追加してください</div>';return;}
@@ -1472,10 +1533,12 @@ function renderCourses(){
 
   let html='';
 
-  // プレ講習カレンダー
+  // プレ講習カレンダー（検索キーワード/先生フィルタ未指定時のみ）
   if(filterTerm==='all'||filterTerm==='pre'){
     if(filterType==='all'||filterType==='group'){
-      html+=renderPreCalendar(s);
+      if(!courseSearchKeyword&&!courseTeacherFilter){
+        html+=renderPreCalendar(s);
+      }
     }
   }
 
@@ -1485,10 +1548,18 @@ function renderCourses(){
     if (filterType === 'group' && c.type !== 'group') return false;
     if (filterType === 'ind' && c.type !== 'ind') return false;
     if (filterType === 'eiken' && !c.id.startsWith('eiken')) return false;
-    
+
     // 学年レベルの判定（配列対応）
 const levels = Array.isArray(c.level) ? c.level : [c.level];
 if (!levels.includes('all') && !levels.includes(s.level)) return false;
+
+    // 先生フィルタ
+    if (courseTeacherFilter && c.teacher !== courseTeacherFilter) return false;
+    // キーワード検索（講座名・先生名・備考に対する部分一致）
+    if (courseSearchKeyword) {
+      const haystack = (String(c.label||'') + ' ' + String(c.teacher||'') + ' ' + String(c.note||'')).toLowerCase();
+      if (haystack.indexOf(courseSearchKeyword) === -1) return false;
+    }
     
     return true; 
   });
@@ -3582,7 +3653,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.13 / 2026-04-30 21:50 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.14 / 2026-04-30 22:10 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
