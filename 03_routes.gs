@@ -38,7 +38,8 @@ function doGet(e) {
     return buildResponse({ status: 'ok', data: getAdminData() });
   }
 
-  return HtmlService.createHtmlOutputFromFile('index')
+  // Phase U-4: createTemplateFromFile + evaluate() で <?!= include() ?> を処理する
+  return HtmlService.createTemplateFromFile('index').evaluate()
     .setTitle('2026 サマースクール 受講申込')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
