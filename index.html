@@ -543,7 +543,17 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 
       <!-- 申込フォーム -->
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy);margin-bottom:14px">申込者情報・送信</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy)">申込者情報・送信</div>
+          <div style="display:flex;gap:14px;align-items:center;font-size:11px">
+            <span id="auto-save-indicator" style="color:#22c55e;display:none">✓ 自動保存しました</span>
+            <span id="progress-indicator" style="color:var(--muted)">入力進捗: <strong id="progress-text" style="color:var(--navy)">0/0</strong></span>
+          </div>
+        </div>
+        <!-- 必須項目進捗バー -->
+        <div id="progress-bar-container" style="background:#f3f4f6;border-radius:3px;height:6px;margin-bottom:14px;overflow:hidden">
+          <div id="progress-bar-fill" style="width:0%;background:linear-gradient(90deg,var(--gold),#22c55e);height:100%;transition:width .3s ease-out"></div>
+        </div>
         <div class="form-grid">
           <div class="form-field"><label>代表保護者氏名</label><input id="f-parent" placeholder="山田 花子"><span id="err-parent" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
           <div class="form-field"><label>連絡先メールアドレス</label><input id="f-email" type="email" placeholder="parent@example.com"><span id="err-email" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
@@ -1944,6 +1954,8 @@ function updateAll(){
   if(typeof saveDraftDebounced==='function')saveDraftDebounced();
   // 印刷専用フォーマット請求書を常に最新状態に保つ（Cmd+P でも空にならないように）
   if(typeof buildFormalInvoiceForPrint==='function')buildFormalInvoiceForPrint();
+  // 必須項目進捗バー更新
+  if(typeof updateProgressBar==='function')updateProgressBar();
 }
 
 function renderDiscountPanel(){
@@ -3499,6 +3511,41 @@ function saveDraftDebounced(){
   _draftSaveTimer=setTimeout(saveDraftNow,500);
 }
 
+// 自動保存インジケータの一時表示（保存後3秒間表示）
+let _autoSaveIndicatorTimer=null;
+function showAutoSaveIndicator(){
+  const el=document.getElementById('auto-save-indicator');
+  if(!el) return;
+  const t=new Date();
+  const tStr=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
+  el.textContent='✓ '+tStr+' 自動保存しました';
+  el.style.display='inline';
+  if(_autoSaveIndicatorTimer) clearTimeout(_autoSaveIndicatorTimer);
+  _autoSaveIndicatorTimer=setTimeout(()=>{ el.style.display='none'; },3000);
+}
+
+// 必須項目進捗バーの更新
+function updateProgressBar(){
+  const fill=document.getElementById('progress-bar-fill');
+  const text=document.getElementById('progress-text');
+  if(!fill||!text) return;
+  // 必須項目チェック（5項目）
+  const checks=[
+    !!(document.getElementById('f-parent')?.value||'').trim(),                            // 保護者氏名
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((document.getElementById('f-email')?.value||'').trim()), // 有効メール
+    !!(document.getElementById('f-tel')?.value||'').trim(),                               // 電話番号
+    students.some(s=>!!(s.name||'').trim()&&!!s.grade&&!!s.level),                        // 1人以上の生徒情報
+    students.some(s=>s.courses.length>0||s.preSlots.length>0)                             // 1コース以上選択
+  ];
+  const done=checks.filter(Boolean).length;
+  const total=checks.length;
+  const pct=Math.round((done/total)*100);
+  fill.style.width=pct+'%';
+  text.textContent=done+'/'+total;
+  // 全部完了したら緑色強調
+  text.style.color=done===total?'#22c55e':'var(--navy)';
+}
+
 function saveDraftNow(){
   try{
     const payload={
@@ -3514,6 +3561,8 @@ function saveDraftNow(){
       }
     };
     localStorage.setItem(DRAFT_KEY,JSON.stringify(payload));
+    // 自動保存インジケータを更新
+    if(typeof showAutoSaveIndicator==='function') showAutoSaveIndicator();
   }catch(e){
     // localStorage 無効環境(プライベートブラウジング等)では無視
     console.warn('[draft] save skipped:',e&&e.message);
@@ -3638,9 +3687,12 @@ async function tryRestoreDraft(){
     el.addEventListener('input',()=>{
       if(fn) fn();
       saveDraftDebounced();
+      if(typeof updateProgressBar==='function') updateProgressBar();
     });
     el.addEventListener('blur',()=>{ if(fn) fn(); });
   });
+  // 初回描画
+  if(typeof updateProgressBar==='function') updateProgressBar();
 })();
 
 </script>
@@ -3653,7 +3705,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.14 / 2026-04-30 22:10 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.15 / 2026-04-30 22:30 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
