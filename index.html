@@ -256,7 +256,28 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 .fi-date-label{font-size:10px;color:#666;border-bottom:1px solid #aaa;padding-bottom:1px;margin-bottom:2px;letter-spacing:.05em}
 .fi-date-value{font-size:10px;color:#222}
 /* 学校情報 */
-.fi-school-info{text-align:center;font-size:10px;color:#333;line-height:1.7;margin:4px 0 14px}
+.fi-school-info{text-align:center;font-size:10px;color:#333;line-height:1.6;margin:4px 0 12px}
+/* 宛先 */
+.fi-recipient{margin:6px 0 10px;padding:6px 10px;border-bottom:1px solid #888;font-size:11px}
+.fi-recipient-value{font-size:14px;color:#000;font-weight:500;margin:0 6px;display:inline-block;min-width:200px}
+/* サマリーテーブル：1行=1生徒 */
+.fi-summary-table{width:100%;border-collapse:collapse;font-size:11px;margin:6px 0;border:1px solid #aaa}
+.fi-summary-table .fi-th-grade,
+.fi-summary-table .fi-th-name,
+.fi-summary-table .fi-th-item,
+.fi-summary-table .fi-th-fee{background:#5b9bd5;color:#fff;padding:6px 10px;font-weight:500;font-size:11px;border:1px solid #4a8bc5}
+.fi-summary-table .fi-th-grade{width:8%;text-align:center}
+.fi-summary-table .fi-th-name{width:18%;text-align:center}
+.fi-summary-table .fi-th-item{width:54%;text-align:center}
+.fi-summary-table .fi-th-fee{width:20%;text-align:center}
+.fi-summary-table td{padding:8px 10px;border:1px solid #ccc;vertical-align:middle;font-size:11px}
+.fi-summary-table .fi-td-grade{text-align:center;font-weight:500}
+.fi-summary-table .fi-td-name{font-weight:500;color:#1b2a4a}
+.fi-summary-table .fi-item-main{font-size:11px;color:#222}
+.fi-summary-table .fi-item-sub{font-size:10px;color:#555;margin-top:2px}
+.fi-summary-table .fi-item-disc{font-size:9px;color:#777;margin-top:2px}
+.fi-summary-table .fi-td-fee{text-align:right;font-family:Georgia,serif;font-weight:500;font-size:12px}
+/* 旧テーブル（互換用、未使用化） */
 /* 生徒セクション（page-break-inside:avoid 削除して自然に分割） */
 .fi-student{margin-bottom:14px}
 /* 生徒姓・生徒名・保護者姓・保護者名前フィールド（コンパクト） */
@@ -2824,11 +2845,11 @@ function buildFormalInvoiceForPrint(){
   const parent=(document.getElementById('f-parent')?.value||'').trim()||'(保護者氏名未入力)';
   const issueDate=document.getElementById('f-date')?.value||new Date().toLocaleDateString('ja-JP');
 
-  // 学校提供の見本「Tuition Receipt」フォーマットに沿った構成
-  // 駿台ロゴ+SUNDAI ENBLEMはテキスト枠で代用（画像URLが入手できれば差替え）
+  // ★1ページサマリー版：生徒1人=1行で要約
+  // 詳細はメール本文/申込画面に任せ、PDFはコンパクトに収める
   let html='';
 
-  // ヘッダ：駿台ロゴ(左) / タイトル中央 / Date(右)（見本「Tuiton Receipt」雛形準拠）
+  // ヘッダ
   html+='<div class="fi-header">'+
     '<div class="fi-logo-box">'+
       '<img src="'+LOGO_URL+'" alt="駿台" class="fi-logo-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
@@ -2847,122 +2868,72 @@ function buildFormalInvoiceForPrint(){
     '</div>'+
   '</div>';
 
-  // 学校情報（中央3行）
+  // 学校情報
   html+='<div class="fi-school-info">'+
     'Sundai Michigan International Academy<br>'+
-    '24277 Novi Rd, Novi, MI 48375<br>'+
-    '( 248 ) 349-5234'+
+    '24277 Novi Rd, Novi, MI 48375 / ( 248 ) 349-5234'+
   '</div>';
 
-  // 各生徒のセクション
-  let anyStudent=false;
+  // 宛先（保護者）
+  html+='<div class="fi-recipient">'+
+    '<span class="fi-field-label">宛先 / To</span>'+
+    '<span class="fi-recipient-value">'+_escHtml(parent)+'</span> 様'+
+  '</div>';
+
+  // 全生徒を1つのテーブルに集約（1行=1生徒）
   const activeStudents=students.filter(s=>s.courses.length>0||s.preSlots.length>0);
-  const totalStudents=activeStudents.length;
 
-  activeStudents.forEach((s,sIdx)=>{
-    anyStudent=true;
-    const i=students.indexOf(s);
-    const sib=siblingDiscRate(i);
-    const koma=komaDiscRate(i);
-    const stTotal=calcStudentTotal(i);
-    const studentName=s.name||'(氏名未入力)';
-    const studentGrade=s.grade||'(学年未入力)';
-    const isLast=sIdx===totalStudents-1;
+  if(activeStudents.length===0){
+    html+='<div class="fi-empty">講座が選択されていません</div>';
+  } else {
+    html+='<table class="fi-summary-table">'+
+      '<thead><tr>'+
+        '<th class="fi-th-grade">学年</th>'+
+        '<th class="fi-th-name">生徒名</th>'+
+        '<th class="fi-th-item">項目</th>'+
+        '<th class="fi-th-fee">金額（USD）</th>'+
+      '</tr></thead>'+
+      '<tbody>';
 
-    // 生徒名・保護者名を姓と名に分割（見本準拠）
-    const stuParts=String(studentName).trim().split(/[\s　]+/);
-    const stuLast=stuParts[0]||'';
-    const stuFirst=stuParts.slice(1).join(' ')||'';
-    const parParts=String(parent).trim().split(/[\s　]+/);
-    const parLast=parParts[0]||'';
-    const parFirst=parParts.slice(1).join(' ')||'';
+    activeStudents.forEach((s,sIdx)=>{
+      const i=students.indexOf(s);
+      const sib=siblingDiscRate(i);
+      const koma=komaDiscRate(i);
+      const stTotal=calcStudentTotal(i);
+      const studentName=s.name||'(氏名未入力)';
+      const studentGrade=s.grade||'-';
 
-    html+='<div class="fi-student'+(isLast?' fi-student-last':'')+'">'+
-      '<div class="fi-fields">'+
-        '<div class="fi-field-row">'+
-          '<div class="fi-field-pair" style="max-width:140px"><span class="fi-field-label">学年</span><span class="fi-field-value">'+_escHtml(studentGrade)+'</span></div>'+
-          '<div class="fi-field-pair"><span class="fi-field-label">生徒姓</span><span class="fi-field-value">'+_escHtml(stuLast)+'</span></div>'+
-          '<div class="fi-field-pair"><span class="fi-field-label">生徒名</span><span class="fi-field-value">'+_escHtml(stuFirst)+'</span></div>'+
-        '</div>'+
-        '<div class="fi-field-row">'+
-          '<div class="fi-field-pair"><span class="fi-field-label">保護者姓</span><span class="fi-field-value">'+_escHtml(parLast)+'</span></div>'+
-          '<div class="fi-field-pair"><span class="fi-field-label">保護者名前</span><span class="fi-field-value">'+_escHtml(parFirst)+'</span></div>'+
-        '</div>'+
-      '</div>'+
-      '<table class="fi-table">'+
-        '<thead><tr>'+
-          '<th class="fi-th-item">項目</th>'+
-          '<th class="fi-th-fee">金額（単位：USD）</th>'+
-        '</tr></thead>'+
-        '<tbody>';
+      const summerCount=s.courses.length;
+      const preCount=s.preSlots.length;
+      const breakdown=[];
+      if(summerCount>0) breakdown.push('通常 '+summerCount+'講座');
+      if(preCount>0) breakdown.push('プレ '+preCount+'コマ');
 
-    // プレ講習
-    s.preSlots.forEach(sl=>{
-      const fp=calcPreItemPrice(sl.type,s,i,sl.friendDisc);
-      const final=sl.friendDisc?Math.ceil(fp*0.9):fp;
-      const note=[];
-      if(sl.content) note.push('希望内容: '+sl.content);
-      if(sl.type==='ind'&&sl.material&&sl.material!=='own'){
-        note.push('教材: '+(sl.material==='school'?'学校用意':'要相談'));
-      }
-      if(sl.materialNote) note.push('テキスト: '+sl.materialNote);
-      if(sl.friendDisc) note.push('お友達割引（'+(sl.friendName||'お名前未記入')+'）');
-      const itemLabel='プレ講習 '+sl.date+' '+sl.time+(sl.type==='ind'?'（個別）':'（グループ）');
+      const discNotes=[];
+      if(sib>0) discNotes.push('きょうだい'+Math.round(sib*100)+'%');
+      if(s.schoolDisc) discNotes.push('補習校10%');
+      if(koma>0) discNotes.push('コマ数'+Math.round(koma*100)+'%');
+
       html+='<tr>'+
-        '<td>'+_escHtml(itemLabel)+
-          (note.length?'<div class="fi-item-note">'+_escHtml(note.join(' / '))+'</div>':'')+
+        '<td class="fi-td-grade">'+_escHtml(studentGrade)+'</td>'+
+        '<td class="fi-td-name">'+_escHtml(studentName)+'</td>'+
+        '<td class="fi-td-item">'+
+          '<div class="fi-item-main">2026 Summer School 受講料</div>'+
+          (breakdown.length?'<div class="fi-item-sub">'+breakdown.join(' + ')+'</div>':'')+
+          (discNotes.length?'<div class="fi-item-disc">適用割引: '+_escHtml(discNotes.join(' / '))+'</div>':'')+
         '</td>'+
-        '<td class="r">'+fmtUSD(final)+'</td>'+
+        '<td class="r fi-td-fee">'+fmtUSD(stTotal)+'</td>'+
       '</tr>';
     });
 
-    // 通常講座
-    s.courses.forEach(cid=>{
-      const c=COURSES.find(x=>x.id===cid);
-      if(!c)return;
-      const det=(s.courseDetails&&s.courseDetails[cid])||{};
-      const final=calcItemPrice(c,s,i,det.friendDisc);
-      const note=[];
-      if(c.type==='ind'&&det.content) note.push('希望内容: '+det.content);
-      if(c.type==='ind'&&det.material&&det.material!=='own'){
-        note.push('教材: '+(det.material==='school'?'学校用意':'要相談'));
-      }
-      if(det.materialNote) note.push('テキスト: '+det.materialNote);
-      if(det.friendDisc) note.push('お友達割引（'+(det.friendName||'お名前未記入')+'）');
-      const itemLabel=c.label+'（'+c.term+'T '+c.date+'）';
-      html+='<tr>'+
-        '<td>'+_escHtml(itemLabel)+
-          (note.length?'<div class="fi-item-note">'+_escHtml(note.join(' / '))+'</div>':'')+
-        '</td>'+
-        '<td class="r">'+fmtUSD(final)+'</td>'+
-      '</tr>';
-    });
-
-    // 合計行（見本準拠：左セルに「合計」、右セルに金額・黄色背景）
-    html+='<tr class="fi-total-row"><td class="fi-total-label-cell">合計</td><td class="fi-total-value-cell">'+fmtUSD(stTotal)+'</td></tr>';
+    // 合計行
+    const grandTotal=calcGrandTotal();
+    html+='<tr class="fi-total-row">'+
+      '<td colspan="3" class="fi-total-label-cell">家族合計 / Grand Total</td>'+
+      '<td class="fi-total-value-cell">'+fmtUSD(grandTotal)+'</td>'+
+    '</tr>';
 
     html+='</tbody></table>';
-
-    // 適用割引の説明
-    const discNotes=[];
-    if(sib>0) discNotes.push('きょうだい割引 '+Math.round(sib*100)+'%（'+(i+1)+'人目）');
-    if(s.schoolDisc) discNotes.push('補習校・AS生割引 10%');
-    if(koma>0) discNotes.push('コマ数割引 '+Math.round(koma*100)+'%');
-    if(discNotes.length){
-      html+='<div class="fi-disc-note">適用割引: '+_escHtml(discNotes.join(' / '))+'</div>';
-    }
-    html+='</div>';
-  });
-
-  if(!anyStudent){
-    html+='<div class="fi-empty">講座が選択されていません</div>';
-  } else if(totalStudents>1){
-    // 複数生徒の場合は最終ページに合計
-    const grandTotal=calcGrandTotal();
-    html+='<div class="fi-grand-total">'+
-      '<span>家族合計 / Grand Total</span>'+
-      '<span class="fi-amount">'+fmtUSD(grandTotal)+'</span>'+
-    '</div>';
   }
 
   // 但し書き
@@ -2975,7 +2946,7 @@ function buildFormalInvoiceForPrint(){
     'または Check: <strong>Sundai USA, Inc.</strong> 宛 / 24277 Novi Rd, Novi, MI 48375'+
   '</div>';
 
-  // フッタ：左に連絡先、右に MICHIGAN エンブレム（見本準拠）
+  // フッタ
   html+='<div class="fi-footer-row">'+
     '<div class="fi-footer-left">'+
       '請求書についてのご要望は <a href="mailto:michi-info@sundai-kaigai.jp">michi-info@sundai-kaigai.jp</a> にご連絡ください。<br>'+
@@ -2983,7 +2954,7 @@ function buildFormalInvoiceForPrint(){
     '</div>'+
     '<div class="fi-emblem-box">'+
       '<img src="'+EMBLEM_URL+'" alt="SUNDAI MICHIGAN" class="fi-emblem-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
-      '<div class="fi-emblem-fallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%">'+
+      '<div class="fi-emblem-fallback" style="display:none">'+
         '<div class="fi-emblem-top">★ ★ ★</div>'+
         '<div class="fi-emblem-jp">SUNDAI</div>'+
         '<div class="fi-emblem-mid">INTERNATIONAL<br>NETWORK</div>'+
@@ -2992,7 +2963,7 @@ function buildFormalInvoiceForPrint(){
     '</div>'+
   '</div>';
 
-  html+='<div class="fi-note">※ お支払いを確認次第、正式な領収書を別途発行いたします。本書面は申込時点の請求書（仮）となります。</div>';
+  html+='<div class="fi-note">※ 詳細な受講内容は申込画面・確認メールでご確認ください。お支払い確認次第、正式な領収書を別途発行いたします。</div>';
 
   div.innerHTML=html;
 }
@@ -3537,7 +3508,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.10 / 2026-04-30 20:00 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.12 / 2026-04-30 21:30 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
