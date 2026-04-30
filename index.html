@@ -723,7 +723,7 @@ const LEVEL_LESSON={elem_lo:'background:#dbeafe;color:#1e40af',elem_hi:'backgrou
 // ターム価格（1ターム＝5コマ）
 const TPRICE={group:{elem_lo:150,elem_hi:150,jhs:200,hs:225,all:200},ind:{elem_lo:200,elem_hi:200,jhs:250,hs:280,all:250}};
 // プレ講習 1コマ単価
-const PPRICE={group:{elem_lo:30,elem_hi:30,jhs:40,hs:45},ind:{elem_lo:40,elem_hi:40,jhs:50,hs:56}};
+const PPRICE={group:{elem_lo:30,elem_hi:30,jhs:40,hs:45,all:40},ind:{elem_lo:40,elem_hi:40,jhs:50,hs:56,all:50}};
 
 // プレ講習カレンダー日程
 // 平日(月〜土)：13:00〜14:30 / 14:30〜16:00
@@ -990,18 +990,18 @@ function renderCapacityPanel(){
 }
 
 
-// コースの現在申込人数を返す
-// = セッション内でそのコースを選択している生徒数 + overrides
-// 外部（管理者が入力した既存申込数）のみを返す（カード色表示用）
+// 外部申込数（GASからの取得値 ＋ 管理者の手動上書き）
+// カード色・残席表示に使用
 function getExternalEnrolled(cid){
-  return capacityOverrides[cid]||0;
+  const gas=(typeof gasCounts!=='undefined'&&gasCounts[cid])||0;
+  const override=capacityOverrides[cid]||0;
+  return gas+override;
 }
 
-// 定員チェック用（セッション内の選択も含む）
+// 定員チェック用（外部申込数 ＋ セッション内の選択数）
 function getEnrolledCount(cid){
   const sessionCount=students.filter(s=>s.courses.includes(cid)).length;
-  const override=capacityOverrides[cid]||0;
-  return override+sessionCount;
+  return getExternalEnrolled(cid)+sessionCount;
 }
 
 // 定員を返す（未設定は12人デフォルト）
@@ -1065,7 +1065,9 @@ function addStudent(){
 function removeStudent(idx){
   if(students.length<=1){alert('最低1人は必要です');return;}
   students.splice(idx,1);
-  if(activeStudent>=students.length)activeStudent=students.length-1;
+  if(idx<activeStudent) activeStudent--;
+  else if(activeStudent>=students.length) activeStudent=students.length-1;
+  if(activeStudent<0) activeStudent=0;
   renderStudents();
   updateAll();
 }
@@ -2201,18 +2203,6 @@ function fetchCourseCounts(){
       .then(data=>{ if(data.status==='ok'){ gasCounts=data.counts||{}; renderCourses(); }})
       .catch(e=>console.log('申込数取得失敗:', e.message));
   }
-}
-
-// GASの申込数 + セッション内の選択数
-function getEnrolledCount(cid){
-  const gasCount = gasCounts[cid]||0;
-  const sessionCount = students.filter(s=>s.courses.includes(cid)).length;
-  return gasCount + sessionCount;
-}
-
-// 外部申込数のみ（カード色用）
-function getExternalEnrolled(cid){
-  return gasCounts[cid]||0;
 }
 
 function saveGasUrl(){
