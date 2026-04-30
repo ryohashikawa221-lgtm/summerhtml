@@ -1102,10 +1102,10 @@ function updateStudentHeader(i){
 
 function addStudent(){
   const sid=nextSid++;
-  // 兄弟自動継承: 直前生徒から姓と補習校・AS生割引を引き継ぐ（Phase U-1, Feature E）
+  // 兄弟自動継承: 直前生徒から姓のみ引き継ぐ（補習校・AS生割引は引き継がない／
+  // 兄弟で在籍が異なるケースが多く、誤って割引適用 → 後から差額徴収を避けるため）
   const lastStudent=students[students.length-1];
   let inheritedName=`生徒${sid}`;
-  let inheritedSchoolDisc=false;
   if(lastStudent){
     const rawName=(lastStudent.name||'').trim();
     // デフォルトの「生徒N」プレースホルダ名は継承元としない
@@ -1117,9 +1117,8 @@ function addStudent(){
       // 1人目が空 or プレースホルダのままなら2人目以降は空欄スタート
       inheritedName='';
     }
-    inheritedSchoolDisc=!!lastStudent.schoolDisc;
   }
-  students.push({id:sid,name:inheritedName,grade:'',level:'',schoolDisc:inheritedSchoolDisc,courses:[],preSlots:[]});
+  students.push({id:sid,name:inheritedName,grade:'',level:'',schoolDisc:false,courses:[],preSlots:[]});
   activeStudent=students.length-1;
   renderStudents();
   updateAll();
@@ -3246,7 +3245,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.1 / 2026-04-30 10:21 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.2 / 2026-04-30 10:35 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
