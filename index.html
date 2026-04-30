@@ -245,7 +245,9 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 #formal-invoice-print{position:absolute;left:-99999px;top:-99999px;font-family:'Yu Mincho','Hiragino Mincho Pro','Yu Gothic',serif;color:#222;padding:32px 40px;font-size:12px;line-height:1.6;background:#fff;width:780px}
 /* ヘッダ：駿台ロゴ + Tuition Invoice + Date */
 .fi-header{display:flex;align-items:center;gap:20px;margin-bottom:8px}
-.fi-logo-box{width:88px;height:88px;border:3px solid #1b5fa5;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
+.fi-logo-box{width:88px;height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;flex-shrink:0;overflow:hidden}
+.fi-logo-img{width:100%;height:100%;object-fit:contain;display:block}
+.fi-logo-fallback{border:3px solid #1b5fa5;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
 .fi-logo-jp{font-family:'Yu Mincho',serif;font-size:24px;color:#1b5fa5;font-weight:900;letter-spacing:.04em;line-height:1}
 .fi-logo-en{font-size:11px;color:#1b5fa5;font-weight:700;letter-spacing:.15em;margin-top:4px;border-top:1.5px solid #1b5fa5;padding-top:2px;width:100%;text-align:center}
 .fi-header-title{flex:1;text-align:center;font-family:'Times New Roman','Yu Mincho',serif;font-size:32px;color:#222;font-weight:400;font-style:italic;letter-spacing:.02em}
@@ -292,7 +294,9 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 .fi-footer-row{margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding-top:14px;border-top:1px dashed #aaa}
 .fi-footer-left{flex:1;font-size:11px;color:#444;line-height:1.8}
 .fi-footer-left a{color:#1b5fa5;text-decoration:underline}
-.fi-emblem-box{width:90px;height:90px;border-radius:50%;border:2px solid #1b5fa5;background:#1e3a8a;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Yu Mincho',serif;text-align:center;flex-shrink:0;padding:6px;box-sizing:border-box}
+.fi-emblem-box{width:90px;height:90px;background:#fff;flex-shrink:0;overflow:hidden;position:relative}
+.fi-emblem-img{width:100%;height:100%;object-fit:contain;display:block}
+.fi-emblem-fallback{border-radius:50%;border:2px solid #1b5fa5;background:#1e3a8a;color:#fff;font-family:'Yu Mincho',serif;text-align:center;padding:6px;box-sizing:border-box}
 .fi-emblem-top{font-size:7px;color:#c9a84c;letter-spacing:.2em}
 .fi-emblem-jp{font-size:14px;font-weight:900;letter-spacing:.05em;margin:2px 0}
 .fi-emblem-mid{font-size:6px;color:#fff;letter-spacing:.1em;line-height:1.2}
@@ -2810,6 +2814,11 @@ function buildEmailBody(){
 // 印刷直前/直後に申込画面のみを強制表示し、終了後は元のページに戻す
 // （ブラウザのCmd+P / メニュー印刷でも自動的に適用される）
 // 印刷専用フォーマル請求書テンプレートを生成（見本: Tuition Receipt フォーマット参考）
+// 駿台ロゴ・MICHIGAN エンブレム画像URL（Google Drive 直リンク）
+// ※共有設定が「リンクを知っている全員」になっていれば印刷時に表示される
+const LOGO_URL = 'https://lh3.googleusercontent.com/d/1YbgUXYekO1tOZ07uwaLXOm4A-U_2NhL-';
+const EMBLEM_URL = 'https://lh3.googleusercontent.com/d/18YcBLebJrehAbz8nohucYdX_2BfvPlP2';
+
 function buildFormalInvoiceForPrint(){
   const div=document.getElementById('formal-invoice-print');
   if(!div) return;
@@ -2824,8 +2833,11 @@ function buildFormalInvoiceForPrint(){
   // ヘッダ：駿台ロゴ(左) / Tuition Invoice中央 / Date(右)
   html+='<div class="fi-header">'+
     '<div class="fi-logo-box">'+
-      '<div class="fi-logo-jp">駿台</div>'+
-      '<div class="fi-logo-en">SUNDAI</div>'+
+      '<img src="'+LOGO_URL+'" alt="駿台" class="fi-logo-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+      '<div class="fi-logo-fallback" style="display:none">'+
+        '<div class="fi-logo-jp">駿台</div>'+
+        '<div class="fi-logo-en">SUNDAI</div>'+
+      '</div>'+
     '</div>'+
     '<div class="fi-header-title">Tuition Invoice</div>'+
     '<div class="fi-header-date">'+
@@ -2964,10 +2976,13 @@ function buildFormalInvoiceForPrint(){
       '<strong>駿台ミシガン国際学院</strong>'+
     '</div>'+
     '<div class="fi-emblem-box">'+
-      '<div class="fi-emblem-top">★ ★ ★</div>'+
-      '<div class="fi-emblem-jp">SUNDAI</div>'+
-      '<div class="fi-emblem-mid">INTERNATIONAL<br>NETWORK</div>'+
-      '<div class="fi-emblem-bottom">MICHIGAN</div>'+
+      '<img src="'+EMBLEM_URL+'" alt="SUNDAI MICHIGAN" class="fi-emblem-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
+      '<div class="fi-emblem-fallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%">'+
+        '<div class="fi-emblem-top">★ ★ ★</div>'+
+        '<div class="fi-emblem-jp">SUNDAI</div>'+
+        '<div class="fi-emblem-mid">INTERNATIONAL<br>NETWORK</div>'+
+        '<div class="fi-emblem-bottom">MICHIGAN</div>'+
+      '</div>'+
     '</div>'+
   '</div>';
 
@@ -3516,7 +3531,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.8 / 2026-04-30 19:30 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.9 / 2026-04-30 19:50 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
