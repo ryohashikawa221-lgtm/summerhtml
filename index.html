@@ -3578,7 +3578,15 @@ function _escHtml(s){
   return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// Phase U-3-A 1-3 (B): 連打防止フラグ（送信中の二重発火を防ぐ）
+let _sendInFlight=false;
+
 async function sendEmail(){
+  // 連打防止：既に送信中なら何もしない
+  if(_sendInFlight){
+    console.log('Send already in flight, ignoring duplicate click');
+    return;
+  }
   const status=document.getElementById('send-status');
   const btn=document.getElementById('btn-send');
   const parent=document.getElementById('f-parent').value;
@@ -3587,7 +3595,12 @@ async function sendEmail(){
   if(students.every(s=>s.courses.length===0&&s.preSlots.length===0)){status.className='status-msg status-ng';status.textContent='講座が選択されていません。';return;}
   if(!getGasUrl()){status.className='status-msg status-ng';status.textContent='送信先URLが設定されていません。管理者にお問い合わせください。';return;}
 
-  btn.disabled=true;btn.textContent='送信中...';
+  _sendInFlight=true;
+  btn.disabled=true;
+  btn.style.cursor='wait';
+  btn.textContent='送信中... しばらくお待ちください';
+  status.className='status-msg';
+  status.textContent='';
   const params={
     type:'enrollment',
     parent_name:parent,
@@ -3620,12 +3633,12 @@ async function sendEmail(){
         if(typeof clearDraft==='function')clearDraft();
         if(typeof savePrevParent==='function')savePrevParent();
         if(typeof showPostSendActions==='function') showPostSendActions();
-        btn.disabled=false;btn.textContent='📧 申込内容を送信する';
+        btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
       })
       .withFailureHandler(function(e){
         status.className='status-msg status-ng';
         status.textContent='送信エラー: ' + e.message;
-        btn.disabled=false;btn.textContent='📧 申込内容を送信する';
+        btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
       })
       .processEnrollment(params);
   } else {
@@ -3648,7 +3661,7 @@ async function sendEmail(){
       status.className='status-msg status-ng';
       status.textContent=`送信エラー: ${e.message}`;
     }
-    btn.disabled=false;btn.textContent='📧 申込内容を送信する';
+    btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
   }
 }
 
@@ -4099,7 +4112,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.21 / 2026-05-01 01:00 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-3-A / 2026-05-01 02:30 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">

@@ -1,8 +1,13 @@
 // ============================================================
 // 駿台ミシガン国際学院 サマースクール – GAS バックエンド
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📅 最終更新: 2026-05-01 01:00 JST
-// 🔖 バージョン: Phase U-2.21（L/M/H 全機能搭載）
+// 📅 最終更新: 2026-05-01 02:30 JST
+// 🔖 バージョン: Phase U-3-A（本番投入前ハードニング）
+//   - 二重申込検知（10分以内・同一メール+生徒名）
+//   - _safeSendEmail 共通関数（クォータ対策・ステータス記録・再送）
+//   - LockService 日本語メッセージ化
+//   - 連打防止 + SpreadsheetApp.flush()
+//   - 申込番号採番（SS26-NNNN-XXX、Phase U-3-B 用ベース実装）
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 主な履歴:
 //   2026-04-29 ★マージ版 v2: セキュリティ強化 + マスターデータ機能
@@ -10,7 +15,7 @@
 //   2026-04-30 Phase U-2.1:  申込数集計を動的化 / 時間割タームor先生別出力 /
 //                            申込一覧の編集で自動再計算するトリガー追加
 // ============================================================
-const APP_VERSION = 'Phase U-2.21 / 2026-05-01 01:00 JST';
+const APP_VERSION = 'Phase U-3-A / 2026-05-01 02:30 JST';
 
 const S_SETTINGS  = '学校設定';
 const S_COURSES   = '講座マスター';
@@ -323,14 +328,237 @@ function saveEnrollment(d) {
     sheet.getRange(1,1,1,9).setBackground('#1b2a4a').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
+  // 二重申込検知（Phase U-3-A 1-1）
+  const dupResult = _detectDuplicate(sheet, d);
+  if (dupResult.isDuplicate) {
+    d._duplicateWarning = dupResult.warning;
+  }
   const enrollId = 'E' + new Date().getTime() + '-' + Utilities.getUuid().slice(0, 4);
+  // 申込番号 (Phase U-3-B で利用、ここでベース実装)
+  d._appNumber = _generateAppNumber(sheet);
   sheet.appendRow([
     enrollId,
     new Date().toLocaleString('ja-JP'),
     d.parent_name, d.reply_to, d.phone || '',
     d.students_info, d.courses, d.total, d.note || ''
   ]);
+  // SpreadsheetApp.flush() で書き込み確定（Phase U-3-A 1-3 (C)）
+  SpreadsheetApp.flush();
   if (d.course_counts) updateCourseCounts(d.course_counts);
+}
+
+// ============================================================
+// _safeSendEmail（Phase U-3-A 1-2: Gmail送信クォータ対策）
+// 全てのメール送信で使う共通関数。クォータチェック + try-catch + 申込一覧へのステータス記録
+// ============================================================
+let _quotaAlertSentToday = false; // 同日内のアラート重複送信防止
+
+function _safeSendEmail(to, subject, body, options) {
+  options = options || {};
+  // クォータ確認
+  let remaining = 100;
+  try { remaining = MailApp.getRemainingDailyQuota(); } catch (e) {}
+
+  // 残りが10以下になったら学校宛にアラート（最後の1通を使う価値あり）
+  if (remaining < 10) {
+    if (!_quotaAlertSentToday) {
+      _quotaAlertSentToday = true;
+      try {
+        // 直接 GmailApp で送る（_safeSendEmail を再帰的に呼ばない）
+        GmailApp.sendEmail(SCHOOL_EMAIL,
+          '【⚠️ Gmailクォータ警告】サマースクール申込システム',
+          '本日のメール送信クォータが残り ' + remaining + ' 件になりました。\n' +
+          '一部の通知メールが送信されない可能性があります。\n\n' +
+          '申込一覧シートの「メール送信ステータス」列で「未送信(クォータ)」をご確認ください。\n' +
+          'メニュー「📧 未送信メール再送」で翌日以降に再送できます。\n\n' +
+          SCHOOL_NAME,
+          { name: SCHOOL_NAME }
+        );
+      } catch (e) {}
+    }
+    return { ok: false, reason: 'quota', message: '送信クォータ不足（残り ' + remaining + '）' };
+  }
+
+  // 送信実行
+  try {
+    GmailApp.sendEmail(to, subject, body, options);
+    return { ok: true };
+  } catch (e) {
+    console.error('_safeSendEmail failed:', e && e.message);
+    return { ok: false, reason: 'error', message: String(e && e.message) };
+  }
+}
+
+// 申込一覧シートに「メール送信ステータス」列を確保し、指定行のステータスを記録
+function _recordEmailStatus(sheet, row, status) {
+  try {
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    let col = headers.indexOf('メール送信ステータス') + 1;
+    if (col === 0) {
+      col = sheet.getLastColumn() + 1;
+      sheet.getRange(1, col).setValue('メール送信ステータス')
+        .setBackground('#1b2a4a').setFontColor('#fff').setFontWeight('bold');
+    }
+    if (row >= 2) sheet.getRange(row, col).setValue(status);
+  } catch (e) {
+    console.error('_recordEmailStatus error:', e && e.message);
+  }
+}
+
+// ============================================================
+// 未送信メール再送（メニューから手動実行）
+// ============================================================
+function resendFailedEmails() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(S_ENROLL);
+  if (!sheet) {
+    ui.alert('「' + S_ENROLL + '」シートが見つかりません');
+    return;
+  }
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) {
+    ui.alert('再送対象がありません');
+    return;
+  }
+  const headers = data[0];
+  const colStatus = headers.indexOf('メール送信ステータス');
+  const colParent = headers.indexOf('保護者名');
+  const colEmail = headers.indexOf('メール');
+  const colTotal = headers.indexOf('合計金額');
+  const colStudents = headers.indexOf('生徒情報');
+  const colCourses = headers.indexOf('講座詳細');
+  const colNote = headers.indexOf('備考');
+  if (colStatus < 0) {
+    ui.alert('「メール送信ステータス」列が見つかりません。\n申込が一度でも実施されると自動で追加されます。');
+    return;
+  }
+  const targets = [];
+  for (let i = 1; i < data.length; i++) {
+    const status = String(data[i][colStatus] || '');
+    if (status.indexOf('未送信') === 0) targets.push(i + 1); // 1-indexed
+  }
+  if (targets.length === 0) {
+    ui.alert('再送対象（未送信）の行はありません');
+    return;
+  }
+  if (ui.alert('再送確認', targets.length + ' 件の未送信メールを再送します。よろしいですか?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+
+  // クォータ確認
+  let remaining = 100;
+  try { remaining = MailApp.getRemainingDailyQuota(); } catch (e) {}
+  if (remaining < targets.length + 5) {
+    if (ui.alert('クォータ警告', '本日の送信可能件数: ' + remaining + ' 件\n対象: ' + targets.length + ' 件\n\n途中で止まる可能性があります。続行しますか？', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  }
+
+  let success = 0, fail = 0;
+  _quotaAlertSentToday = false;
+  targets.forEach(row => {
+    const r = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const enrollData = {
+      parent_name: colParent >= 0 ? r[colParent] : '',
+      reply_to: colEmail >= 0 ? r[colEmail] : '',
+      students_info: colStudents >= 0 ? r[colStudents] : '',
+      courses: colCourses >= 0 ? r[colCourses] : '',
+      total: colTotal >= 0 ? r[colTotal] : '',
+      note: colNote >= 0 ? r[colNote] : ''
+    };
+    if (!enrollData.reply_to) {
+      _recordEmailStatus(sheet, row, '未送信(エラー): メールアドレス空');
+      fail++;
+      return;
+    }
+    try {
+      // 簡易的な再送メール（保護者宛のみ）
+      const subject = '【申込受付】サマースクール - ' + enrollData.parent_name + ' 様';
+      const body = enrollData.parent_name + ' 様\n\n申込内容を再送いたします。\n\n' +
+        '■ 生徒情報\n' + enrollData.students_info + '\n\n' +
+        '■ 選択講座\n' + enrollData.courses + '\n\n' +
+        '■ 合計金額：' + enrollData.total + '\n\n' +
+        SCHOOL_NAME + '\nTEL: 248-349-5234';
+      const r2 = _safeSendEmail(enrollData.reply_to, subject, body, { name: SCHOOL_NAME });
+      if (r2.ok) {
+        _recordEmailStatus(sheet, row, '送信済み(再送 ' + new Date().toLocaleString('ja-JP') + ')');
+        success++;
+      } else {
+        _recordEmailStatus(sheet, row, '未送信(' + r2.reason + '): ' + (r2.message || ''));
+        fail++;
+      }
+      Utilities.sleep(800);
+    } catch (e) {
+      _recordEmailStatus(sheet, row, '未送信(エラー): ' + (e && e.message));
+      fail++;
+    }
+  });
+  SpreadsheetApp.flush();
+  ui.alert('再送完了', '✅ 成功: ' + success + ' 件\n❌ 失敗: ' + fail + ' 件', ui.ButtonSet.OK);
+}
+
+// ============================================================
+// 二重申込検知（Phase U-3-A 1-1）
+// 直近10分以内に同一メール+生徒名で申込があれば警告を返す
+// ============================================================
+function _detectDuplicate(sheet, d) {
+  try {
+    if (!d || !d.reply_to || sheet.getLastRow() < 2) return { isDuplicate: false };
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const colTs = headers.indexOf('申込日時');
+    const colEmail = headers.indexOf('メール');
+    const colStudents = headers.indexOf('生徒情報');
+    if (colTs < 0 || colEmail < 0) return { isDuplicate: false };
+
+    // 入力された生徒名から、生徒の名前文字列を抽出（"山田 太郎（小3）" 形式）
+    const newStudents = String(d.students_info || '').split('、')
+      .map(s => s.replace(/（[^）]*）/g, '').trim())
+      .filter(Boolean);
+
+    const now = Date.now();
+    const tenMinAgo = now - 10 * 60 * 1000;
+
+    for (let i = data.length - 1; i >= 1; i--) {
+      const r = data[i];
+      const tsRaw = r[colTs];
+      const tsMs = tsRaw instanceof Date ? tsRaw.getTime() : Date.parse(String(tsRaw));
+      if (!isFinite(tsMs)) continue;
+      // 古いデータは早期break（最新→過去なので安全）
+      if (tsMs < tenMinAgo) break;
+      // メール一致チェック
+      const rowEmail = String(r[colEmail] || '').trim().toLowerCase();
+      if (rowEmail !== String(d.reply_to).trim().toLowerCase()) continue;
+      // 生徒名重複チェック
+      if (colStudents >= 0) {
+        const rowStudents = String(r[colStudents] || '').split('、')
+          .map(s => s.replace(/（[^）]*）/g, '').trim())
+          .filter(Boolean);
+        const overlap = newStudents.filter(n => rowStudents.includes(n));
+        if (overlap.length === 0) continue;
+      }
+      // 重複検知
+      const tsStr = tsRaw instanceof Date ? tsRaw.toLocaleString('ja-JP') : String(tsRaw);
+      return {
+        isDuplicate: true,
+        warning: '⚠️ 重複申込の可能性あり — 既存申込: 行' + (i + 1) + ' (' + tsStr + ')'
+      };
+    }
+    return { isDuplicate: false };
+  } catch (e) {
+    console.error('_detectDuplicate error:', e && e.message);
+    return { isDuplicate: false };
+  }
+}
+
+// ============================================================
+// 申込番号採番（Phase U-3-B で利用するため、ここでベース実装のみ）
+// フォーマット: SS26-NNNN-XXX (連番4桁 + ランダム3文字)
+// ============================================================
+function _generateAppNumber(sheet) {
+  const seq = sheet.getLastRow(); // ヘッダ行を含むため、行2 = 0001 になるよう調整
+  const seqStr = String(seq).padStart(4, '0');
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 0/O/1/I/L除外
+  let rnd = '';
+  for (let i = 0; i < 3; i++) rnd += chars[Math.floor(Math.random() * chars.length)];
+  return 'SS26-' + seqStr + '-' + rnd;
 }
 
 // ============================================================
@@ -464,19 +692,22 @@ function sendEnrollmentEmail(d) {
 
   // 学校（管理者）向け: テキスト+HTML 両方送る
   const adminTextBody =
+(d._duplicateWarning ? d._duplicateWarning + '\n（自動マージはしていません。両申込の内容を学校で確認してください）\n\n' : '') +
 'サマースクール 受講申込が届きました。\n' +
 '━━━━━━━━━━━━━━━━━━━━━━\n' +
 'お名前：' + d.parent_name + '\n' +
 'メール：' + d.reply_to + '\n' +
 '電話：' + (d.phone || '未入力') + '\n' +
-'申込日：' + d.submit_date + '\n\n' +
-'■ 生徒情報\n' + d.students_info + '\n\n' +
+'申込日：' + d.submit_date + '\n' +
+(d._appNumber ? '申込番号：' + d._appNumber + '\n' : '') +
+'\n■ 生徒情報\n' + d.students_info + '\n\n' +
 '■ 選択講座\n' + d.courses + '\n\n' +
 '■ 合計金額：' + d.total + '\n' +
 '■ 備考：' + (d.note || 'なし') + '\n' +
+(d.emergency_tel ? '■ 緊急連絡先：' + d.emergency_tel + ' (' + (d.emergency_rel || '続柄未記入') + ')\n' : '') +
 '━━━━━━━━━━━━━━━━━━━━━━\n' +
 SCHOOL_NAME + '  TEL: 248-349-5234';
-  GmailApp.sendEmail(SCHOOL_EMAIL, subject, adminTextBody,
+  _safeSendEmail(SCHOOL_EMAIL, (d._duplicateWarning ? '【⚠重複の可能性】' : '') + subject, adminTextBody,
     { replyTo: d.reply_to, name: SCHOOL_NAME });
 
   // 保護者向け: HTMLメール + 領収書PDF添付 + Zelle案内
@@ -498,10 +729,26 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
 
   // 申込画面そのものが請求書フォーマットになっているため、保護者は申込画面の
   // 「🖨 印刷 / PDF保存」ボタンから自分で控えを取得できる設計（PDF添付しない）
-  GmailApp.sendEmail(d.reply_to, parentSubject, parentText, {
+  // Phase U-3-A 1-2: _safeSendEmail でクォータ対策 + ステータス記録
+  const parentResult = _safeSendEmail(d.reply_to, parentSubject, parentText, {
     name: SCHOOL_NAME,
     htmlBody: parentHtml
   });
+
+  // 申込一覧シートにステータス記録（最新行=この申込）
+  try {
+    const ss2 = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet2 = ss2.getSheetByName(S_ENROLL);
+    if (sheet2 && sheet2.getLastRow() >= 2) {
+      const targetRow = sheet2.getLastRow(); // saveEnrollment で append した直後
+      const status = parentResult.ok
+        ? '送信済み(' + new Date().toLocaleString('ja-JP') + ')'
+        : '未送信(' + parentResult.reason + '): ' + (parentResult.message || '');
+      _recordEmailStatus(sheet2, targetRow, status);
+    }
+  } catch (e) {
+    console.error('Status record failed:', e && e.message);
+  }
 }
 
 // ============================================================
@@ -584,12 +831,12 @@ function _buildEnrollmentEmailHtml(d) {
 // メール送信（リクエスト）
 // ============================================================
 function sendRequestEmail(d) {
-  GmailApp.sendEmail(SCHOOL_EMAIL,
+  _safeSendEmail(SCHOOL_EMAIL,
     '【講座リクエスト】' + d.parent_name + ' 様',
     'お名前：' + d.parent_name + '\nメール：' + d.reply_to + '\n\n' + d.courses,
     { replyTo: d.reply_to, name: SCHOOL_NAME });
 
-  GmailApp.sendEmail(d.reply_to,
+  _safeSendEmail(d.reply_to,
     '【受付完了】講座リクエスト',
     d.parent_name + ' 様\n\nリクエストを受け付けました。\n\n' + SCHOOL_NAME,
     { name: SCHOOL_NAME });
@@ -608,6 +855,18 @@ function buildResponse(obj) {
 // google.script.run から呼ばれる関数
 // ============================================================
 function processEnrollment(data) {
+  // Phase U-3-A 1-3 (A): LockService 日本語メッセージ化
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+  try {
+    lock.waitLock(15000); // 15秒待機
+    lockAcquired = true;
+  } catch (e) {
+    return {
+      status: 'error',
+      message: 'ただいま申込が集中しています。30秒ほどお待ちいただいてから、もう一度お試しください。'
+    };
+  }
   try {
     if (!_rateLimitOk('enroll_run', 500)) {
       return { status: 'error', message: '本日の申込受付上限に達しました。' };
@@ -616,10 +875,14 @@ function processEnrollment(data) {
     if (v) return { status: 'error', message: v };
     saveEnrollment(data);
     sendEnrollmentEmail(data);
-    return { status: 'ok', counts: getCourseCounts() };
+    return { status: 'ok', counts: getCourseCounts(), app_number: data._appNumber || '', duplicate_warning: !!data._duplicateWarning };
   } catch (err) {
     console.error(err);
-    return { status: 'error', message: 'サーバーエラーが発生しました' };
+    return { status: 'error', message: 'システムエラーが発生しました。お手数ですが、しばらくしてから再度お試しください。問題が続く場合は学校までご連絡ください。' };
+  } finally {
+    if (lockAcquired) {
+      try { lock.releaseLock(); } catch (e) {}
+    }
   }
 }
 
@@ -870,10 +1133,10 @@ function addWaitingEntry(data) {
       '備考: ' + (data.note || 'なし') + '\n' +
       '━━━━━━━━━━━━━━━━━━━━━━\n' +
       'キャンセル発生時は手動で連絡してください。\n' + SCHOOL_NAME;
-    GmailApp.sendEmail(SCHOOL_EMAIL, subject, body, { replyTo: data.email, name: SCHOOL_NAME });
+    _safeSendEmail(SCHOOL_EMAIL, subject, body, { replyTo: data.email, name: SCHOOL_NAME });
 
     // 保護者への自動返信
-    GmailApp.sendEmail(data.email,
+    _safeSendEmail(data.email,
       '【ウェイティング受付】サマースクール - ' + data.parent_name + ' 様',
       data.parent_name + ' 様\n\n' +
       'ウェイティングリストへのご登録ありがとうございます。\n' +
@@ -1010,6 +1273,8 @@ function onOpen() {
     .addSeparator()
     .addItem('💰 領収書発行（選択行）', 'sendReceiptForSelectedRow')
     .addItem('💰 領収書発行（複数選択行）', 'sendReceiptForMultipleRows')
+    .addSeparator()
+    .addItem('📧 未送信メール再送', 'resendFailedEmails')
     .addSeparator()
     .addItem('🔄 自動更新を有効化（最初に1回）', 'installAutoRefreshTrigger')
     .addItem('🔧 スキーママイグレーション再実行', 'runMigrationsManually')
@@ -1292,10 +1557,11 @@ function sendReceiptEmail(enroll) {
   const html = _buildReceiptEmailHtml(enroll);
   const text = enroll.parent_name + ' 様\n\n受講料のご入金を確認いたしました。誠にありがとうございました。\n以下の通り、領収書を発行いたします。\n\n金額：' + enroll.total + '\n但し：2026年度サマースクール受講料として\n\n--\n' + SCHOOL_NAME + '\nTEL: 248-349-5234';
 
-  GmailApp.sendEmail(enroll.email, subject, text, {
+  const r = _safeSendEmail(enroll.email, subject, text, {
     name: SCHOOL_NAME,
     htmlBody: html
   });
+  if (!r.ok) throw new Error(r.message || '領収書メール送信に失敗');
 }
 
 // 領収書HTMLメール本文生成
