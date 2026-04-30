@@ -217,6 +217,18 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
 
   /* リクエストページのターム・学年チップ */
   #req-cats,#req-terms,#req-grades{gap:5px}
+
+  /* タップ範囲拡大（指で押しやすく） */
+  button,.btn,.pill,select,input[type="checkbox"],input[type="radio"]{min-height:38px}
+  .btn-sm,.pill{min-height:32px}
+  /* 講座カードの内側余白を広めに */
+  .sec table td{padding:8px 10px}
+  /* 申込フォームの入力欄を大きく */
+  .form-field input,.form-field select,.form-field textarea{font-size:14px;padding:10px 12px}
+  /* フローティング合計バーの分、本体下に余白 */
+  body{padding-bottom:60px}
+  /* 検索バーのレイアウト調整 */
+  #course-search{font-size:13px}
 }
 @media print{
   @page{margin:1cm;size:A4 portrait}
@@ -559,6 +571,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
           <div class="form-field"><label>連絡先メールアドレス</label><input id="f-email" type="email" placeholder="parent@example.com"><span id="err-email" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
           <div class="form-field"><label>電話番号</label><input id="f-tel" type="tel" placeholder="000-000-0000"></div>
           <div class="form-field"><label>発行日</label><input id="f-date" type="text"></div>
+          <div class="form-field"><label>緊急連絡先（任意）</label><input id="f-emergency-tel" type="tel" placeholder="例：祖父母・配偶者の電話"></div>
+          <div class="form-field"><label>緊急連絡先 続柄</label><input id="f-emergency-rel" type="text" placeholder="例：祖母 / 父 / 母"></div>
           <div class="form-field form-full"><label>備考・ご要望</label><textarea id="f-note" placeholder="特記事項があればご記入ください"></textarea></div>
         </div>
         <div id="send-status" class="status-msg"></div>
@@ -2014,6 +2028,21 @@ function updateAll(){
   if(typeof buildFormalInvoiceForPrint==='function')buildFormalInvoiceForPrint();
   // 必須項目進捗バー更新
   if(typeof updateProgressBar==='function')updateProgressBar();
+  // フローティング合計バー更新
+  if(typeof updateFloatingTotal==='function')updateFloatingTotal();
+}
+
+function updateFloatingTotal(){
+  const bar=document.getElementById('floating-total');
+  const amt=document.getElementById('floating-total-amount');
+  const cnt=document.getElementById('floating-total-count');
+  if(!bar||!amt) return;
+  const total=calcGrandTotal();
+  const courseCount=students.reduce((acc,s)=>acc+s.courses.length+s.preSlots.length,0);
+  amt.textContent=fmtUSD(total);
+  if(cnt) cnt.textContent=courseCount>0?'('+courseCount+'講座)':'';
+  // 講座が1つ以上選択されている場合のみ表示
+  bar.style.display=courseCount>0?'flex':'none';
 }
 
 function renderDiscountPanel(){
@@ -3306,6 +3335,8 @@ async function sendEmail(){
     parent_name:parent,
     reply_to:email,
     phone:document.getElementById('f-tel').value,
+    emergency_tel:document.getElementById('f-emergency-tel')?.value||'',
+    emergency_rel:document.getElementById('f-emergency-rel')?.value||'',
     students_info:students.map(s=>`${s.name}（${s.grade}）`).join('、'),
     courses:buildEmailBody(),
     total:fmtUSD(calcGrandTotal()),
@@ -3615,6 +3646,8 @@ function saveDraftNow(){
         name:document.getElementById('f-parent')?.value||'',
         email:document.getElementById('f-email')?.value||'',
         tel:document.getElementById('f-tel')?.value||'',
+        emergencyTel:document.getElementById('f-emergency-tel')?.value||'',
+        emergencyRel:document.getElementById('f-emergency-rel')?.value||'',
         note:document.getElementById('f-note')?.value||''
       }
     };
@@ -3713,6 +3746,8 @@ async function tryRestoreDraft(){
       setVal('f-parent',draft.parent.name);
       setVal('f-email',draft.parent.email);
       setVal('f-tel',draft.parent.tel);
+      setVal('f-emergency-tel',draft.parent.emergencyTel);
+      setVal('f-emergency-rel',draft.parent.emergencyRel);
       setVal('f-note',draft.parent.note);
     }
   }catch(e){
@@ -3763,7 +3798,7 @@ async function tryRestoreDraft(){
   <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
     <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
     <span id="admin-footer-status" style="font-size:10px"></span>
-    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.16 / 2026-04-30 22:50 JST</span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-2.17 / 2026-04-30 23:10 JST</span>
   </div>
   <div id="admin-footer-body" style="display:none;margin-top:12px">
     <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
@@ -3781,6 +3816,15 @@ async function tryRestoreDraft(){
     </div>
     <div style="font-size:10px;color:#aaa">GAS URLはHTMLに直接設定済みです。変更が必要な場合はHTMLファイルのGAS_URL変数を書き換えてください。</div>
   </div>
+</div>
+<!-- フローティング合計バー（スマホ・スクロール時用、画面下部固定） -->
+<div id="floating-total" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);color:#fff;padding:10px 16px;border-top:3px solid var(--gold);z-index:9990;display:flex;justify-content:space-between;align-items:center;box-shadow:0 -4px 12px rgba(0,0,0,0.15)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:11px;opacity:.85">合計</span>
+    <strong id="floating-total-amount" style="font-family:'Shippori Mincho',serif;font-size:18px;color:var(--gold)">$0</strong>
+    <span id="floating-total-count" style="font-size:11px;opacity:.85"></span>
+  </div>
+  <button onclick="goTab('invoice');setTimeout(()=>document.getElementById('btn-send')?.scrollIntoView({behavior:'smooth',block:'center'}),200)" style="background:var(--gold);color:var(--navy);border:none;padding:6px 14px;border-radius:3px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📧 申込画面へ</button>
 </div>
 </body>
 </html>
