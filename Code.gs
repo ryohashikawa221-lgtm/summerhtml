@@ -322,10 +322,11 @@ function saveEnrollment(d) {
 }
 
 // ============================================================
-// 講座IDごとの申込数を更新
+// 講座IDごとの申込数を更新（Phase U-2.1: 申込一覧から再構築）
+// 引数のcountsは無視。申込一覧から動的に再計算したカウントで申込数集計シートを上書きします。
+// 申込一覧から行を削除した後にこれを呼ぶと、削除分が反映されます。
 // ============================================================
-function updateCourseCounts(counts) {
-  if (!counts || typeof counts !== 'object') return;
+function updateCourseCounts(_unused) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(8000);
@@ -334,6 +335,7 @@ function updateCourseCounts(counts) {
     return;
   }
   try {
+    const counts = getCourseCounts();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEET_COUNTS);
     if (!sheet) {
@@ -342,22 +344,15 @@ function updateCourseCounts(counts) {
       sheet.getRange(1,1,1,2).setBackground('#1b2a4a').setFontColor('#ffffff').setFontWeight('bold');
       sheet.setFrozenRows(1);
     }
-    const data = sheet.getDataRange().getValues();
-    const rowMap = {};
-    for (let i = 1; i < data.length; i++) rowMap[data[i][0]] = i + 1;
-
-    Object.entries(counts).forEach(([id, cnt]) => {
-      if (typeof id !== 'string' || id.length === 0 || id.length > 100) return;
-      const n = parseInt(cnt);
-      if (!isFinite(n) || n < 1 || n > 20) return;
-      if (rowMap[id]) {
-        sheet.getRange(rowMap[id], 2).setValue(
-          (sheet.getRange(rowMap[id], 2).getValue() || 0) + n
-        );
-      } else {
-        sheet.appendRow([id, n]);
-      }
-    });
+    // 既存データをクリア
+    if (sheet.getLastRow() > 1) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).clearContent();
+    }
+    // 動的カウントを書き込み
+    const rows = Object.entries(counts).map(([id, n]) => [id, n]);
+    if (rows.length > 0) {
+      sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+    }
     SpreadsheetApp.flush();
   } finally {
     lock.releaseLock();
@@ -365,16 +360,39 @@ function updateCourseCounts(counts) {
 }
 
 // ============================================================
-// 講座IDごとの申込数を取得
+// 講座IDごとの申込数を取得（Phase U-2.1: 申込一覧から動的に集計）
+// 申込一覧シートから行を削除すれば自動的に減算されます。
 // ============================================================
 function getCourseCounts() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(S_COUNTS);
-  if (!sheet) return {};
-  const data = sheet.getDataRange().getValues();
+  const enrollSheet = ss.getSheetByName(S_ENROLL);
+  if (!enrollSheet || enrollSheet.getLastRow() < 2) return {};
+
+  // 講座マスターから「講座名+ターム」→ 講座ID の逆引きマップを作る
+  const allCourses = getCourses();
+  const nameTermToId = {};
+  allCourses.forEach(c => {
+    if (c['講座ID'] && c['講座名'] != null && c['ターム'] != null) {
+      const key = String(c['講座名']) + '|' + String(c['ターム']);
+      nameTermToId[key] = String(c['講座ID']);
+    }
+  });
+
   const counts = {};
+  const data = enrollSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0]) counts[data[i][0]] = data[i][1] || 0;
+    const coursesText = String(data[i][6] || ''); // 講座詳細列
+    coursesText.split('\n').forEach(line => {
+      // プレ講習は集計対象外（個別IDが無い）
+      if (/プレ講習/.test(line)) return;
+      // 「・講座名（NT 日付）」形式を抽出
+      const m = line.match(/[・•]\s*(.+?)（(\d+)T/);
+      if (!m) return;
+      const courseName = m[1].trim();
+      const term = m[2];
+      const id = nameTermToId[courseName + '|' + term];
+      if (id) counts[id] = (counts[id] || 0) + 1;
+    });
   }
   return counts;
 }
@@ -657,11 +675,16 @@ function getEnrollmentStatuses() {
 // ============================================================
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('📊 サマースクール管理')
-    .addItem('先生別時間割を出力', 'outputTimetable')
+    .addItem('先生別時間割を出力（全体）', 'outputTimetable')
+    .addItem('└ ターム別で出力', 'outputTimetableByTerm')
+    .addItem('└ 先生別で出力', 'outputTimetableByTeacher')
     .addItem('講座別名簿を出力', 'outputRoster')
     .addItem('申込サマリーを出力', 'outputSummary')
     .addSeparator()
     .addItem('全レポートを一括出力', 'outputAll')
+    .addItem('申込数集計を再計算', 'rebuildCourseCounts')
+    .addSeparator()
+    .addItem('🔄 自動更新を有効化（最初に1回）', 'installAutoRefreshTrigger')
     .addToUi();
 }
 
@@ -669,7 +692,108 @@ function outputAll() {
   outputTimetable();
   outputRoster();
   outputSummary();
+  updateCourseCounts();
   SpreadsheetApp.getUi().alert('✅ 全レポートの出力が完了しました！');
+}
+
+// ============================================================
+// 申込数集計の手動再計算（申込一覧から動的に）
+// ============================================================
+function rebuildCourseCounts() {
+  updateCourseCounts();
+  SpreadsheetApp.getUi().alert('✅ 申込数集計を申込一覧から再計算しました');
+}
+
+// ============================================================
+// ターム別時間割を出力（プロンプトでターム番号を聞く）
+// ============================================================
+function outputTimetableByTerm() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    'ターム別時間割',
+    '出力するターム番号を入力してください（例: 1, 2, 3, ..., 8）',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+  const term = parseInt(response.getResponseText().trim());
+  if (!isFinite(term) || term < 1 || term > 8) {
+    ui.alert('無効なターム番号です（1〜8で指定してください）');
+    return;
+  }
+  outputTimetable({ term: term });
+  ui.alert('✅ ' + term + '期の時間割を別シートに出力しました');
+}
+
+// ============================================================
+// 先生別時間割を出力（プロンプトで先生名を聞く）
+// ============================================================
+function outputTimetableByTeacher() {
+  const ui = SpreadsheetApp.getUi();
+  const allCourses = getCourses();
+  const teacherList = [...new Set(allCourses.map(c => c['担当先生']).filter(Boolean))].join(', ');
+  const response = ui.prompt(
+    '先生別時間割',
+    '出力する先生名を入力してください\n\n登録済み先生: ' + teacherList,
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+  const teacher = response.getResponseText().trim();
+  if (!teacher) {
+    ui.alert('先生名を入力してください');
+    return;
+  }
+  outputTimetable({ teacher: teacher });
+  ui.alert('✅ ' + teacher + 'の時間割を別シートに出力しました');
+}
+
+// ============================================================
+// 自動更新トリガー
+// 申込一覧の行が追加/削除された時に、全レポートを自動再生成
+// ============================================================
+function onChangeAutoRefresh(e) {
+  if (!e || !e.changeType) return;
+  // 行の追加/削除/編集時のみ反応（フォーマット変更等は無視）
+  const targets = ['INSERT_ROW', 'REMOVE_ROW', 'EDIT', 'PASTE'];
+  if (targets.indexOf(e.changeType) === -1) return;
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    if (!sheet || sheet.getName() !== S_ENROLL) return;
+    // 同時実行を抑止
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(2000)) return;
+    try {
+      updateCourseCounts();
+      // 重いレポート3つは時間がかかるため、申込数集計のみ即時更新
+      // 名簿/サマリー/時間割は手動メニューで再生成してもらう
+      console.log('自動再生成完了: ' + e.changeType + ' on ' + sheet.getName());
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    console.error('Auto refresh failed:', err && err.message);
+  }
+}
+
+// 一度だけ実行してトリガーをインストール
+function installAutoRefreshTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === 'onChangeAutoRefresh') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ScriptApp.newTrigger('onChangeAutoRefresh')
+    .forSpreadsheet(ss)
+    .onChange()
+    .create();
+  SpreadsheetApp.getUi().alert(
+    '✅ 自動更新トリガーを設定しました。\n\n' +
+    '今後、申込一覧シートで行の追加・削除・編集をすると、\n' +
+    '申込数集計シートが自動的に再計算されます。\n\n' +
+    '※ 講座別名簿・申込サマリー・先生別時間割は重いため自動更新しません。\n' +
+    '　 必要時にメニューから手動で再出力してください。'
+  );
 }
 
 // ============================================================
@@ -854,7 +978,9 @@ function outputSummary() {
 // ============================================================
 // 先生別時間割出力
 // ============================================================
-function outputTimetable() {
+function outputTimetable(filter) {
+  // filter: { term?: number, teacher?: string } 指定時はそのターム/先生のみで出力
+  filter = filter || {};
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const courses = getCourses();
   const enrollSheet = ss.getSheetByName(S_ENROLL);
@@ -883,18 +1009,38 @@ function outputTimetable() {
     }
   }
 
-  let out = ss.getSheetByName(S_TIMETABLE);
+  // フィルタに応じて出力先シート名を切替
+  const sheetName = filter.term && filter.teacher
+      ? S_TIMETABLE + '_' + filter.term + '期_' + filter.teacher
+    : filter.term
+      ? S_TIMETABLE + '_' + filter.term + '期'
+    : filter.teacher
+      ? S_TIMETABLE + '_' + filter.teacher
+    : S_TIMETABLE;
+
+  let out = ss.getSheetByName(sheetName);
   if (out) ss.deleteSheet(out);
-  out = ss.insertSheet(S_TIMETABLE);
+  out = ss.insertSheet(sheetName);
 
   const TIMES = ['9:00〜10:30','10:30〜12:00','12:30〜14:00','14:00〜15:30','15:30〜17:00'];
   const TEACHER_ORDER = ['坂本先生','嶋中先生','ゆい先生','宮嶋先生','八反田先生','橋川先生'];
   const teachersInData = [...new Set(courses.map(c => c['担当先生']).filter(Boolean))];
-  const TEACHERS = [
+  let TEACHERS = [
     ...TEACHER_ORDER.filter(t => teachersInData.includes(t)),
     ...teachersInData.filter(t => !TEACHER_ORDER.includes(t))
   ];
-  const TERMS = [...new Set(courses.map(c => Number(c['ターム'])))].filter(Boolean).sort((a,b)=>a-b);
+  let TERMS = [...new Set(courses.map(c => Number(c['ターム'])))].filter(Boolean).sort((a,b)=>a-b);
+  // フィルタ適用
+  if (filter.term)    TERMS    = TERMS.filter(t => t === Number(filter.term));
+  if (filter.teacher) TEACHERS = TEACHERS.filter(t => t === filter.teacher);
+  if (TERMS.length === 0) {
+    SpreadsheetApp.getUi().alert('指定されたターム ' + filter.term + ' は存在しません');
+    return;
+  }
+  if (TEACHERS.length === 0) {
+    SpreadsheetApp.getUi().alert('指定された先生 ' + filter.teacher + ' は存在しません');
+    return;
+  }
   const TC = 6;
 
   function getTermDates(term) {
