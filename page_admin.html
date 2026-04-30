@@ -1,0 +1,24 @@
+<!-- ⑤ 管理ページ -->
+<div class="page" id="pg-admin" style="display:none">
+  <!-- パスワード画面 -->
+  <div id="admin-login" class="panel" style="max-width:360px;margin:40px auto;text-align:center">
+    <div class="panel-title">🔒 管理者ログイン</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">この画面は管理者専用です</div>
+    <input id="admin-pass-input" type="password" placeholder="パスワードを入力"
+      style="width:100%;border:1px solid var(--border);padding:9px 12px;font-size:14px;border-radius:3px;margin-bottom:10px;font-family:inherit"
+      onkeydown="if(event.key==='Enter')adminLogin()">
+    <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">ログイン</button>
+    <div id="admin-login-error" style="color:var(--red);font-size:12px;margin-top:8px;display:none">パスワードが違います</div>
+  </div>
+
+  <!-- 管理コンテンツ（ログイン後） -->
+  <div id="admin-content" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-top:3px solid var(--navy);padding:12px 16px;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy)">🔒 募集管理</div>
+    </div>
+    <div id="admin-loading" style="padding:30px;text-align:center;color:var(--muted)">読み込み中...</div>
+    <div id="admin-dashboard" style="display:none">
+      <div id="admin-tab-control"></div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,97 @@
+<!-- ① PAMPHLET -->
+<div class="page" id="pg-pamphlet">
+
+  <!-- 1次申込締め切り注意 -->
+  <div style="background:#fff8e1;border:1px solid #f59e0b;border-left:4px solid #f59e0b;border-radius:3px;padding:12px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start">
+    <div style="font-size:20px;line-height:1;margin-top:1px">📅</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">
+        第1次申込締め切り：2026年5月24日（土）
+      </div>
+      <div style="font-size:12px;color:#78350f;line-height:1.7">
+        締め切りまでにお申し込みのなかった講座は、<strong>内容・時間帯・担当講師が変更になる場合があります。</strong><br>
+        ご希望の講座はお早めにお申し込みください。
+      </div>
+    </div>
+  </div>
+
+  <!-- 生徒リスト -->
+  <div class="panel">
+    <div class="panel-title">受講する生徒を登録してください</div>
+    <div class="students-wrap" id="students-wrap"></div>
+    <button class="btn btn-green btn-sm" onclick="addStudent()">＋ 生徒を追加</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">※ きょうだいで受講する場合は全員追加してください。金額が高い順に自動できょうだい割引が適用されます。</div>
+  </div>
+
+  <!-- 現在選択中の生徒 -->
+  <div class="panel" style="padding:10px 14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--muted)">講座を追加する生徒：</span>
+      <div id="student-tabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+        <span style="font-size:12px;color:var(--muted)">全員の合計</span>
+        <span style="font-family:'Shippori Mincho',serif;font-size:20px;color:var(--navy);font-weight:700" id="hd-total">$0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- フィルター -->
+  <div style="background:#fff;border:1px solid var(--border);margin-bottom:10px">
+    <div class="filter-bar">
+      <label>ターム</label>
+      <button class="pill on" onclick="setFT('all',this)">全て</button>
+      <button class="pill" onclick="setFT('pre',this)">プレ</button>
+      <button class="pill" onclick="setFT(1,this)">1</button>
+      <button class="pill" onclick="setFT(2,this)">2</button>
+      <button class="pill" onclick="setFT(3,this)">3</button>
+      <button class="pill" onclick="setFT(4,this)">4</button>
+      <button class="pill" onclick="setFT(5,this)">5</button>
+      <button class="pill" onclick="setFT(6,this)">6</button>
+      <button class="pill" onclick="setFT(7,this)">7</button>
+      <button class="pill" onclick="setFT(8,this)">8</button>
+      <div class="fsep"></div>
+      <button class="pill on" onclick="setFP('all',this)">全タイプ</button>
+      <button class="pill" onclick="setFP('group',this)">グループ</button>
+      <button class="pill" onclick="setFP('ind',this)">個別</button>
+      <div class="fsep"></div>
+      <button class="pill" onclick="setFP('eiken',this)">🏅 英検対策</button>
+    </div>
+    <!-- 検索バー + 先生フィルタ -->
+    <div style="display:flex;gap:8px;padding:6px 12px 8px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border)">
+      <span style="font-size:11px;color:var(--muted);font-weight:600">🔍 検索</span>
+      <input type="text" id="course-search" placeholder="講座名・先生名で絞り込み（例：英検、橋川、数学）"
+        oninput="setSearchKeyword(this.value)"
+        style="flex:1;min-width:160px;border:1px solid var(--border);padding:5px 8px;font-size:12px;border-radius:3px;font-family:inherit;outline:none">
+      <span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:6px">先生</span>
+      <select id="course-teacher-filter" onchange="setTeacherFilter(this.value)"
+        style="border:1px solid var(--border);padding:5px 8px;font-size:12px;border-radius:3px;font-family:inherit;background:#fff">
+        <option value="">全員</option>
+      </select>
+      <button onclick="clearCourseFilters()" style="border:1px solid var(--border);background:#fff;color:var(--muted);padding:4px 10px;font-size:11px;border-radius:3px;cursor:pointer;font-family:inherit">✕ クリア</button>
+    </div>
+  </div>
+
+  <!-- 残席カラー凡例 -->
+  <div style="background:#fff;border:1px solid var(--border);border-top:none;padding:6px 14px;margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:10px;color:var(--muted);font-weight:600">定員状況：</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:14px;height:4px;background:#22c55e;border-radius:2px"></span>空きあり</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#c2410c"><span style="display:inline-block;width:14px;height:4px;background:#f97316;border-radius:2px"></span>残りわずか</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#b91c1c"><span style="display:inline-block;width:14px;height:4px;background:#ef4444;border-radius:2px"></span>あとわずか！</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6b7280"><span style="display:inline-block;width:14px;height:4px;background:#9ca3af;border-radius:2px"></span>定員に達しました</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#4338ca"><span style="display:inline-block;width:14px;height:4px;background:#6366f1;border-radius:2px"></span>募集締め切り</span>
+    <span style="font-size:10px;color:var(--muted)">※ 定員の記載がない講座は <strong>12名</strong> が上限です</span>
+  </div>
+
+  <!-- 割引ステータスパネル -->
+  <div id="discount-panel" style="display:none;margin-bottom:10px;background:#fff;border:1px solid var(--border);border-top:3px solid var(--gold);padding:10px 14px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <div id="dp-koma" style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px"></div>
+      <div id="dp-sibling" style="font-size:11px;display:none"></div>
+      <div id="dp-school" style="font-size:11px;display:none"></div>
+    </div>
+    <div id="dp-progress" style="margin-top:8px;display:none"></div>
+    <div id="dp-breakdown" style="margin-top:8px;display:none;padding-top:8px;border-top:1px dashed var(--border)"></div>
+  </div>
+
+  <div id="course-list"></div>
+</div>

@@ -1,0 +1,351 @@
+// 紙吹雪アニメーション
+// ============================================================
+function launchConfetti(){
+  const colors=['#c9a84c','#1b2a4a','#22c55e','#ef4444','#3b82f6','#f97316','#a855f7','#fff'];
+  const canvas=document.createElement('canvas');
+  canvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999';
+  document.body.appendChild(canvas);
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  // 申込合計金額に応じて紙吹雪の量をスケール
+  // $0   → 80枚（最低保証）
+  // $500 → 約180枚
+  // $1000→ 約280枚
+  // $2000→ 約480枚（上限）
+  let total=0;
+  try{ total=calcGrandTotal()||0; }catch(e){}
+  const pieceCount=Math.min(480, Math.max(80, Math.round(80 + total*0.2)));
+  const pieces=Array.from({length:pieceCount},()=>({
+    x:Math.random()*canvas.width,
+    y:-20-Math.random()*100,
+    r:4+Math.random()*6,
+    d:1+Math.random()*3,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    tilt:Math.random()*10-5,
+    tiltAngle:0,
+    tiltSpeed:0.05+Math.random()*0.1,
+    spin:Math.random()*Math.PI*2,
+    spinSpeed:(Math.random()-0.5)*0.15,
+  }));
+  let frame=0;
+  const maxFrames=200;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.spin);
+      ctx.fillStyle=p.color;
+      ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*(0.6+0.4*Math.sin(p.tiltAngle)));
+      ctx.restore();
+      p.y+=p.d+(frame/maxFrames)*2;
+      p.x+=Math.sin(p.tiltAngle)*1.5;
+      p.spin+=p.spinSpeed;
+      p.tiltAngle+=p.tiltSpeed;
+    });
+    frame++;
+    if(frame<maxFrames) requestAnimationFrame(draw);
+    else canvas.remove();
+  }
+  draw();
+}
+
+// ============================================================
+// 時間割印刷
+// ============================================================
+function printTimetable(){
+  document.body.classList.add('print-timetable');
+  window.print();
+  setTimeout(()=>document.body.classList.remove('print-timetable'),1000);
+}
+
+function buildEmailBody(){
+  const MAT_LABEL={'own':'自分で用意','school':'学校側に用意してほしい','discuss':'要相談'};
+  let lines=[];
+  students.forEach((s,i)=>{
+    if(s.courses.length===0&&s.preSlots.length===0)return;
+    lines.push(`【${i+1}人目：${s.name}　${s.grade}】`);
+    s.preSlots.forEach(sl=>{
+      lines.push(`  ・プレ講習 ${sl.date} ${sl.time}　${fmtUSD(prePricePerKoma(sl.type,s.level))}/コマ`);
+      if(sl.content) lines.push(`    希望内容：${sl.content}`);
+      if(sl.type==='ind'){
+        lines.push(`    教材：${MAT_LABEL[sl.material]||sl.material}`);
+        if(sl.materialNote) lines.push(`    テキスト：${sl.materialNote}`);
+      }
+    });
+    s.courses.forEach(cid=>{
+      const c=COURSES.find(x=>x.id===cid);
+      if(!c)return;
+      lines.push(`  ・${c.label}（${c.term}T ${c.date}）　${fmtUSD(unitPrice(c,s.level))}`);
+      const det=(s.courseDetails&&s.courseDetails[cid])||{};
+      if(c.type==='ind'){
+        if(det.content) lines.push(`    希望内容：${det.content}`);
+        lines.push(`    教材：${MAT_LABEL[det.material]||'自分で用意'}`);
+        if(det.materialNote) lines.push(`    テキスト：${det.materialNote}`);
+      }
+      if(det.friendDisc) lines.push(`    👫 お友達割引適用（${det.friendName||'お名前未記入'}と一緒に受講）`);
+    });
+    lines.push(`  小計：${fmtUSD(calcStudentTotal(i))}`);
+    lines.push('');
+  });
+  lines.push(`合計金額：${fmtUSD(calcGrandTotal())}`);
+  const paid=parseFloat(document.getElementById('paid-amount').value)||0;
+  if(paid>0){
+    const diff=Math.ceil(calcGrandTotal()-paid);
+    lines.push(`既払い金額：${fmtUSD(paid)}`);
+    lines.push(`追加請求額：${fmtUSD(Math.max(0,diff))}`);
+  }
+  return lines.join('\n');
+}
+
+// ============================================================
+// PHASE U-2: 請求書として申込画面を印刷
+// 領収書フォーマット参考。印刷時に管理パネル/送信フォームを隠し、宛先ヘッダを表示する
+// ============================================================
+// 印刷直前/直後に申込画面のみを強制表示し、終了後は元のページに戻す
+// （ブラウザのCmd+P / メニュー印刷でも自動的に適用される）
+// 印刷専用フォーマル請求書テンプレートを生成（見本: Tuition Receipt フォーマット参考）
+// 駿台ロゴ・MICHIGAN エンブレム画像URL（Google Drive 直リンク）
+// ※共有設定が「リンクを知っている全員」になっていれば印刷時に表示される
+const LOGO_URL = 'https://lh3.googleusercontent.com/d/1YbgUXYekO1tOZ07uwaLXOm4A-U_2NhL-';
+const EMBLEM_URL = 'https://lh3.googleusercontent.com/d/18YcBLebJrehAbz8nohucYdX_2BfvPlP2';
+
+function buildFormalInvoiceForPrint(){
+  const div=document.getElementById('formal-invoice-print');
+  if(!div) return;
+
+  const parent=(document.getElementById('f-parent')?.value||'').trim()||'(保護者氏名未入力)';
+  const issueDate=document.getElementById('f-date')?.value||new Date().toLocaleDateString('ja-JP');
+
+  // ★1ページサマリー版：生徒1人=1行で要約
+  // 詳細はメール本文/申込画面に任せ、PDFはコンパクトに収める
+  let html='';
+
+  // ヘッダ
+  html+='<div class="fi-header">'+
+    '<div class="fi-logo-box">'+
+      '<img src="'+LOGO_URL+'" alt="駿台" class="fi-logo-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
+      '<div class="fi-logo-fallback" style="display:none">'+
+        '<div class="fi-logo-jp">駿台</div>'+
+        '<div class="fi-logo-en">SUNDAI</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="fi-title-block">'+
+      '<div class="fi-title-main">Tuition Invoice</div>'+
+      '<div class="fi-title-sub">2026 Summer</div>'+
+    '</div>'+
+    '<div class="fi-header-date">'+
+      '<div class="fi-date-label">Date</div>'+
+      '<div class="fi-date-value">'+_escHtml(issueDate)+'</div>'+
+    '</div>'+
+  '</div>';
+
+  // 学校情報
+  html+='<div class="fi-school-info">'+
+    'Sundai Michigan International Academy<br>'+
+    '24277 Novi Rd, Novi, MI 48375 / ( 248 ) 349-5234'+
+  '</div>';
+
+  // 宛先（保護者）
+  html+='<div class="fi-recipient">'+
+    '<span class="fi-field-label">宛先 / To</span>'+
+    '<span class="fi-recipient-value">'+_escHtml(parent)+'</span> 様'+
+  '</div>';
+
+  // 全生徒を1つのテーブルに集約（1行=1生徒）
+  const activeStudents=students.filter(s=>s.courses.length>0||s.preSlots.length>0);
+
+  if(activeStudents.length===0){
+    html+='<div class="fi-empty">講座が選択されていません</div>';
+  } else {
+    html+='<table class="fi-summary-table">'+
+      '<thead><tr>'+
+        '<th class="fi-th-grade">学年</th>'+
+        '<th class="fi-th-name">生徒名</th>'+
+        '<th class="fi-th-item">項目</th>'+
+        '<th class="fi-th-fee">金額（USD）</th>'+
+      '</tr></thead>'+
+      '<tbody>';
+
+    activeStudents.forEach((s,sIdx)=>{
+      const i=students.indexOf(s);
+      const sib=siblingDiscRate(i);
+      const koma=komaDiscRate(i);
+      const stTotal=calcStudentTotal(i);
+      const studentName=s.name||'(氏名未入力)';
+      const studentGrade=s.grade||'-';
+
+      const summerCount=s.courses.length;
+      const preCount=s.preSlots.length;
+      const breakdown=[];
+      if(summerCount>0) breakdown.push('通常 '+summerCount+'講座');
+      if(preCount>0) breakdown.push('プレ '+preCount+'コマ');
+
+      const discNotes=[];
+      if(sib>0) discNotes.push('きょうだい'+Math.round(sib*100)+'%');
+      if(s.schoolDisc) discNotes.push('補習校10%');
+      if(koma>0) discNotes.push('コマ数'+Math.round(koma*100)+'%');
+
+      html+='<tr>'+
+        '<td class="fi-td-grade">'+_escHtml(studentGrade)+'</td>'+
+        '<td class="fi-td-name">'+_escHtml(studentName)+'</td>'+
+        '<td class="fi-td-item">'+
+          '<div class="fi-item-main">2026 Summer School 受講料</div>'+
+          (breakdown.length?'<div class="fi-item-sub">'+breakdown.join(' + ')+'</div>':'')+
+          (discNotes.length?'<div class="fi-item-disc">適用割引: '+_escHtml(discNotes.join(' / '))+'</div>':'')+
+        '</td>'+
+        '<td class="r fi-td-fee">'+fmtUSD(stTotal)+'</td>'+
+      '</tr>';
+    });
+
+    // 合計行
+    const grandTotal=calcGrandTotal();
+    html+='<tr class="fi-total-row">'+
+      '<td colspan="3" class="fi-total-label-cell">家族合計 / Grand Total</td>'+
+      '<td class="fi-total-value-cell">'+fmtUSD(grandTotal)+'</td>'+
+    '</tr>';
+
+    html+='</tbody></table>';
+  }
+
+  // 但し書き
+  html+='<div class="fi-purpose">但し: 2026年度サマースクール受講料として / Summer School 2026 Tuition Fee</div>';
+
+  // 支払い情報
+  html+='<div class="fi-payment">'+
+    '<strong>お支払い方法 / Payment</strong><br>'+
+    'Zelle: michi-info@sundai-kaigai.jp（受取口座: Sundai USA, Inc. Novi, MI）<br>'+
+    'または Check: <strong>Sundai USA, Inc.</strong> 宛 / 24277 Novi Rd, Novi, MI 48375'+
+  '</div>';
+
+  // フッタ
+  html+='<div class="fi-footer-row">'+
+    '<div class="fi-footer-left">'+
+      '請求書についてのご要望は <a href="mailto:michi-info@sundai-kaigai.jp">michi-info@sundai-kaigai.jp</a> にご連絡ください。<br>'+
+      '<strong>駿台ミシガン国際学院</strong>'+
+    '</div>'+
+    '<div class="fi-emblem-box">'+
+      '<img src="'+EMBLEM_URL+'" alt="SUNDAI MICHIGAN" class="fi-emblem-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
+      '<div class="fi-emblem-fallback" style="display:none">'+
+        '<div class="fi-emblem-top">★ ★ ★</div>'+
+        '<div class="fi-emblem-jp">SUNDAI</div>'+
+        '<div class="fi-emblem-mid">INTERNATIONAL<br>NETWORK</div>'+
+        '<div class="fi-emblem-bottom">MICHIGAN</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  html+='<div class="fi-note">※ 詳細な受講内容は申込画面・確認メールでご確認ください。お支払い確認次第、正式な領収書を別途発行いたします。</div>';
+
+  div.innerHTML=html;
+}
+
+window.addEventListener('beforeprint', function(){
+  buildFormalInvoiceForPrint();
+});
+window.addEventListener('afterprint', function(){
+  // 印刷後は何もしない（CSSで通常時は非表示）
+});
+
+function printInvoice(){
+  buildFormalInvoiceForPrint();
+  setTimeout(()=>window.print(),50);
+}
+
+// ============================================================
+// PHASE U-2 / FEATURE B: 最終確認モーダル
+// ============================================================
+function openConfirmModal(){
+  const status=document.getElementById('send-status');
+  const parent=document.getElementById('f-parent').value.trim();
+  const email=document.getElementById('f-email').value.trim();
+  // 既存の必須項目チェック
+  if(!parent||!email){
+    status.className='status-msg status-ng';
+    status.textContent='保護者氏名とメールアドレスは必須です。';
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    status.className='status-msg status-ng';
+    status.textContent='メールアドレスの形式が正しくありません。';
+    return;
+  }
+  if(students.every(s=>s.courses.length===0&&s.preSlots.length===0)){
+    status.className='status-msg status-ng';
+    status.textContent='講座が選択されていません。';
+    return;
+  }
+  status.className='status-msg';
+  status.textContent='';
+
+  // サマリー生成
+  const activeStudents=students.filter(s=>s.level&&(s.courses.length>0||s.preSlots.length>0));
+  const studentRows=activeStudents.map(s=>{
+    const idx=students.indexOf(s);
+    const cnt=s.courses.length+s.preSlots.length;
+    const total=calcStudentTotal(idx);
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">${s.name||'(氏名未入力)'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px">${s.grade||'-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${cnt}講座</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:700">${fmtUSD(total)}</td>
+    </tr>`;
+  }).join('');
+  const grandTotal=calcGrandTotal();
+  const tel=document.getElementById('f-tel').value.trim();
+
+  const overlay=document.createElement('div');
+  overlay.id='confirm-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px;overflow-y:auto';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:560px;width:100%;border-radius:6px;border-top:4px solid #c9a84c;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,0.25);max-height:90vh;overflow-y:auto">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:#1b2a4a;margin-bottom:6px">📧 以下の内容で送信します</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:16px">送信前に内容をご確認ください</div>'+
+      '<div style="background:#faf8f3;border:1px solid #e7e0c8;border-radius:4px;padding:10px 14px;margin-bottom:14px">'+
+        '<div style="font-size:11px;color:#888;margin-bottom:4px">代表保護者</div>'+
+        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">'+_escHtml(parent)+'</div>'+
+        '<div style="font-size:11px;color:#666;margin-top:4px">'+_escHtml(email)+(tel?'　/　'+_escHtml(tel):'')+'</div>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'+
+        '<thead><tr style="background:#1b2a4a;color:#fff">'+
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:500">生徒</th>'+
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:500">学年</th>'+
+          '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:500">講座数</th>'+
+          '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:500">小計</th>'+
+        '</tr></thead>'+
+        '<tbody>'+studentRows+'</tbody>'+
+        '<tfoot><tr style="background:#fff7e0">'+
+          '<td colspan="3" style="padding:10px;font-family:\'Shippori Mincho\',serif;font-size:14px;color:#1b2a4a;font-weight:700">合計金額</td>'+
+          '<td style="padding:10px;text-align:right;font-family:\'Shippori Mincho\',serif;font-size:18px;color:#c9a84c;font-weight:700">'+fmtUSD(grandTotal)+'</td>'+
+        '</tr></tfoot>'+
+      '</table>'+
+      '<div style="font-size:11px;color:#666;line-height:1.6;background:#f5f5f5;padding:8px 12px;border-radius:3px;margin-bottom:16px">'+
+        '送信後、確認メールが '+_escHtml(email)+' に届きます。'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'+
+        '<button id="confirm-cancel" style="padding:9px 22px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px">戻る（編集）</button>'+
+        '<button id="confirm-send" style="padding:9px 22px;background:#c9a84c;border:1px solid #c9a84c;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px;font-weight:700">この内容で送信する</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#confirm-cancel').onclick=closeConfirmModal;
+  overlay.querySelector('#confirm-send').onclick=()=>{
+    closeConfirmModal();
+    sendEmail();
+  };
+  // ESCキーで閉じる
+  overlay.tabIndex=-1;
+  overlay.focus();
+  overlay.addEventListener('keydown',e=>{ if(e.key==='Escape') closeConfirmModal(); });
+}
+
+function closeConfirmModal(){
+  const o=document.getElementById('confirm-modal-overlay');
+  if(o&&o.parentNode) o.parentNode.removeChild(o);
+}
+
+function _escHtml(s){
+  return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+

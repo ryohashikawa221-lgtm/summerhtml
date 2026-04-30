@@ -1,0 +1,225 @@
+// TIMETABLE
+// ============================================================
+const TERMS_ORDER=['pre',1,2,3,4,5,6,7,8];
+const TERM_DATES={'pre':'6/8〜21',1:'6/22〜27',2:'7/6〜11',3:'7/13〜18',4:'7/20〜25',5:'7/27〜8/1',6:'8/3〜7',7:'8/10〜14',8:'8/17〜21'};
+const ALL_TIME_SLOTS=['9:00〜10:30','10:30〜12:00','12:30〜14:00','14:00〜15:30','15:30〜17:00'];
+const PRE_TIME_SLOTS=['13:00〜14:30','14:30〜16:00','14:00〜15:30','15:30〜17:00'];
+// 先生の固定列順
+const TEACHERS=['嶋中先生','宮嶋先生','橋川先生','ゆい先生','八反田先生','坂本先生'];
+
+// 先生ごとの色
+const TEACHER_COLOR={
+  '嶋中先生':'background:#ede9fe;color:#5b21b6',
+  '宮嶋先生':'background:#dcfce7;color:#166534',
+  '橋川先生':'background:#fee2e2;color:#991b1b',
+  'ゆい先生':'background:#fef9c3;color:#854d0e',
+  '八反田先生':'background:#dbeafe;color:#1e40af',
+  '坂本先生':'background:#fce7f3;color:#9d174d',
+};
+
+let ttTerm=1; // 互換性のため残す（未使用）
+
+function renderTimetable(){
+  document.getElementById('tt-total').textContent=fmtUSD(calcGrandTotal());
+  const cont=document.getElementById('tt-content');
+
+  const activeStudents=students.filter(s=>s.level&&(s.courses.length>0||s.preSlots.length>0));
+  if(activeStudents.length===0){
+    cont.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">講座を選択すると表示されます</div>';
+    document.getElementById('tt-student-tabs').style.display='none';
+    return;
+  }
+
+  // ===== 生徒切替タブ（複数生徒時のみ） =====
+  const tabsEl=document.getElementById('tt-student-tabs');
+  if(activeStudents.length>=2){
+    tabsEl.style.display='flex';
+    const allActive=timetableViewStudent==='all';
+    const tabsHtml=['<span style="font-size:11px;color:var(--muted);margin-right:6px">表示切替:</span>',
+      `<button onclick="setTimetableView('all')" style="padding:5px 12px;border-radius:14px;border:1.5px solid ${allActive?'var(--navy)':'#ccc'};background:${allActive?'var(--navy)':'#fff'};color:${allActive?'#fff':'#666'};font-size:12px;font-weight:${allActive?'700':'500'};cursor:pointer;font-family:inherit">👨‍👩‍👧 全員</button>`
+    ];
+    activeStudents.forEach(s=>{
+      const idx=students.indexOf(s);
+      const isOn=timetableViewStudent===idx;
+      const c=getStudentColor(idx);
+      tabsHtml.push(`<button onclick="setTimetableView(${idx})" style="padding:5px 12px;border-radius:14px;border:1.5px solid ${isOn?c.border:'#ccc'};background:${isOn?c.bg:'#fff'};color:${isOn?c.text:'#666'};font-size:12px;font-weight:${isOn?'700':'500'};cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${c.border};display:inline-block"></span>${_escHtml(s.name||'生徒'+(idx+1))}</button>`);
+    });
+    tabsEl.innerHTML=tabsHtml.join('');
+  } else {
+    tabsEl.style.display='none';
+    timetableViewStudent='all'; // 生徒1人なら強制 all
+  }
+
+  // 表示対象の生徒（フィルタ適用）
+  const viewStudents=timetableViewStudent==='all'?activeStudents:activeStudents.filter(s=>students.indexOf(s)===timetableViewStudent);
+
+  // 生徒別小計（色分け）
+  const studentSummary=activeStudents.map(s=>{
+    const idx=students.indexOf(s);
+    const c=getStudentColor(idx);
+    const dim=timetableViewStudent!=='all'&&timetableViewStudent!==idx;
+    return`<span style="font-size:12px;color:${dim?'#bbb':'var(--muted)'};${dim?'opacity:.5':''}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.border};margin-right:4px;${dim?'opacity:.4':''}"></span>${s.name}：<strong style="color:${dim?'#bbb':'var(--navy)'}">${fmtUSD(calcStudentTotal(idx))}</strong></span>`;
+  }).join('　');
+
+  let html=`<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${studentSummary}</div>`;
+
+  // ===== プレ講習 =====
+  if(students.some(s=>s.preSlots.length>0)){
+    const preCells={};
+    const usedDates=new Set();
+    const usedSlots=new Set();
+    students.forEach((s,si)=>{
+      if(!s.level)return;
+      // 表示フィルタ：個別生徒ビュー時は対象外スキップ
+      if(timetableViewStudent!=='all'&&timetableViewStudent!==si)return;
+      const sLabel=s.name||`生徒${si+1}`;
+      const sc=getStudentColor(si);
+      s.preSlots.forEach(sl=>{
+        const key=`${sl.date}|${sl.time}`;
+        if(!preCells[key])preCells[key]=[];
+        // 「全員」ビューでは生徒色、個別ビューでは従来のレベル色
+        const cellColor=timetableViewStudent==='all'
+          ?`background:${sc.bg};color:${sc.text};border-left:3px solid ${sc.border}`
+          :LEVEL_LESSON[s.level]||'';
+        preCells[key].push({sLabel,color:cellColor,studentIdx:si});
+        usedDates.add(sl.date);
+        usedSlots.add(sl.time);
+      });
+    });
+    const sortedDates=[...usedDates].sort((a,b)=>PRE_DATES.findIndex(d=>d.date===a)-PRE_DATES.findIndex(d=>d.date===b));
+    const sortedSlots=[...usedSlots].sort((a,b)=>parseInt(a)-parseInt(b));
+
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-family:'Shippori Mincho',serif;font-size:14px;color:var(--navy);margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--navy)">プレ講習（6/8〜6/21）</div>
+      <div style="overflow-x:auto"><table style="border-collapse:collapse;background:#fff;border:1px solid var(--border);min-width:300px">
+        <thead><tr>
+          <th style="background:var(--navy);color:#fff;padding:6px 8px;font-size:10px;width:90px;text-align:center">時間帯</th>
+          ${sortedDates.map(d=>{
+            const info=PRE_DATES.find(x=>x.date===d);
+            const isSun=info?.dow==='日';
+            return`<th style="background:${isSun?'#991b1b':'var(--navy2)'};color:#fff;padding:6px 8px;font-size:10px;text-align:center;min-width:70px">
+              ${d}<br><span style="font-size:9px;font-weight:300">${info?.dow||''}曜</span></th>`;
+          }).join('')}
+        </tr></thead>
+        <tbody>
+          ${sortedSlots.map(slot=>`<tr>
+            <td style="border:1px solid var(--border);padding:5px 6px;font-size:10px;font-weight:700;text-align:center;background:var(--cream2);white-space:nowrap">${slot}</td>
+            ${sortedDates.map(d=>{
+              const key=`${d}|${slot}`;
+              const items=preCells[key]||[];
+              const info=PRE_DATES.find(x=>x.date===d);
+              const isSun=info?.dow==='日';
+              const validSlots=isSun?PRE_SUN_SLOTS:PRE_WEEKDAY_SLOTS;
+              if(!validSlots.includes(slot)) return`<td style="border:1px solid var(--border);background:#f5f5f5"></td>`;
+              if(items.length===0){
+                // 個別生徒ビュー時は空き時間マーカー表示
+                if(timetableViewStudent!=='all'){
+                  return`<td style="border:1px solid var(--border);background:#f9fafb;text-align:center;color:#9ca3af;font-size:9px;padding:6px 4px">⊘ 空き</td>`;
+                }
+                return`<td style="border:1px solid var(--border)"></td>`;
+              }
+              return`<td style="border:1px solid var(--border);padding:3px;vertical-align:top">
+                ${items.map(it=>`<div style="${it.color};border-radius:2px;padding:3px 5px;margin:1px;font-size:10px;line-height:1.4">
+                  <div style="font-weight:600">プレ講習</div>
+                  <div style="font-size:9px;opacity:.8">${it.sLabel}</div>
+                </div>`).join('')}
+              </td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ===== 通常ターム 1〜8（選択あるものだけ） =====
+  [1,2,3,4,5,6,7,8].forEach(term=>{
+    const cells={};
+    ALL_TIME_SLOTS.forEach(t=>{cells[t]={};TEACHERS.forEach(tc=>{cells[t][tc]=[];});});
+
+    students.forEach((s,si)=>{
+      if(!s.level)return;
+      // 表示フィルタ：個別生徒ビュー時は対象外スキップ
+      if(timetableViewStudent!=='all'&&timetableViewStudent!==si)return;
+      const sLabel=s.name||`生徒${si+1}`;
+      const sc=getStudentColor(si);
+      s.courses.filter(id=>{
+        const c=COURSES.find(x=>x.id===id);
+        return c&&c.term===term;
+      }).forEach(id=>{
+        const c=COURSES.find(x=>x.id===id);
+        if(!c||!cells[c.time])return;
+        const tc=TEACHERS.find(t=>c.teacher===t)||'';
+        const zoomType=s.zoomType&&s.zoomType[id];
+        const zoomScope=s.zoomScope&&s.zoomScope[id];
+        const zoomDates=s.zoomDates&&s.zoomDates[id];
+        let zoomLabel='';
+        if(zoomType==='zoom'){
+          zoomLabel=zoomScope==='dates'&&zoomDates&&zoomDates.length>0
+            ?'📹ZOOM:'+zoomDates.join(','):'📹ZOOM（全日）';
+        } else if(zoomType==='rec'){
+          zoomLabel=zoomScope==='dates'&&zoomDates&&zoomDates.length>0
+            ?'🎬録画:'+zoomDates.join(','):'🎬録画（全日）';
+        }
+        // 「全員」ビュー時は生徒色を使用、個別ビュー時はレベル色
+        const cellColor=timetableViewStudent==='all'
+          ?`background:${sc.bg};color:${sc.text};border-left:3px solid ${sc.border}`
+          :LEVEL_LESSON[c.level]||'';
+        if(tc&&cells[c.time][tc]!==undefined)
+          cells[c.time][tc].push({label:c.label,color:cellColor,sLabel,zoomLabel,studentIdx:si});
+      });
+    });
+
+    const usedTeachers=TEACHERS.filter(tc=>ALL_TIME_SLOTS.some(t=>(cells[t][tc]||[]).length>0));
+    if(usedTeachers.length===0) return;
+
+    const termDate=TERM_DATES[term]||'';
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-family:'Shippori Mincho',serif;font-size:14px;color:var(--navy);margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--navy)">${term}ターム（${termDate}）</div>
+      <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--border);table-layout:fixed">
+        <colgroup>
+          <col style="width:90px">
+          ${ALL_TIME_SLOTS.map(()=>'<col style="width:20%">').join('')}
+        </colgroup>
+        <thead><tr>
+          <th style="background:var(--navy);color:#fff;padding:7px 8px;font-size:11px;text-align:center">先生</th>
+          ${ALL_TIME_SLOTS.map(t=>`<th style="background:var(--navy);color:#fff;padding:7px 8px;font-size:11px;text-align:center">${t}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${usedTeachers.map(tc=>{
+            const tcStyle=(TEACHER_COLOR[tc]||'background:#eee;color:#333');
+            const bg=tcStyle.split(';')[0].replace('background:','').trim();
+            const col=tcStyle.split(';')[1]?.replace('color:','').trim()||'#333';
+            return`<tr>
+              <td style="border:1px solid var(--border);padding:6px 8px;font-size:11px;font-weight:700;text-align:center;background:${bg};color:${col};white-space:nowrap;vertical-align:middle">${tc}</td>
+              ${ALL_TIME_SLOTS.map(slot=>{
+                const items=cells[slot][tc]||[];
+                if(items.length===0){
+                  if(timetableViewStudent!=='all'){
+                    return`<td style="border:1px solid var(--border);background:#f9fafb;text-align:center;color:#9ca3af;font-size:9px;padding:6px 4px">⊘ 空き</td>`;
+                  }
+                  return`<td style="border:1px solid var(--border);background:#f7f7f7"></td>`;
+                }
+                return`<td style="border:1px solid var(--border);padding:3px;vertical-align:top">
+                  ${items.map(it=>`<div style="${it.color};border-radius:3px;padding:5px 7px;margin:2px;font-size:11px;line-height:1.4">
+                    <div style="font-weight:600">${it.label}</div>
+                    <div style="opacity:.75;font-size:9px">${it.sLabel}</div>
+                    ${it.zoomLabel?`<div style="font-size:9px;font-weight:700;color:#1a5fa5;margin-top:2px">${it.zoomLabel}</div>`:''}
+                  </div>`).join('')}
+                </td>`;
+              }).join('')}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+  });
+
+  cont.innerHTML=html;
+}
+
+function setTTTerm(t){
+  ttTerm=isNaN(t)?t:parseInt(t);
+  renderTimetable();
+}
+
+// ============================================================

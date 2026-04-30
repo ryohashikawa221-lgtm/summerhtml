@@ -1,0 +1,265 @@
+// INVOICE
+// ============================================================
+function renderInvoice(){
+  const total=calcGrandTotal();
+  document.getElementById('new-total-display').textContent=fmtUSD(total);
+  updateDiff();
+
+  const cont=document.getElementById('inv-students-section');
+  if(students.length===0){cont.innerHTML='';return;}
+
+  let html='';
+  students.forEach((s,i)=>{
+    if(s.courses.length===0&&s.preSlots.length===0)return;
+    const sib=siblingDiscRate(i);
+    const school=s.schoolDisc?0.10:0;
+    const koma=komaDiscRate(i);
+    const dr=Math.round((1-(1-sib)*(1-school)*(1-koma))*100);
+    const stTotal=calcStudentTotal(i);
+
+    let rows='';
+    // プレ講習
+    s.preSlots.forEach(sl=>{
+      const base=prePricePerKoma(sl.type,s.level);
+      const fp=calcPreItemPrice(sl.type,s,i,sl.friendDisc);
+      const isInd=sl.type==='ind';
+      const friendDiscount=sl.friendDisc?Math.ceil(fp*0.9):fp;
+      rows+=`<tr>
+        <td>
+          プレ講習（${sl.date} ${sl.time}）
+          <div style="margin-top:6px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">📝 希望する内容・科目</div>
+            <textarea rows="2" placeholder="例：英語のリーディング練習、数学の文章題など"
+              style="width:100%;font-size:11px;border:1px solid var(--border);padding:4px 6px;border-radius:2px;resize:vertical;font-family:inherit"
+              oninput="updatePreDetail(${i},'${sl.key}','content',this.value)">${sl.content||''}</textarea>
+          </div>
+          ${isInd?`<div style="margin-top:6px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">📚 教材・テキスト</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="pre-mat-${i}-${sl.key}" value="own" ${!sl.material||sl.material==='own'?'checked':''} onchange="updatePreDetail(${i},'${sl.key}','material','own')">
+                自分で用意する
+              </label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="pre-mat-${i}-${sl.key}" value="school" ${sl.material==='school'?'checked':''} onchange="updatePreDetail(${i},'${sl.key}','material','school')">
+                学校側に用意してほしい
+              </label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="pre-mat-${i}-${sl.key}" value="discuss" ${sl.material==='discuss'?'checked':''} onchange="updatePreDetail(${i},'${sl.key}','material','discuss')">
+                相談したい
+              </label>
+            </div>
+            <input type="text" placeholder="使用中のテキスト名など（任意）"
+              style="width:100%;margin-top:4px;font-size:11px;border:1px solid var(--border);padding:4px 6px;border-radius:2px;font-family:inherit"
+              oninput="updatePreDetail(${i},'${sl.key}','materialNote',this.value)"
+              value="${sl.materialNote||''}">
+          </div>`:''}
+          <div style="margin-top:8px;padding:6px 8px;background:#fef9c3;border:1px solid #fbbf24;border-radius:3px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;font-weight:600;color:#92400e">
+              <input type="checkbox" ${sl.friendDisc?'checked':''} onchange="updatePreDetail(${i},'${sl.key}','friendDisc',this.checked);updateAll()">
+              👫 お友達と一緒に受講する（-10%）
+            </label>
+            ${sl.friendDisc?`<input type="text" placeholder="一緒に受講するお友達のお名前"
+              style="width:100%;margin-top:4px;font-size:11px;border:1px solid #fbbf24;padding:4px 6px;border-radius:2px;font-family:inherit;background:#fff"
+              oninput="updatePreDetail(${i},'${sl.key}','friendName',this.value)"
+              value="${sl.friendName||''}">`:''}
+          </div>
+        </td>
+        <td>${LEVEL_LABEL[s.level]}</td>
+        <td>プレ 1コマ</td>
+        <td>${isInd?'個別':'グループ'}</td>
+        <td class="r">${fmtUSD(base)}</td>
+        <td class="r" style="color:var(--green)">${dr>0||sl.friendDisc?`-${dr>0?dr+'%':''}${sl.friendDisc?(dr>0?' ':'')+'友達-10%':''}`:'-'}</td>
+        <td class="r"><strong>${fmtUSD(sl.friendDisc?Math.ceil(fp*0.9):fp)}</strong></td>
+      </tr>`;
+    });
+    // 通常コース
+    s.courses.forEach(cid=>{
+      const c=COURSES.find(x=>x.id===cid);
+      if(!c)return;
+      const base=unitPrice(c,s.level);
+      const fp=calcItemPrice(c,s,i);
+      const isInd=c.type==='ind';
+      const det=(s.courseDetails&&s.courseDetails[cid])||{};
+      rows+=`<tr>
+        <td>
+          ${c.label}
+          ${isInd?`<div style="margin-top:6px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">📝 希望する内容・科目</div>
+            <textarea rows="2" placeholder="例：数学の二次方程式の復習、英語の長文読解など"
+              style="width:100%;font-size:11px;border:1px solid var(--border);padding:4px 6px;border-radius:2px;resize:vertical;font-family:inherit"
+              oninput="updateCourseDetail(${i},'${cid}','content',this.value)">${det.content||''}</textarea>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px;margin-bottom:3px;font-weight:600">📚 教材・テキスト</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="ind-mat-${i}-${cid}" value="own" ${!det.material||det.material==='own'?'checked':''} onchange="updateCourseDetail(${i},'${cid}','material','own')">
+                自分で用意する
+              </label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="ind-mat-${i}-${cid}" value="school" ${det.material==='school'?'checked':''} onchange="updateCourseDetail(${i},'${cid}','material','school')">
+                学校側に用意してほしい
+              </label>
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="ind-mat-${i}-${cid}" value="discuss" ${det.material==='discuss'?'checked':''} onchange="updateCourseDetail(${i},'${cid}','material','discuss')">
+                相談したい
+              </label>
+            </div>
+            <input type="text" placeholder="使用中のテキスト名など（任意）"
+              style="width:100%;margin-top:4px;font-size:11px;border:1px solid var(--border);padding:4px 6px;border-radius:2px;font-family:inherit"
+              oninput="updateCourseDetail(${i},'${cid}','materialNote',this.value)"
+              value="${det.materialNote||''}">
+          </div>`:''}
+          <div style="margin-top:8px;padding:6px 8px;background:#fef9c3;border:1px solid #fbbf24;border-radius:3px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;font-weight:600;color:#92400e">
+              <input type="checkbox" ${det.friendDisc?'checked':''} onchange="updateCourseDetail(${i},'${cid}','friendDisc',this.checked);updateAll()">
+              👫 お友達と一緒に受講する（-10%）
+            </label>
+            ${det.friendDisc?`<input type="text" placeholder="一緒に受講するお友達のお名前"
+              style="width:100%;margin-top:4px;font-size:11px;border:1px solid #fbbf24;padding:4px 6px;border-radius:2px;font-family:inherit;background:#fff"
+              oninput="updateCourseDetail(${i},'${cid}','friendName',this.value)"
+              value="${det.friendName||''}">`:''}
+          </div>
+        </td>
+        <td>${LEVEL_LABEL[c.level]}</td>
+        <td>${c.term}T（${c.date}）</td>
+        <td>${isInd?'個別':'グループ'}</td>
+        <td class="r">${fmtUSD(base)}</td>
+        <td class="r" style="color:var(--green)">${dr>0||det.friendDisc?`-${dr>0?dr+'%':''}${det.friendDisc?(dr>0?' ':'')+'友達-10%':''}`:'-'}</td>
+        <td class="r"><strong>${fmtUSD(calcItemPrice(c,s,i,det.friendDisc))}</strong></td>
+      </tr>`;
+    });
+
+    let discNotes=[];
+    if(sib>0)discNotes.push(`きょうだい割引 ${Math.round(sib*100)}%（${i+1}人目）`);
+    if(koma>0)discNotes.push(`コマ数割引 ${Math.round(koma*100)}%`);
+
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+        ${i+1}人目：${s.name}（${s.grade||'学年未入力'}）
+      </div>
+      <table class="inv-table">
+        <thead><tr><th>講座名</th><th>対象</th><th>ターム</th><th>種別</th><th class="r">単価</th><th class="r">割引</th><th class="r">金額</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          ${discNotes.length>0?`<tr class="disc-row"><td colspan="7" style="font-size:11px;padding:6px 10px">適用割引：${discNotes.join('　/　')}</td></tr>`:''}
+          <tr class="inv-table total-row">
+            <td colspan="6" style="text-align:right">小計</td>
+            <td class="r">${fmtUSD(stTotal)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+  });
+
+  if(!html)html='<div style="padding:20px;text-align:center;color:var(--muted)">講座を選択してください</div>';
+
+  // 合計行
+  html+=`<table class="inv-table" style="margin-top:4px">
+    <tfoot><tr class="inv-table total-row">
+      <td colspan="6" style="text-align:right;letter-spacing:.08em">全員の合計金額</td>
+      <td class="r">${fmtUSD(total)}</td>
+    </tr></tfoot>
+  </table>`;
+
+  cont.innerHTML=html;
+}
+
+function updateDiff(){
+  const paid=parseFloat(document.getElementById('paid-amount').value)||0;
+  const newTotal=calcGrandTotal();
+  const diff=Math.ceil(newTotal-paid);
+  const el=document.getElementById('diff-result');
+  if(diff<=0){el.textContent='$0';el.className='diff-result zero';}
+  else{el.textContent=fmtUSD(diff);el.className='diff-result';}
+}
+
+// ============================================================
+// TAB
+// ============================================================
+function goTab(t){
+  document.querySelectorAll('.nav-tab').forEach((el,i)=>el.classList.toggle('active',['brochure','pamphlet','timetable','invoice','request','admin'][i]===t));
+  document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('active'); p.style.display='none'; });
+  const pg=document.getElementById('pg-'+t);
+  if(pg){ pg.classList.add('active'); pg.style.display='block'; }
+  if(t==='invoice')renderInvoice();
+  if(t==='admin'){ document.getElementById('pg-admin').style.display='block'; }
+}
+
+// リクエストフォーム チェックボックストグル
+function toggleReqCat(label){
+  const cb=label.querySelector('input[type=checkbox]');
+  cb.checked=!cb.checked;
+  label.style.background=cb.checked?'var(--navy)':'#fff';
+  label.style.color=cb.checked?'#fff':'';
+  label.style.borderColor=cb.checked?'var(--navy)':'var(--border)';
+}
+function toggleReqTerm(label){
+  const cb=label.querySelector('input[type=checkbox]');
+  cb.checked=!cb.checked;
+  label.style.background=cb.checked?'var(--navy2)':'#fff';
+  label.style.color=cb.checked?'#fff':'';
+  label.style.borderColor=cb.checked?'var(--navy2)':'var(--border)';
+}
+
+async function sendRequest(){
+  const status=document.getElementById('req-status');
+  const btn=event.target;
+  const name=document.getElementById('req-name').value.trim();
+  const email=document.getElementById('req-email').value.trim();
+  const body=document.getElementById('req-body').value.trim();
+
+  if(!name||!email){status.className='status-msg status-ng';status.textContent='お名前とメールアドレスは必須です。';return;}
+  if(!body){status.className='status-msg status-ng';status.textContent='ご要望・詳細内容を入力してください。';return;}
+
+  const allChecked=[...document.querySelectorAll('#pg-request input[type=checkbox]')].filter(cb=>cb.checked).map(cb=>cb.value);
+  const grades=['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3'];
+  const termVals=['プレ（6/8〜21）','1T（6/22〜26）','2T（7/6〜10）','3T（7/13〜17）','4T（7/20〜24）','5T（7/27〜31）','6T（8/3〜7）','7T（8/10〜14）','8T（8/17〜21）','時期は問わない'];
+  const cats=allChecked.filter(v=>!grades.includes(v)&&!termVals.includes(v)).join('、')||'未選択';
+  const terms=allChecked.filter(v=>termVals.includes(v)).join('、')||'未指定';
+  const gradesSel=allChecked.filter(v=>grades.includes(v)).join('、')||'未指定';
+
+  const reqData={
+    type:'request',
+    parent_name:name,
+    reply_to:email,
+    phone:'（リクエスト）',
+    students_info:`学年：${gradesSel}`,
+    courses:`【リクエスト種類】${cats}\n【希望ターム】${terms}\n【対象学年】${gradesSel}\n\n【ご要望】\n${body}`,
+    total:'（リクエスト）',
+    note:'講座リクエスト',
+    submit_date:new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),
+  };
+
+  btn.disabled=true;btn.textContent='送信中...';
+
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(function(){
+        status.className='status-msg status-ok';
+        status.textContent='✅ リクエストを送信しました！ご要望ありがとうございます。できる限り対応いたします。';
+        btn.textContent='📨 送信済み';
+      })
+      .withFailureHandler(function(e){
+        status.className='status-msg status-ng';
+        status.textContent='送信エラー: '+e.message;
+        btn.disabled=false;btn.textContent='📨 リクエストを送信する';
+      })
+      .processRequest(reqData);
+  } else {
+    try{
+      const res=await fetch(getGasUrl(),{method:'POST',body:JSON.stringify(reqData)});
+      const result=await res.json();
+      if(result.status==='ok'){
+        status.className='status-msg status-ok';
+        status.textContent='✅ リクエストを送信しました！ご要望ありがとうございます。できる限り対応いたします。';
+        btn.textContent='📨 送信済み';
+      } else { throw new Error(result.message||'送信に失敗しました'); }
+    }catch(e){
+      status.className='status-msg status-ng';
+      status.textContent=`送信エラー: ${e.message}`;
+      btn.disabled=false;btn.textContent='📨 リクエストを送信する';
+    }
+  }
+}
+
+// ============================================================

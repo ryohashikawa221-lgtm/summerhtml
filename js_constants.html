@@ -1,0 +1,237 @@
+// ============================================================
+// 学年マスタ（ドロップダウン選択肢 + 対象区分の自動マッピング）
+// 表記揺れ（小5 / 小学5年 / 5年生 等）を一本化するため、保存値は左の value に統一
+// ============================================================
+const GRADE_OPTIONS=[
+  {value:'小1',label:'小学1年',level:'elem_lo'},
+  {value:'小2',label:'小学2年',level:'elem_lo'},
+  {value:'小3',label:'小学3年',level:'elem_lo'},
+  {value:'小4',label:'小学4年',level:'elem_hi'},
+  {value:'小5',label:'小学5年',level:'elem_hi'},
+  {value:'小6',label:'小学6年',level:'elem_hi'},
+  {value:'中1',label:'中学1年',level:'jhs'},
+  {value:'中2',label:'中学2年',level:'jhs'},
+  {value:'中3',label:'中学3年',level:'jhs'},
+  {value:'高1',label:'高校1年',level:'hs'},
+  {value:'高2',label:'高校2年',level:'hs'},
+  {value:'高3',label:'高校3年',level:'hs'}
+];
+
+// 既存テキスト（小学5年、5年生 等）を学年マスタの value（小5）に正規化
+function normalizeGrade(text){
+  if(!text) return '';
+  const t=String(text).trim();
+  // すでに正規化済み（小5 など）
+  if(GRADE_OPTIONS.find(o=>o.value===t)) return t;
+  // 「小5」「小学5」「小学校5年」「小学校5年生」など
+  let m=t.match(/(小|中|高)(?:学(?:校)?|校|等(?:学校)?)?\s*([1-6])/);
+  if(m){
+    const prefix=m[1];
+    const num=parseInt(m[2]);
+    if(prefix==='小'&&num>=1&&num<=6) return prefix+num;
+    if(prefix==='中'&&num>=1&&num<=3) return prefix+num;
+    if(prefix==='高'&&num>=1&&num<=3) return prefix+num;
+  }
+  // 「5年」「5年生」（プレフィックスなし）→ 学年範囲だけ拾うが小か中かは不明なのでそのまま返す
+  return '';
+}
+
+// 学年→対象区分の自動マッピング
+function gradeToLevel(grade){
+  const opt=GRADE_OPTIONS.find(o=>o.value===grade);
+  return opt?opt.level:'';
+}
+
+// ドロップダウン選択時のハンドラ：学年と対象区分を同時に更新し、講座を再描画
+function onGradeChange(i,value){
+  const s=students[i];
+  if(!s) return;
+  s.grade=value;
+  const lv=gradeToLevel(value);
+  if(lv) s.level=lv;
+  if(typeof saveDraftDebounced==='function')saveDraftDebounced();
+  renderCourses();
+  updateAll();
+}
+
+// ============================================================
+// 講座検索バー + 先生フィルタ
+// ============================================================
+let courseSearchKeyword=''; // 講座名・先生名のキーワード検索
+let courseTeacherFilter=''; // 先生名（完全一致）フィルタ
+function setSearchKeyword(v){
+  courseSearchKeyword=String(v||'').trim().toLowerCase();
+  renderCourses();
+}
+function setTeacherFilter(v){
+  courseTeacherFilter=String(v||'').trim();
+  renderCourses();
+}
+function clearCourseFilters(){
+  courseSearchKeyword='';
+  courseTeacherFilter='';
+  const s=document.getElementById('course-search');
+  if(s) s.value='';
+  const t=document.getElementById('course-teacher-filter');
+  if(t) t.value='';
+  renderCourses();
+}
+// 先生プルダウンを動的生成（COURSESから抽出）
+function _populateTeacherFilter(){
+  const sel=document.getElementById('course-teacher-filter');
+  if(!sel) return;
+  if(sel.options.length>1) return; // 既に生成済
+  const teachers=[...new Set(COURSES.map(c=>c.teacher).filter(Boolean))];
+  // ベテラン順でソート（既知の優先順）
+  const order=['坂本先生','嶋中先生','ゆい先生','宮嶋先生','八反田先生','橋川先生'];
+  teachers.sort((a,b)=>{
+    const ai=order.indexOf(a),bi=order.indexOf(b);
+    if(ai>=0&&bi>=0) return ai-bi;
+    if(ai>=0) return -1;
+    if(bi>=0) return 1;
+    return a.localeCompare(b);
+  });
+  teachers.forEach(t=>{
+    const opt=document.createElement('option');
+    opt.value=t;
+    opt.textContent=t;
+    sel.appendChild(opt);
+  });
+}
+
+// ============================================================
+// 時間割ビュー設定（生徒切替+色分け）
+// ============================================================
+// 生徒に割り当てる色パレット（順番に配色）
+const STUDENT_COLORS=[
+  {bg:'#dbeafe',border:'#1e40af',text:'#1e3a8a',name:'青'},   // 太郎=青
+  {bg:'#fce7f3',border:'#be185d',text:'#9d174d',name:'ピンク'},
+  {bg:'#dcfce7',border:'#15803d',text:'#14532d',name:'緑'},
+  {bg:'#fed7aa',border:'#c2410c',text:'#7c2d12',name:'橙'},
+  {bg:'#e9d5ff',border:'#7e22ce',text:'#581c87',name:'紫'},
+  {bg:'#fef3c7',border:'#a16207',text:'#713f12',name:'黄'}
+];
+function getStudentColor(idx){return STUDENT_COLORS[(idx||0)%STUDENT_COLORS.length];}
+let timetableViewStudent='all'; // 'all' or student index (number)
+function setTimetableView(val){
+  timetableViewStudent=val;
+  renderTimetable();
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let students=[];   // [{id, name, grade, level, courses:[id,...], preSlots:[{date,time},...]}]
+let activeStudent=0;
+let filterTerm='all';
+let filterType='all';
+let nextSid=1;
+
+// ============================================================
+// CAPACITY MANAGEMENT（定員管理）
+// ============================================================
+// courseId -> 現在の申込人数（ローカルセッション内でカウント）
+// window.storage が使える環境ではそちらも参照するが、
+// このHTMLはローカルファイルで動くため、まずセッション内の students から
+// リアルタイムにカウントする方式をメインとする。
+// 管理者が手動で上書きできるよう、storageにも保存する。
+
+let capacityOverrides={}; // {courseId: count} — 管理者入力の上書き値
+
+async function loadCapacityOverrides(){
+  try{
+    const r=await window.storage.get('capacity-overrides',true);
+    if(r&&r.value) capacityOverrides=JSON.parse(r.value);
+  }catch(e){capacityOverrides={};}
+}
+
+async function saveCapacityOverrides(){
+  try{
+    await window.storage.set('capacity-overrides',JSON.stringify(capacityOverrides),true);
+  }catch(e){}
+}
+
+function renderCapacityPanel(){
+  const container=document.getElementById('cap-inputs');
+  if(!container) return;
+  const capped=COURSES.filter((c,i,arr)=>
+    arr.findIndex(x=>x.id===c.id)===i
+  );
+  if(capped.length===0){container.innerHTML='<div style="font-size:12px;color:var(--muted)">定員制限のある講座はありません</div>';return;}
+  container.innerHTML=capped.map(c=>{
+    const max=getMaxStudents(c);
+    const val=capacityOverrides[c.id]||0;
+    const enrolled=getEnrolledCount(c.id);
+    const full=enrolled>=max;
+    return`<div style="background:#fff;border:1px solid var(--border);padding:8px 10px;border-radius:3px;${full?'border-left:3px solid var(--red)':''}">
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">${c.label}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${c.date} ${c.time} / 定員${max}人</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:10px;color:var(--muted);white-space:nowrap">既存申込数</label>
+        <input type="number" min="0" max="${max}" value="${val}"
+          style="width:60px;border:1px solid var(--border);padding:3px 6px;font-size:12px;border-radius:2px"
+          onchange="setCapacityOverride('${c.id}',this.value)">
+        <span style="font-size:11px;font-weight:700;color:${full?'var(--red)':'var(--green)'}">
+          ${enrolled}/${max}人 ${full?'🚫 満員':'✅'}
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+// コースの現在申込人数を返す
+// = セッション内でそのコースを選択している生徒数 + overrides
+// 外部（管理者が入力した既存申込数）のみを返す（カード色表示用）
+function getExternalEnrolled(cid){
+  return capacityOverrides[cid]||0;
+}
+
+// 定員チェック用（セッション内の選択も含む）
+function getEnrolledCount(cid){
+  const sessionCount=students.filter(s=>s.courses.includes(cid)).length;
+  const override=capacityOverrides[cid]||0;
+  return override+sessionCount;
+}
+
+// 定員を返す（未設定は12人デフォルト）
+function getMaxStudents(c){
+  return c.maxStudents||12;
+}
+
+function isFull(c){
+  if(enrollmentStatuses[c.id]==='停止') return true;
+  return getEnrolledCount(c.id)>=getMaxStudents(c);
+}
+
+// 残席ステータス（外部申込数のみで判定・自分の選択では色が変わらない）
+function seatStatus(c){
+  if(enrollmentStatuses[c.id]==='停止') return 'closed';
+  const enrolled=getExternalEnrolled(c.id);
+  const max=getMaxStudents(c);
+  const remaining=max-enrolled;
+  if(enrolled>=max) return 'full';
+  // 警告タイミングを後ろ倒しに：本当に残席が少ない時だけ表示する
+  // (オオカミ少年化を避けて希少性メッセージの信ぴょう性を保つ)
+  if(max<=3){
+    if(remaining<=1) return 'danger';
+    if(remaining<=2) return 'warning';
+  } else if(max<=6){
+    if(remaining<=1) return 'danger';
+    if(remaining<=2) return 'warning';
+  } else {
+    // 12人定員クラス：残り1人で「あとわずか」、残り3人で「残りわずか」
+    if(remaining<=1) return 'danger';
+    if(remaining<=3) return 'warning';
+  }
+  return 'ok';
+}
+
+// 管理者向け：既存申込数を上書き設定
+function setCapacityOverride(cid,count){
+  capacityOverrides[cid]=parseInt(count)||0;
+  saveCapacityOverrides();
+  updateAll();
+}
+
+

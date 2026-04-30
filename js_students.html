@@ -1,0 +1,167 @@
+// ============================================================
+// STUDENT MANAGEMENT
+// ============================================================
+function updateStudentHeader(i){
+  const s=students[i];
+  // 名前表示だけ更新（DOMを再生成しない）
+  const nameDisplay=document.querySelectorAll('.student-name-display')[i];
+  if(nameDisplay) nameDisplay.textContent=s.name||'氏名未入力';
+  // タブのボタンも更新
+  const tabs=document.querySelectorAll('#student-tabs .pill');
+  if(tabs[i]) tabs[i].textContent=s.name||`生徒${i+1}`;
+}
+
+function addStudent(){
+  const sid=nextSid++;
+  // 兄弟自動継承: 直前生徒から姓のみ引き継ぐ（補習校・AS生割引は引き継がない／
+  // 兄弟で在籍が異なるケースが多く、誤って割引適用 → 後から差額徴収を避けるため）
+  const lastStudent=students[students.length-1];
+  let inheritedName=`生徒${sid}`;
+  if(lastStudent){
+    const rawName=(lastStudent.name||'').trim();
+    // デフォルトの「生徒N」プレースホルダ名は継承元としない
+    const isPlaceholder=/^生徒\d+$/.test(rawName);
+    if(rawName&&!isPlaceholder){
+      const parts=rawName.split(/\s+/);
+      inheritedName=parts.length>1?parts[0]+' ':'';
+    } else if(students.length>0){
+      // 1人目が空 or プレースホルダのままなら2人目以降は空欄スタート
+      inheritedName='';
+    }
+  }
+  students.push({id:sid,name:inheritedName,grade:'',level:'',schoolDisc:false,courses:[],preSlots:[]});
+  activeStudent=students.length-1;
+  renderStudents();
+  updateAll();
+}
+
+function removeStudent(idx){
+  if(students.length<=1){alert('最低1人は必要です');return;}
+  students.splice(idx,1);
+  if(activeStudent>=students.length)activeStudent=students.length-1;
+  renderStudents();
+  updateAll();
+}
+
+function setActiveStudent(idx){
+  activeStudent=idx;
+  renderStudents();
+  renderCourses();
+}
+
+// 他の生徒の講座を現在の生徒にコピー
+function copyCoursesFromStudent(targetIdx){
+  if(students.length<2){
+    alert('他に生徒がいません');
+    return;
+  }
+  // コピー元の選択肢を作る
+  const candidates=students.map((s,i)=>({idx:i,name:s.name||'生徒'+(i+1),count:s.courses.length+s.preSlots.length}))
+    .filter(x=>x.idx!==targetIdx&&x.count>0);
+  if(candidates.length===0){
+    alert('コピー元になる、講座を選択している他の生徒がいません');
+    return;
+  }
+  // ドロップダウンが望ましいが prompt で十分
+  let promptMsg='どの生徒の講座をコピーしますか？\n番号を入力してください:\n\n';
+  candidates.forEach((x,i)=>{
+    promptMsg+=(i+1)+'. '+x.name+'（'+x.count+'講座）\n';
+  });
+  const choice=prompt(promptMsg,'1');
+  if(!choice) return;
+  const choiceIdx=parseInt(choice)-1;
+  if(!isFinite(choiceIdx)||choiceIdx<0||choiceIdx>=candidates.length){
+    alert('番号が不正です');
+    return;
+  }
+  const src=students[candidates[choiceIdx].idx];
+  const target=students[targetIdx];
+  // 学年/レベルが合わない講座は警告だけして全部コピー
+  let skippedConflict=0;
+  src.courses.forEach(cid=>{
+    if(target.courses.includes(cid))return; // 既に持っているならスキップ
+    // 時間帯重複チェック
+    const conflict=getConflict(targetIdx,cid);
+    if(conflict&&conflict.id!==cid){
+      skippedConflict++;
+      return;
+    }
+    target.courses.push(cid);
+    if(src.courseDetails&&src.courseDetails[cid]){
+      if(!target.courseDetails) target.courseDetails={};
+      // 詳細はコピーしない（個別なため）
+    }
+  });
+  // プレ講習も同様に
+  src.preSlots.forEach(sl=>{
+    if(target.preSlots.some(t=>t.key===sl.key))return;
+    target.preSlots.push({...sl});
+  });
+  let msg='✅ '+src.name+'の講座を'+target.name+'にコピーしました';
+  if(skippedConflict>0) msg+='\n⚠️ 時間帯重複により '+skippedConflict+' 講座はスキップしました';
+  alert(msg);
+  renderStudents();
+  renderCourses();
+  updateAll();
+}
+
+function renderStudents(){
+  const wrap=document.getElementById('students-wrap');
+  const tabs=document.getElementById('student-tabs');
+  wrap.innerHTML='';
+  tabs.innerHTML='';
+
+  students.forEach((s,i)=>{
+    const total=calcStudentTotal(i);
+    // card
+    const card=document.createElement('div');
+    card.className='student-card'+(i===activeStudent?' active-student':'');
+    const sc=getStudentColor(i);
+    card.innerHTML=`<div class="student-header" onclick="setActiveStudent(${i})" style="border-left:4px solid ${sc.border}">
+      <div class="student-num" style="background:${sc.border}">${i+1}</div>
+      <div class="student-name-display">${s.name||'氏名未入力'}</div>
+      <div class="student-summary">${s.courses.length+s.preSlots.length}講座　$${total.toFixed(0)}</div>
+      ${students.length>1?`<button onclick="event.stopPropagation();copyCoursesFromStudent(${i})" title="他の生徒の講座をコピー" style="background:#fff;border:1px solid var(--border);color:var(--navy);padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;font-family:inherit;margin-right:4px">📋 コピー</button>`:''}
+      <button class="student-del" onclick="event.stopPropagation();removeStudent(${i})">削除</button>
+    </div>
+    <div class="student-body">
+      <div class="student-fields">
+        <div class="field"><label>氏名</label>
+          <input value="${s.name}" placeholder="例：山田 太郎" oninput="students[${i}].name=this.value;updateStudentHeader(${i});if(typeof saveDraftDebounced==='function')saveDraftDebounced()"
+            onfocus="this.select()">
+        </div>
+        <div class="field"><label>学年</label>
+          <select onchange="onGradeChange(${i},this.value)">
+            <option value="">選択してください</option>
+            ${GRADE_OPTIONS.map(o=>`<option value="${o.value}" ${normalizeGrade(s.grade)===o.value?'selected':''}>${o.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>対象区分</label>
+          <select onchange="students[${i}].level=this.value;renderCourses();updateAll()">
+            <option value="">選択してください</option>
+            <option value="elem_lo" ${s.level==='elem_lo'?'selected':''}>小学低学年（1〜3年）</option>
+            <option value="elem_hi" ${s.level==='elem_hi'?'selected':''}>小学高学年（4〜6年）</option>
+            <option value="jhs"     ${s.level==='jhs'    ?'selected':''}>中学生</option>
+            <option value="hs"      ${s.level==='hs'     ?'selected':''}>高校生</option>
+          </select>
+          ${gradeLevelMismatch(s.grade,s.level)?'<span style="color:var(--red);font-size:11px;margin-top:2px">学年と対象区分が一致していません。確認してください</span>':''}
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:18px">
+            <input type="checkbox" ${s.schoolDisc?'checked':''} onchange="students[${i}].schoolDisc=this.checked;updateAll()" style="width:15px;height:15px">
+            <span style="font-size:12px">補習校・AS生割引（10%）</span>
+          </label>
+        </div>
+      </div>
+    </div>`;
+    wrap.appendChild(card);
+
+    // tab
+    const tab=document.createElement('button');
+    tab.className='pill'+(i===activeStudent?' on':'');
+    tab.textContent=s.name||`生徒${i+1}`;
+    tab.onclick=()=>setActiveStudent(i);
+    tabs.appendChild(tab);
+  });
+}
+

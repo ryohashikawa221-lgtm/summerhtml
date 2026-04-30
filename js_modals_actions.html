@@ -1,0 +1,459 @@
+// ============================================================
+// TOGGLE COURSE（時間帯重複チェック付き）
+// ============================================================
+function getConflict(si, newCid){
+  const s=students[si];
+  const newC=COURSES.find(x=>x.id===newCid);
+  if(!newC)return null;
+  // 同じターム・同じ時間帯に既に選択済みのコースがあるか
+  for(const cid of s.courses){
+    const c=COURSES.find(x=>x.id===cid);
+    if(c&&c.term===newC.term&&c.time===newC.time)return c;
+  }
+  return null;
+}
+
+// エラーバナー表示
+let conflictTimer=null;
+function showConflictError(msg){
+  let el=document.getElementById('conflict-error');
+  if(!el){
+    el=document.createElement('div');
+    el.id='conflict-error';
+    el.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#991b1b;color:#fff;padding:10px 20px;border-radius:4px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;max-width:90vw';
+    document.body.appendChild(el);
+  }
+  el.innerHTML=`⚠️ ${msg} <span style="cursor:pointer;opacity:.7;font-size:16px" onclick="document.getElementById('conflict-error').style.display='none'">✕</span>`;
+  el.style.display='flex';
+  clearTimeout(conflictTimer);
+  conflictTimer=setTimeout(()=>{el.style.display='none';},4000);
+}
+
+// 学年テキストから小学校の学年番号を抽出（小1〜小6）。該当しなければ null
+function extractElemGrade(gradeText){
+  if(!gradeText) return null;
+  const g=String(gradeText);
+  // 小1 / 小学1 / 小学校1 / 小学校1年生 など
+  let m=g.match(/小(?:学(?:校)?)?\s*([1-6])/);
+  if(m) return parseInt(m[1]);
+  // 「1年」「1年生」のみ（小プレフィックスなし）
+  m=g.match(/^\s*([1-6])\s*年/);
+  if(m) return parseInt(m[1]);
+  return null;
+}
+
+function toggleCourse(si,cid){
+  const s=students[si];
+  const idx=s.courses.indexOf(cid);
+  if(idx>=0){
+    s.courses.splice(idx,1);
+    if(s.courseDetails) delete s.courseDetails[cid];
+  } else {
+    const c=COURSES.find(x=>x.id===cid);
+    // 学年制限チェック（gradeMaxElem 指定があれば、小N年が上限を超えていないか確認）
+    if(c&&c.gradeMaxElem){
+      const g=extractElemGrade(s.grade);
+      if(g!==null&&g>c.gradeMaxElem){
+        showConflictError(`「${c.label}」は${c.gradeNote||'小'+c.gradeMaxElem+'まで'}の講座です。${s.grade}の生徒さんは選択できません。`);
+        return;
+      }
+    }
+    // 時間帯重複チェック
+    const conflict=getConflict(si,cid);
+  if(conflict && conflict.id !== cid){ // ← ここに「自分自身ではない」という条件を追加
+      const newC=COURSES.find(x=>x.id===cid);
+      showConflictError(`${newC.term}ターム ${newC.time} にすでに ${conflict.label} が選択されています`);
+      return;
+    }
+    s.courses.push(cid);
+    if(c&&c.type==='ind'){
+      if(!s.courseDetails) s.courseDetails={};
+      if(!s.courseDetails[cid]) s.courseDetails[cid]={content:'',material:'own'};
+    }
+  }
+  updateAll();
+}
+
+// 詳細フィールド更新
+function updatePreDetail(si,key,field,value){
+  const s=students[si];
+  const slot=s.preSlots.find(x=>x.key===key);
+  if(slot) slot[field]=value;
+}
+function updateCourseDetail(si,cid,field,value){
+  const s=students[si];
+  if(!s.courseDetails) s.courseDetails={};
+  if(!s.courseDetails[cid]) s.courseDetails[cid]={};
+  s.courseDetails[cid][field]=value;
+}
+
+function updateAll(){
+  renderStudents();
+  renderCourses();
+  renderTimetable();
+  renderInvoice();
+  renderCapacityPanel();
+  renderDiscountPanel();
+  const total=calcGrandTotal();
+  document.getElementById('hd-total').textContent=fmtUSD(total);
+  document.getElementById('tab-badge').textContent=students.reduce((s,st)=>s+st.courses.length+st.preSlots.length,0);
+  if(typeof saveDraftDebounced==='function')saveDraftDebounced();
+  // 印刷専用フォーマット請求書を常に最新状態に保つ（Cmd+P でも空にならないように）
+  if(typeof buildFormalInvoiceForPrint==='function')buildFormalInvoiceForPrint();
+  // 必須項目進捗バー更新
+  if(typeof updateProgressBar==='function')updateProgressBar();
+  // フローティング合計バー更新
+  if(typeof updateFloatingTotal==='function')updateFloatingTotal();
+}
+
+// ウェイティング登録モーダル
+function openWaitingModal(courseId){
+  const c=COURSES.find(x=>x.id===courseId);
+  if(!c){alert('講座が見つかりません');return;}
+  const s=students[activeStudent];
+  if(!s){alert('生徒を追加してから操作してください');return;}
+  const overlay=document.createElement('div');
+  overlay.id='waiting-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9997;padding:20px';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:480px;width:100%;border-radius:6px;border-top:4px solid #f97316;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:var(--navy);margin-bottom:6px">🕐 ウェイティング登録</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">満員の講座にウェイティング登録します。キャンセル発生時に学校から個別にご連絡いたします。</div>'+
+      '<div style="background:#fff7ed;border-left:3px solid #f97316;padding:10px 12px;margin-bottom:14px">'+
+        '<div style="font-size:11px;color:#9a3412">対象講座</div>'+
+        '<div style="font-size:13px;color:#1b2a4a;font-weight:700">'+_escHtml(c.label)+'</div>'+
+        '<div style="font-size:11px;color:#666;margin-top:2px">'+c.term+'T '+_escHtml(c.date||'')+' '+_escHtml(c.time||'')+'　'+_escHtml(c.teacher||'')+'</div>'+
+      '</div>'+
+      '<table style="width:100%;font-size:12px;line-height:1.7;border-collapse:collapse;margin-bottom:14px">'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600;width:30%">生徒名</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(s.name||'未入力')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">学年</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(s.grade||'未選択')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">保護者名</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-parent")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">メール</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-email")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">電話</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml((document.getElementById("f-tel")?.value||"").trim()||"(未入力)")+'</td></tr>'+
+      '</table>'+
+      '<div style="margin-bottom:12px">'+
+        '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">備考（任意）</label>'+
+        '<textarea id="wm-note" rows="2" placeholder="希望事項などあればご記入ください" style="width:100%;border:1px solid var(--border);padding:6px 8px;font-size:12px;border-radius:3px;font-family:inherit;outline:none;resize:vertical"></textarea>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+        '<button id="wm-cancel" style="padding:8px 18px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px">キャンセル</button>'+
+        '<button id="wm-submit" style="padding:8px 18px;background:#f97316;border:1px solid #f97316;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px;font-weight:700">この内容で登録する</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#wm-cancel').onclick=()=>{document.body.removeChild(overlay);};
+  overlay.querySelector('#wm-submit').onclick=()=>submitWaiting(courseId);
+}
+
+function submitWaiting(courseId){
+  const c=COURSES.find(x=>x.id===courseId);
+  const s=students[activeStudent];
+  const parent=(document.getElementById('f-parent')?.value||'').trim();
+  const email=(document.getElementById('f-email')?.value||'').trim();
+  if(!parent||!email){alert('保護者氏名とメールアドレスを入力してください');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){alert('メールアドレスの形式が不正です');return;}
+  if(!s.name||!s.grade){alert('生徒の氏名と学年を入力してください');return;}
+  const note=document.getElementById('wm-note')?.value||'';
+  const payload={
+    course_id:c.id,
+    course_label:c.label,
+    student_name:s.name,
+    student_grade:s.grade,
+    parent_name:parent,
+    email:email,
+    phone:(document.getElementById('f-tel')?.value||'').trim(),
+    note:note
+  };
+  const submitBtn=document.querySelector('#waiting-modal-overlay #wm-submit');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='送信中...';}
+  const onOk=()=>{
+    const o=document.getElementById('waiting-modal-overlay');
+    if(o) document.body.removeChild(o);
+    alert('✅ ウェイティングリストに登録しました。\n受付確認メールを送信しています。\nキャンセル発生時に学校から個別にご連絡いたします。');
+  };
+  const onErr=(msg)=>{
+    alert('❌ 登録エラー: '+(msg||'不明'));
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='この内容で登録する';}
+  };
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(r=>{ if(r&&r.status==='ok') onOk(); else onErr(r&&r.message); })
+      .withFailureHandler(e=>onErr(e&&e.message))
+      .addWaitingEntry(payload);
+  } else {
+    fetch(getGasUrl(),{method:'POST',body:JSON.stringify({type:'waiting',...payload})})
+      .then(r=>r.json())
+      .then(r=>{ if(r&&r.status==='ok') onOk(); else onErr(r&&r.message); })
+      .catch(e=>onErr(e&&e.message));
+  }
+}
+
+// 講座詳細モーダル
+function showCourseDetail(courseId){
+  const c=COURSES.find(x=>x.id===courseId);
+  if(!c) return;
+  const max=getMaxStudents(c);
+  const enrolled=getExternalEnrolled(c.id);
+  const remaining=Math.max(0,max-enrolled);
+  const status=enrolled>=max?'🚫 満員':enrolled>=max*0.7?'⚠ 残りわずか':'✅ 空きあり';
+  const levelLabel={'elem_lo':'小学低学年','elem_hi':'小学高学年','jhs':'中学生','hs':'高校生','all':'全学年'};
+  const levels=Array.isArray(c.level)?c.level:[c.level];
+  const levelDisplay=levels.map(l=>levelLabel[l]||l).join(' / ');
+  const base=unitPrice(c,'elem_lo'); // 仮：レベル別価格を表示
+  const overlay=document.createElement('div');
+  overlay.id='course-detail-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9995;padding:20px;overflow-y:auto';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:480px;width:100%;border-radius:6px;border-top:4px solid var(--gold);padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,0.25);max-height:90vh;overflow-y:auto">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:18px;color:var(--navy);margin-bottom:6px">'+_escHtml(c.label)+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">'+_escHtml(c.id)+'</div>'+
+      '<table style="width:100%;font-size:12px;line-height:1.7;border-collapse:collapse;margin-bottom:14px">'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600;width:30%">対象</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(levelDisplay)+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">タイプ</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+(c.type==='ind'?'個別':'グループ')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">ターム</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+(c.term?c.term+'期':'-')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">日程</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.date||'-')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">時間</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.time||'-')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">担当先生</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+_escHtml(c.teacher||'-')+'</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">定員</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+max+'名</td></tr>'+
+        '<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">残席状況</td><td style="padding:5px 8px;border-bottom:1px solid #eee">'+status+'（残り '+remaining+'名）</td></tr>'+
+        (c.note?'<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">備考</td><td style="padding:5px 8px;border-bottom:1px solid #eee;color:#d97706">'+_escHtml(c.note)+'</td></tr>':'')+
+        (c.gradeNote?'<tr><td style="padding:5px 8px;background:#f5f5f5;font-weight:600">学年制限</td><td style="padding:5px 8px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700">'+_escHtml(c.gradeNote)+'</td></tr>':'')+
+      '</table>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+        '<button id="cd-close" style="padding:8px 18px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:13px;cursor:pointer;border-radius:3px">閉じる</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#cd-close').onclick=()=>{document.body.removeChild(overlay);};
+  overlay.addEventListener('click',e=>{if(e.target===overlay) document.body.removeChild(overlay);});
+}
+
+// 送信完了後のおすすめアクション（カレンダー登録・印刷・新規申込）
+function showPostSendActions(){
+  const overlay=document.createElement('div');
+  overlay.id='post-send-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9996;padding:20px';
+  overlay.innerHTML=
+    '<div style="background:#fff;max-width:440px;width:100%;border-radius:6px;border-top:4px solid #22c55e;padding:24px;font-family:inherit;box-shadow:0 12px 40px rgba(0,0,0,0.25)">'+
+      '<div style="font-family:\'Shippori Mincho\',serif;font-size:20px;color:var(--navy);margin-bottom:8px;text-align:center">🎉 申込完了！</div>'+
+      '<div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:18px;text-align:center">確認メールをお送りしました。<br>次のおすすめアクションはこちら:</div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px">'+
+        '<button onclick="exportToICS();" style="padding:12px;background:#3b82f6;border:none;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:4px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px">📅 カレンダーに登録（.ics）</button>'+
+        '<button onclick="printInvoice();" style="padding:12px;background:#c9a84c;border:none;color:#fff;font-family:inherit;font-size:13px;cursor:pointer;border-radius:4px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px">🖨 請求書を印刷/PDF保存</button>'+
+        '<button onclick="document.getElementById(\'post-send-overlay\').remove()" style="padding:10px;background:#fff;border:1px solid #ccc;color:#666;font-family:inherit;font-size:12px;cursor:pointer;border-radius:4px">閉じる</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
+// 選択した講座を iCal 形式で書き出し（Google Calendar / Apple Calendar 対応）
+function exportToICS(){
+  const TZ='America/Detroit';
+  const events=[];
+  const pad=n=>String(n).padStart(2,'0');
+  const mkDate=(month,day,hh,mm)=>{
+    // 月日(M/D) + 時刻(HH:MM) → ローカル時刻
+    return '2026'+pad(month)+pad(day)+'T'+pad(hh)+pad(mm)+'00';
+  };
+  // 「6/22〜26」のような日程文字列を [{m,d}, ...] に展開
+  const expandDates=(dateStr)=>{
+    const m=String(dateStr||'').match(/(\d+)\/(\d+)〜(\d+)/);
+    if(!m) return [];
+    const month=+m[1],start=+m[2],end=+m[3];
+    const out=[];
+    for(let d=start;d<=end;d++) out.push({m:month,d:d});
+    return out;
+  };
+  // 「9:00〜10:30」のような時刻文字列を [hh,mm,hh,mm] に分解
+  const parseTime=(timeStr)=>{
+    const m=String(timeStr||'').match(/(\d+):(\d+)〜(\d+):(\d+)/);
+    if(!m) return null;
+    return {sh:+m[1],sm:+m[2],eh:+m[3],em:+m[4]};
+  };
+
+  students.forEach(s=>{
+    if(!s.level)return;
+    const name=s.name||'(生徒)';
+    s.courses.forEach(cid=>{
+      const c=COURSES.find(x=>x.id===cid);
+      if(!c)return;
+      const dates=expandDates(c.date);
+      const tm=parseTime(c.time);
+      if(!tm)return;
+      dates.forEach(d=>{
+        events.push({
+          uid:'summer2026-'+c.id+'-'+s.id+'-'+d.m+pad(d.d)+'@sundai-michigan',
+          dtstart:mkDate(d.m,d.d,tm.sh,tm.sm),
+          dtend:mkDate(d.m,d.d,tm.eh,tm.em),
+          summary:c.label+'（'+name+'）',
+          location:'駿台ミシガン国際学院',
+          description:c.teacher+' / '+c.term+'ターム'
+        });
+      });
+    });
+    // プレ講習
+    s.preSlots.forEach(sl=>{
+      const tm=parseTime(sl.time);
+      const m=String(sl.date||'').match(/(\d+)\/(\d+)/);
+      if(!tm||!m)return;
+      events.push({
+        uid:'summer2026-pre-'+s.id+'-'+sl.key+'@sundai-michigan',
+        dtstart:mkDate(+m[1],+m[2],tm.sh,tm.sm),
+        dtend:mkDate(+m[1],+m[2],tm.eh,tm.em),
+        summary:'プレ講習（'+name+'）',
+        location:'駿台ミシガン国際学院',
+        description:(sl.type==='ind'?'個別':'グループ')+(sl.content?' / '+sl.content:'')
+      });
+    });
+  });
+
+  if(events.length===0){
+    alert('カレンダーに登録できる講座がありません');
+    return;
+  }
+
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Sundai Michigan//Summer 2026//JP','CALSCALE:GREGORIAN'];
+  events.forEach(e=>{
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+e.uid);
+    lines.push('DTSTAMP:'+mkDate(4,30,0,0)+'Z');
+    lines.push('DTSTART;TZID='+TZ+':'+e.dtstart);
+    lines.push('DTEND;TZID='+TZ+':'+e.dtend);
+    lines.push('SUMMARY:'+e.summary.replace(/[,;\\]/g,'\\$&'));
+    lines.push('LOCATION:'+e.location);
+    lines.push('DESCRIPTION:'+e.description.replace(/[,;\\]/g,'\\$&'));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const ics=lines.join('\r\n');
+  const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='Summer2026_受講予定.ics';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); },100);
+}
+
+function updateFloatingTotal(){
+  const bar=document.getElementById('floating-total');
+  const amt=document.getElementById('floating-total-amount');
+  const cnt=document.getElementById('floating-total-count');
+  if(!bar||!amt) return;
+  const total=calcGrandTotal();
+  const courseCount=students.reduce((acc,s)=>acc+s.courses.length+s.preSlots.length,0);
+  amt.textContent=fmtUSD(total);
+  if(cnt) cnt.textContent=courseCount>0?'('+courseCount+'講座)':'';
+  // 講座が1つ以上選択されている場合のみ表示
+  bar.style.display=courseCount>0?'flex':'none';
+}
+
+function renderDiscountPanel(){
+  const s=students[activeStudent];
+  const panel=document.getElementById('discount-panel');
+  if(!panel)return;
+  if(!s||!s.level||(s.courses.length===0&&s.preSlots.length===0)){
+    panel.style.display='none';
+    return;
+  }
+  panel.style.display='block';
+
+  // コマ数計算
+  const summerN=s.courses.length;
+  const preN=s.preSlots.length;
+  const total=summerN*5+preN;
+  const koma=komaDiscRate(activeStudent);
+
+  // 次のランクまでの残りコマ数
+  const nextThreshold=total<6?6:total<11?11:total<16?16:null;
+  const remaining=nextThreshold?nextThreshold-total:null;
+  const nextRate=total<6?10:total<11?20:total<16?30:null;
+
+  // コマ数割引表示
+  const komaEl=document.getElementById('dp-koma');
+  const detailText=`通常 ${summerN}講座（${summerN*5}コマ相当）${preN>0?` ＋ プレ ${preN}コマ`:''}　合計 ${total}コマ`;
+  if(koma>0){
+    komaEl.innerHTML=`
+      <span style="font-size:11px;color:var(--muted)">コマ数割引</span>
+      <span style="background:var(--green);color:#fff;font-size:13px;font-weight:700;padding:3px 10px;border-radius:3px">-${Math.round(koma*100)}% 適用中</span>
+      <span style="font-size:11px;color:var(--muted)">${detailText}</span>`;
+  } else {
+    komaEl.innerHTML=`
+      <span style="font-size:11px;color:var(--muted)">コマ数割引</span>
+      <span style="background:#f0f0f0;color:#888;font-size:12px;font-weight:600;padding:3px 10px;border-radius:3px">未適用</span>
+      <span style="font-size:11px;color:var(--muted)">${detailText}</span>`;
+  }
+
+  // 次のランク予告バー（残りコマをプレ/通常で分かりやすく）
+  const progEl=document.getElementById('dp-progress');
+  if(remaining&&nextRate){
+    const pct=Math.round((total/nextThreshold)*100);
+    const remainPre=remaining; // プレコマ換算
+    const remainSummer=Math.ceil(remaining/5); // 通常講座換算
+    const hintText=remainSummer===1&&remainPre>=5
+      ?`通常講座あと${remainSummer}講座　または　プレ講習あと${remainPre}コマ`
+      :`プレ講習あと${remainPre}コマ　または　通常講座あと${remainSummer}講座`;
+    progEl.style.display='block';
+    progEl.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--gold);font-weight:700">🎯 -${nextRate}% まで：${hintText}</span>
+        <div style="flex:1;min-width:100px;background:#eee;border-radius:4px;height:6px;overflow:hidden">
+          <div style="width:${pct}%;background:linear-gradient(to right,var(--gold),var(--gold2));height:100%;border-radius:4px;transition:width .3s"></div>
+        </div>
+        <span style="font-size:10px;color:var(--muted)">${total}/${nextThreshold}コマ</span>
+      </div>`;
+  } else if(!remaining){
+    progEl.style.display='block';
+    progEl.innerHTML=`<span style="font-size:11px;color:var(--green);font-weight:700">🏆 最大割引 -30% 適用中！</span>`;
+  } else {
+    progEl.style.display='none';
+  }
+
+  // きょうだい割引表示
+  const sibEl=document.getElementById('dp-sibling');
+  const sib=siblingDiscRate(activeStudent);
+  if(students.length>=2){
+    sibEl.style.display='block';
+    sibEl.innerHTML=sib>0
+      ?`<span style="background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px">👨‍👩‍👧 きょうだい割引 -${Math.round(sib*100)}% 適用</span>`
+      :`<span style="background:#f0f0f0;color:#666;font-size:11px;padding:3px 8px;border-radius:3px">👨‍👩‍👧 きょうだい割引 適用されます</span>`;
+  } else {
+    sibEl.style.display='none';
+  }
+
+  // 補習校割引表示
+  const schoolEl=document.getElementById('dp-school');
+  if(s.schoolDisc){
+    schoolEl.style.display='block';
+    schoolEl.innerHTML=`<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px">🏫 補習校・AS生割引 -10% 適用</span>`;
+  } else {
+    schoolEl.style.display='none';
+  }
+
+  // #18 詳細価格内訳（合計の計算ステップを表示）
+  const breakdownEl=document.getElementById('dp-breakdown');
+  if(breakdownEl){
+    const rawBase=rawStudentTotal(activeStudent);
+    const stTotal=calcStudentTotal(activeStudent);
+    const sibAmount=Math.round(rawBase*sib);
+    const schoolAmount=s.schoolDisc?Math.round(rawBase*(1-sib)*0.10):0;
+    const komaAmount=Math.round(rawBase*(1-sib)*(1-(s.schoolDisc?0.10:0))*koma);
+    if(rawBase>0&&stTotal!==rawBase){
+      const lines=['<div style="font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600">💡 価格の内訳（'+(s.name||'生徒')+'）</div>',
+        '<div style="font-size:11px;color:#444;line-height:1.7">',
+        '<span style="display:inline-block">定価 '+fmtUSD(rawBase)+'</span>'];
+      if(sib>0) lines.push('<span style="color:#1e40af"> → きょうだい-'+Math.round(sib*100)+'% (-'+fmtUSD(sibAmount)+')</span>');
+      if(s.schoolDisc) lines.push('<span style="color:#166534"> → 補習校-10% (-'+fmtUSD(schoolAmount)+')</span>');
+      if(koma>0) lines.push('<span style="color:var(--green)"> → コマ数-'+Math.round(koma*100)+'% (-'+fmtUSD(komaAmount)+')</span>');
+      lines.push(' <strong style="color:var(--navy);font-size:12px">= '+fmtUSD(stTotal)+'</strong>');
+      lines.push('</div>');
+      breakdownEl.innerHTML=lines.join('');
+      breakdownEl.style.display='block';
+    } else {
+      breakdownEl.style.display='none';
+    }
+  }
+}
+
+// ============================================================

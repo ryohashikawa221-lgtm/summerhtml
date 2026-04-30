@@ -1,0 +1,328 @@
+// ============================================================
+// RENDER COURSES（先生列固定・時間帯行グリッド形式）
+// ============================================================
+const COURSE_TIME_ORDER=['9:00〜10:30','10:30〜12:00','12:30〜14:00','14:00〜15:30','15:30〜17:00'];
+
+function renderCourses(){
+  // 先生フィルタのプルダウンを初回のみ生成
+  _populateTeacherFilter();
+
+  const container=document.getElementById('course-list');
+  const s=students[activeStudent];
+  if(!s){container.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">生徒を追加してください</div>';return;}
+  if(!s.level){container.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">対象区分を選択してください</div>';return;}
+
+  let html='';
+
+  // プレ講習カレンダー（検索キーワード/先生フィルタ未指定時のみ）
+  if(filterTerm==='all'||filterTerm==='pre'){
+    if(filterType==='all'||filterType==='group'){
+      if(!courseSearchKeyword&&!courseTeacherFilter){
+        html+=renderPreCalendar(s);
+      }
+    }
+  }
+
+// 通常コース
+  let filtered = COURSES.filter(c => {
+    if (filterTerm !== 'all' && String(c.term) !== String(filterTerm)) return false;
+    if (filterType === 'group' && c.type !== 'group') return false;
+    if (filterType === 'ind' && c.type !== 'ind') return false;
+    if (filterType === 'eiken' && !c.id.startsWith('eiken')) return false;
+
+    // 学年レベルの判定（配列対応）
+const levels = Array.isArray(c.level) ? c.level : [c.level];
+if (!levels.includes('all') && !levels.includes(s.level)) return false;
+
+    // 先生フィルタ
+    if (courseTeacherFilter && c.teacher !== courseTeacherFilter) return false;
+    // キーワード検索（講座名・先生名・備考に対する部分一致）
+    if (courseSearchKeyword) {
+      const haystack = (String(c.label||'') + ' ' + String(c.teacher||'') + ' ' + String(c.note||'')).toLowerCase();
+      if (haystack.indexOf(courseSearchKeyword) === -1) return false;
+    }
+    
+    return true; 
+  });
+
+  // ターム別にグループ化
+  const byTerm={};
+  filtered.forEach(c=>{
+    const k=`${c.term}`;
+    if(!byTerm[k])byTerm[k]=[];
+    byTerm[k].push(c);
+  });
+
+  // 各タームを先生列×時間帯行のグリッドで表示
+  const termKeys=Object.keys(byTerm).sort((a,b)=>{
+    const ia=a==='pre'?0:parseInt(a);
+    const ib=b==='pre'?0:parseInt(b);
+    return ia-ib;
+  });
+
+  termKeys.forEach(termKey=>{
+    const courses=byTerm[termKey];
+    const termLabel=termKey==='pre'?'プレ講習':`${termKey}ターム`;
+    const termDate=courses[0]?.date||'';
+
+    // このタームで使われている先生（固定順）
+    const usedTeachers=TEACHERS.filter(tc=>courses.some(c=>c.teacher===tc||c.teacher.startsWith(tc)));
+    // 常に全5コマを表示
+    const allTimes=COURSE_TIME_ORDER;
+
+    // cells[time][teacher] = [course, ...]
+    const cells={};
+    allTimes.forEach(t=>{cells[t]={};usedTeachers.forEach(tc=>{cells[t][tc]=[];});});
+    courses.forEach(c=>{
+      const tc=usedTeachers.find(t=>c.teacher===t||c.teacher.startsWith(t))||usedTeachers[0];
+      if(tc&&cells[c.time]&&cells[c.time][tc]!==undefined) cells[c.time][tc].push(c);
+    });
+
+    if(usedTeachers.length===0) return;
+
+    html+=`<div class="sec">
+      <div class="sec-head"><h3>${termLabel}（${termDate}）</h3><div class="sec-hr"></div></div>
+      <div style="overflow-x:auto">
+      <table style="border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--border);margin-bottom:4px;table-layout:fixed">
+        <colgroup>
+          <col style="width:90px">
+          ${allTimes.map(()=>'<col style="width:20%">').join('')}
+        </colgroup>
+        <thead><tr>
+          <th style="background:var(--navy);color:#fff;padding:6px 8px;font-size:11px;text-align:center">先生</th>
+          ${allTimes.map(t=>`<th style="background:var(--navy);color:#fff;padding:6px 8px;font-size:11px;text-align:center">${t}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${usedTeachers.map(tc=>`<tr>
+            <td style="border:1px solid var(--border);padding:5px 8px;font-size:11px;font-weight:700;text-align:center;
+              background:${(TEACHER_COLOR[tc]||'background:#eee;color:#333').split(';')[0].replace('background:','')};
+              color:${(TEACHER_COLOR[tc]||'background:#eee;color:#333').split(';')[1]?.replace('color:','')?.trim()||'#333'};
+              white-space:nowrap;vertical-align:middle">${tc}</td>
+            ${allTimes.map(slot=>{
+              const coursesHere=cells[slot]?.[tc]||[];
+              if(coursesHere.length===0) return`<td style="border:1px solid var(--border);background:#f7f7f7"></td>`;
+              return`<td style="border:1px solid var(--border);padding:3px;vertical-align:top">
+                ${coursesHere.map(c=>{
+                  const on=s.courses.includes(c.id);
+                  const full=!on&&isFull(c);
+                  const status=seatStatus(c);
+                  const base=unitPrice(c,s.level);
+                  const fp=calcItemPrice(c,s,activeStudent);
+                  const koma=komaDiscRate(activeStudent);
+                  const dRate=on&&koma>0?Math.round(koma*100):0;
+
+                  // 残席ステータス別スタイル定義
+                  const statusStyle={
+                    ok:     {bar:'#22c55e', bg:'#fff',        border:'var(--border)', label:'',               labelColor:''},
+                    warning:{bar:'#f97316', bg:'#fff7ed',     border:'#f97316',       label:'残りわずか',      labelColor:'#c2410c'},
+                    danger: {bar:'#ef4444', bg:'#fef2f2',     border:'#ef4444',       label:'あとわずか！',    labelColor:'#b91c1c'},
+                    full:   {bar:'#9ca3af', bg:'#f3f4f6',     border:'#d1d5db',       label:'定員に達しました',labelColor:'#6b7280'},
+                    closed: {bar:'#6366f1', bg:'#eef2ff',     border:'#6366f1',       label:'募集を締め切りました',labelColor:'#4338ca'},
+                  };
+                  const ss=full?statusStyle[status==='closed'?'closed':'full']:statusStyle[status]||statusStyle.ok;
+
+                  if(full){
+                    return`<div style="border-radius:3px;margin:2px;overflow:hidden;border:1.5px solid ${ss.border};background:${ss.bg}">
+                      <div style="height:4px;background:${ss.bar}"></div>
+                      <div style="padding:5px 7px">
+                        <div style="font-size:11px;font-weight:600;color:#6b7280">${c.label}</div>
+                        <div style="font-size:10px;color:${ss.labelColor};font-weight:700;margin-top:3px">🚫 ${ss.label}</div>
+                        ${status!=='closed'?`<button onclick="event.stopPropagation();openWaitingModal('${c.id}')" style="margin-top:5px;width:100%;padding:4px 6px;background:#fff;border:1px solid ${ss.border};color:${ss.labelColor};font-size:10px;font-weight:700;border-radius:3px;cursor:pointer;font-family:inherit">🕐 ウェイティング登録</button>`:''}
+                      </div>
+                    </div>`;
+                  }
+
+                  return`<div onclick="toggleCourse(${activeStudent},'${c.id}')"
+                    style="border-radius:3px;margin:2px;overflow:hidden;cursor:pointer;transition:.15s;
+                    border:1.5px solid ${on?'var(--navy)':ss.border};
+                    background:${on?'var(--navy)':ss.bg}">
+                    <div style="height:4px;background:${on?'var(--gold)':ss.bar}"></div>
+                    <div style="display:flex">
+                      <div style="width:3px;flex-shrink:0;background:${TEACHER_COLOR[c.teacher]?.split(';')[0].replace('background:','').trim()||'#ccc'}"></div>
+                      <div style="padding:5px 7px;flex:1">
+                        <div style="font-size:11px;font-weight:600;color:${on?'#fff':'var(--text)'};display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                          <span>${c.label}${on?' ✓':''}</span>
+                          ${(()=>{const ec=getExternalEnrolled(c.id);const max=getMaxStudents(c);if(ec>=Math.max(3,max*0.6)&&!on)return '<span style="font-size:9px;color:#fff;background:#ef4444;padding:1px 5px;border-radius:8px;font-weight:700">🔥 人気</span>';return '';})()}
+                          <span class="course-info-btn" onclick="event.stopPropagation();showCourseDetail('${c.id}')" style="cursor:pointer;color:${on?'rgba(255,255,255,.7)':'#888'};font-size:11px;margin-left:auto" title="講座詳細">ⓘ</span>
+                        </div>
+                        ${ss.label&&!on?`<div style="font-size:9px;color:${ss.labelColor};font-weight:700;margin-top:1px">⚠ ${ss.label}</div>`:''}
+                        ${c.note?`<div style="font-size:9px;color:${on?'rgba(255,255,255,.6)':'#d97706'};margin-top:1px">${c.note}</div>`:''}
+                        ${c.gradeNote?`<div style="font-size:9px;color:${on?'rgba(255,255,255,.7)':'#b91c1c'};font-weight:700;margin-top:1px">${c.gradeNote}</div>`:''}
+                        <div style="font-size:10px;margin-top:3px;color:${on?'rgba(255,255,255,.75)':'var(--muted)'}">
+                          ${on?fmtUSD(fp)+(dRate>0?` <span style="color:#86efac;font-weight:700">-${dRate}%</span>`:''):fmtUSD(base)}
+                          <span style="font-size:9px;opacity:.6">${c.teacher}</span>
+                        </div>
+                        ${on ? `
+                        <div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,255,255,.2)" onclick="event.stopPropagation()">
+                          <div style="color:rgba(255,255,255,.6);margin-bottom:4px;font-size:9px">※以下の受講を希望する場合はチェックを入れてください</div>
+                          ${isZoomAllowed(c,s.level)?`
+                          <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <div style="cursor:pointer;display:flex;align-items:center;gap:3px" onclick="handleZoomCheck(event,'${c.id}','zoom')">
+                              <input type="checkbox"
+                                ${(s.zoomType&&s.zoomType[c.id]==='zoom')?'checked':''}
+                                onclick="event.preventDefault()" style="cursor:pointer">
+                              <span style="color:#fff">ZOOM受講</span>
+                            </div>
+                            <div style="cursor:pointer;display:flex;align-items:center;gap:3px" onclick="handleZoomCheck(event,'${c.id}','rec')">
+                              <input type="checkbox"
+                                ${(s.zoomType&&s.zoomType[c.id]==='rec')?'checked':''}
+                                onclick="event.preventDefault()" style="cursor:pointer">
+                              <span style="color:#fff">録画受講</span>
+                            </div>
+                          </div>
+                          ${(s.zoomType&&(s.zoomType[c.id]==='zoom'||s.zoomType[c.id]==='rec'))?`
+                          <div style="margin-top:5px">
+                            <div style="display:flex;gap:6px;margin-bottom:3px">
+                              <label style="cursor:pointer;display:flex;align-items:center;gap:3px">
+                                <input type="radio" name="zmscope_${c.id}_${activeStudent}" value="all"
+                                  onchange="setZoomScope('${c.id}','${c.date||''}',this.value)"
+                                  ${!(s.zoomScope&&s.zoomScope[c.id])||s.zoomScope[c.id]==='all'?'checked':''}>
+                                <span style="color:rgba(255,255,255,.8)">全日</span>
+                              </label>
+                              <label style="cursor:pointer;display:flex;align-items:center;gap:3px">
+                                <input type="radio" name="zmscope_${c.id}_${activeStudent}" value="dates"
+                                  onchange="setZoomScope('${c.id}','${c.date||''}',this.value)"
+                                  ${s.zoomScope&&s.zoomScope[c.id]==='dates'?'checked':''}>
+                                <span style="color:rgba(255,255,255,.8)">日付指定</span>
+                              </label>
+                            </div>
+                            ${s.zoomScope&&s.zoomScope[c.id]==='dates'?`
+                            <div style="display:flex;gap:3px;flex-wrap:wrap">
+                              ${getTermDates(c.date||'').map(d=>`
+                              <label style="cursor:pointer;background:${(s.zoomDates&&s.zoomDates[c.id]&&s.zoomDates[c.id].includes(d))?'#c9a84c':'rgba(255,255,255,.15)'};color:#fff;padding:2px 5px;border-radius:2px;font-size:9px">
+                                <input type="checkbox" style="display:none" onchange="toggleZoomDate('${c.id}','${d}',this.checked)"
+                                  ${s.zoomDates&&s.zoomDates[c.id]&&s.zoomDates[c.id].includes(d)?'checked':''}>
+                                ${d}
+                              </label>`).join('')}
+                            </div>`:''}
+                          </div>`:''}
+                          `:''}
+                        </div>` : ''}
+                      </div>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
+  });
+
+  if(!html)html='<div style="padding:30px;text-align:center;color:var(--muted)">該当する講座がありません</div>';
+  container.innerHTML=html;
+}
+
+// ============================================================
+// PRE CALENDAR
+// 列：日付（全日程横並び）
+// 行：2行のみ
+//   左ヘッダー = 平日の時間（13:00〜14:30 / 14:30〜16:00）
+//   右ヘッダー = 日曜の時間（14:00〜15:30 / 15:30〜17:00）
+// ============================================================
+function renderPreCalendar(s){
+  const type='group';
+  const base=prePricePerKoma(type,s.level);
+  const koma=komaDiscRate(activeStudent);
+  const dRate=koma>0?Math.round(koma*100):0;
+
+  function slotCell(d,slot){
+    const key=`${d.date}|${slot}`;
+    const on=s.preSlots.some(x=>x.key===key);
+    const fp=Math.ceil(base*(1-koma));
+    return`<td style="border:1px solid var(--border);padding:3px;text-align:center;cursor:pointer;
+      background:${on?'var(--navy)':'#fff'};transition:.12s;min-width:60px"
+      onclick="togglePre(${activeStudent},'${key}','${d.date}','${slot}','${type}')">
+      <div style="font-size:10px;font-weight:600;color:${on?'#fff':'var(--text)'}">
+        ${on?'✓':'選択'}
+      </div>
+      <div style="font-size:9px;color:${on?'rgba(255,255,255,.75)':'var(--muted)'}">
+        ${on?fmtUSD(fp)+(dRate>0?` -${dRate}%`:''):fmtUSD(base)}
+      </div>
+    </td>`;
+  }
+
+  function emptyCell(){
+    return`<td style="border:1px solid var(--border);background:#f0f0f0"></td>`;
+  }
+
+  // 全日程を1つのテーブルで表示
+  const allDates=PRE_DATES; // 6/8〜6/21（6/13除く）
+
+  const tableHTML=`<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;background:#fff;border:1px solid var(--border)">
+      <thead>
+        <tr>
+          <!-- 左端：平日ラベル -->
+          <th rowspan="2" style="background:var(--navy2);color:#fff;padding:6px 10px;font-size:10px;text-align:center;white-space:nowrap;writing-mode:vertical-lr;width:36px">
+            平日
+          </th>
+          <!-- 日付列ヘッダー -->
+          ${allDates.map(d=>`<th style="background:${d.dow==='日'?'#991b1b':'var(--navy2)'};color:#fff;
+            padding:5px 4px;font-size:10px;text-align:center;min-width:60px">
+            ${d.date}<br><span style="font-size:9px;font-weight:300">${d.dow}</span>
+          </th>`).join('')}
+          <!-- 右端：日曜ラベル -->
+          <th rowspan="2" style="background:#991b1b;color:#fff;padding:6px 10px;font-size:10px;text-align:center;white-space:nowrap;writing-mode:vertical-lr;width:36px">
+            日曜
+          </th>
+        </tr>
+        <tr>
+          ${allDates.map(d=>`<th style="background:${d.dow==='日'?'#fecaca':'#e8edf5'};color:${d.dow==='日'?'#991b1b':'var(--navy)'};
+            padding:3px 2px;font-size:8px;text-align:center">
+            ${d.dow==='日'?'橋川先生':'全先生'}
+          </th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 行1：13:00〜14:30（平日）/ 14:00〜15:30（日曜） -->
+        <tr>
+          <td style="border:1px solid var(--border);padding:4px 6px;font-size:9px;font-weight:700;text-align:right;background:var(--cream2);white-space:nowrap;color:var(--navy2)">
+            13:00〜14:30
+          </td>
+          ${allDates.map(d=>{
+            if(d.dow==='日') return slotCell(d,'14:00〜15:30');
+            return slotCell(d,'13:00〜14:30');
+          }).join('')}
+          <td style="border:1px solid var(--border);padding:4px 6px;font-size:9px;font-weight:700;text-align:left;background:var(--cream2);white-space:nowrap;color:#991b1b">
+            14:00〜15:30
+          </td>
+        </tr>
+        <!-- 行2：14:30〜16:00（平日）/ 15:30〜17:00（日曜） -->
+        <tr>
+          <td style="border:1px solid var(--border);padding:4px 6px;font-size:9px;font-weight:700;text-align:right;background:var(--cream2);white-space:nowrap;color:var(--navy2)">
+            14:30〜16:00
+          </td>
+          ${allDates.map(d=>{
+            if(d.dow==='日') return slotCell(d,'15:30〜17:00');
+            return slotCell(d,'14:30〜16:00');
+          }).join('')}
+          <td style="border:1px solid var(--border);padding:4px 6px;font-size:9px;font-weight:700;text-align:left;background:var(--cream2);white-space:nowrap;color:#991b1b">
+            15:30〜17:00
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+
+  return`<div class="sec">
+    <div class="sec-head"><h3>プレ講習（6/8〜6/21）</h3><div class="sec-hr"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.8">
+      <span style="color:var(--navy2);font-weight:700">平日</span>：13:00〜14:30 / 14:30〜16:00　　
+      <span style="color:#991b1b;font-weight:700">日曜</span>：14:00〜15:30 / 15:30〜17:00（橋川先生のみ）<br>
+      選択中：<strong>${s.preSlots.length}コマ</strong>
+    </div>
+    ${tableHTML}
+  </div>`;
+}
+
+function togglePre(si,key,date,time,type){
+  const s=students[si];
+  const idx=s.preSlots.findIndex(x=>x.key===key);
+  if(idx>=0)s.preSlots.splice(idx,1);
+  else s.preSlots.push({key,date,time,type,content:'',material:'own'});
+  updateAll();
+}
+

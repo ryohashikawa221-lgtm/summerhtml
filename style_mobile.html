@@ -1,0 +1,60 @@
+@media (max-width:600px){
+  /* ヘッダー */
+  .header-inner{padding:10px 12px}
+  .logo-en{font-size:9px}
+  .logo-ja{font-size:15px}
+  .nav-tab{padding:8px 10px;font-size:11px}
+  .main{padding:10px}
+
+  /* 生徒登録フォーム：3列→1列 */
+  .student-fields{grid-template-columns:1fr!important}
+
+  /* フィルターバー：折り返し */
+  .filter-bar{gap:5px;padding:8px 10px}
+  .pill{padding:4px 8px;font-size:11px}
+
+  /* 講座テーブル：横スクロール */
+  .sec table{min-width:500px}
+
+  /* diff-grid：3列→1列 */
+  .diff-grid{grid-template-columns:1fr!important}
+
+  /* form-grid：2列→1列 */
+  .form-grid{grid-template-columns:1fr!important}
+
+  /* ejs-cfg：3列→1列 */
+  .ejs-cfg{grid-template-columns:1fr!important}
+
+  /* 請求書ヘッダー：縦並び */
+  .inv-head{flex-direction:column;gap:10px;padding:16px}
+  .inv-school{text-align:left}
+  .inv-body{padding:14px}
+  .inv-title{font-size:18px}
+
+  /* 請求書テーブル：横スクロール */
+  .inv-table{font-size:11px}
+  .inv-table th,.inv-table td{padding:5px 6px}
+
+  /* ボタン行 */
+  .btn-row{flex-direction:column}
+  .btn-row .btn{width:100%;text-align:center}
+
+  /* スタンプ合計バー */
+  .total-bar{padding:8px 12px;gap:8px}
+  .total-bar-amount{font-size:18px}
+
+  /* リクエストページのターム・学年チップ */
+  #req-cats,#req-terms,#req-grades{gap:5px}
+
+  /* タップ範囲拡大（指で押しやすく） */
+  button,.btn,.pill,select,input[type="checkbox"],input[type="radio"]{min-height:38px}
+  .btn-sm,.pill{min-height:32px}
+  /* 講座カードの内側余白を広めに */
+  .sec table td{padding:8px 10px}
+  /* 申込フォームの入力欄を大きく */
+  .form-field input,.form-field select,.form-field textarea{font-size:14px;padding:10px 12px}
+  /* フローティング合計バーの分、本体下に余白 */
+  body{padding-bottom:60px}
+  /* 検索バーのレイアウト調整 */
+  #course-search{font-size:13px}
+}

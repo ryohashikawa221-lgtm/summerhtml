@@ -1,0 +1,209 @@
+// Phase U-3-A 1-3 (B): 連打防止フラグ（送信中の二重発火を防ぐ）
+let _sendInFlight=false;
+
+async function sendEmail(){
+  // 連打防止：既に送信中なら何もしない
+  if(_sendInFlight){
+    console.log('Send already in flight, ignoring duplicate click');
+    return;
+  }
+  const status=document.getElementById('send-status');
+  const btn=document.getElementById('btn-send');
+  const parent=document.getElementById('f-parent').value;
+  const email=document.getElementById('f-email').value;
+  if(!parent||!email){status.className='status-msg status-ng';status.textContent='保護者氏名とメールアドレスは必須です。';return;}
+  if(students.every(s=>s.courses.length===0&&s.preSlots.length===0)){status.className='status-msg status-ng';status.textContent='講座が選択されていません。';return;}
+  if(!getGasUrl()){status.className='status-msg status-ng';status.textContent='送信先URLが設定されていません。管理者にお問い合わせください。';return;}
+
+  _sendInFlight=true;
+  btn.disabled=true;
+  btn.style.cursor='wait';
+  btn.textContent='送信中... しばらくお待ちください';
+  status.className='status-msg';
+  status.textContent='';
+  const params={
+    type:'enrollment',
+    parent_name:parent,
+    reply_to:email,
+    phone:document.getElementById('f-tel').value,
+    emergency_tel:document.getElementById('f-emergency-tel')?.value||'',
+    emergency_rel:document.getElementById('f-emergency-rel')?.value||'',
+    students_info:students.map(s=>`${s.name}（${s.grade}）`).join('、'),
+    courses:buildEmailBody(),
+    total:fmtUSD(calcGrandTotal()),
+    note:document.getElementById('f-note').value||'なし',
+    submit_date:document.getElementById('f-date').value,
+    // 講座IDごとの申込数（集計用）
+    course_counts: (() => {
+      const counts = {};
+      students.forEach(s => {
+        s.courses.forEach(cid => { counts[cid] = (counts[cid]||0) + 1; });
+      });
+      return counts;
+    })(),
+  };
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(function(result){
+        if(result && result.counts) gasCounts = result.counts;
+        renderCourses();
+        status.className='status-msg status-ok';
+        status.textContent='✅ 送信しました！' + email + ' に確認メールが届きます。';
+        launchConfetti();
+        if(typeof clearDraft==='function')clearDraft();
+        if(typeof savePrevParent==='function')savePrevParent();
+        if(typeof showPostSendActions==='function') showPostSendActions();
+        btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
+      })
+      .withFailureHandler(function(e){
+        status.className='status-msg status-ng';
+        status.textContent='送信エラー: ' + e.message;
+        btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
+      })
+      .processEnrollment(params);
+  } else {
+    try{
+      const res=await fetch(getGasUrl(),{method:'POST',body:JSON.stringify(params)});
+      const result=await res.json();
+      if(result.status==='ok'){
+        if(result.counts) gasCounts = result.counts;
+        renderCourses();
+        status.className='status-msg status-ok';
+        status.textContent=`✅ 送信しました！${email} に確認メールが届きます。`;
+        launchConfetti();
+        if(typeof clearDraft==='function')clearDraft();
+        if(typeof savePrevParent==='function')savePrevParent();
+        if(typeof showPostSendActions==='function') showPostSendActions();
+      } else {
+        throw new Error(result.message||'送信に失敗しました');
+      }
+    }catch(e){
+      status.className='status-msg status-ng';
+      status.textContent=`送信エラー: ${e.message}`;
+    }
+    btn.disabled=false;btn.style.cursor='';btn.textContent='📧 申込内容を送信する';_sendInFlight=false;
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('f-date').value=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+loadGasUrl();
+
+// リクエストフォームのチェックボックスを生成
+(function(){
+  function makeChips(containerId, items, toggleFn, activeColor){
+    const wrap=document.getElementById(containerId);
+    if(!wrap)return;
+    items.forEach(text=>{
+      const label=document.createElement('label');
+      label.style.cssText=`display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:3px;background:#fff;transition:.12s`;
+      const cb=document.createElement('input');
+      cb.type='checkbox';cb.value=text;cb.style.display='none';
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(text));
+      label.addEventListener('click',function(){
+        cb.checked=!cb.checked;
+        label.style.background=cb.checked?activeColor:'#fff';
+        label.style.color=cb.checked?'#fff':'';
+        label.style.borderColor=cb.checked?activeColor:'var(--border)';
+      });
+      wrap.appendChild(label);
+    });
+  }
+  makeChips('req-cats',['新しい講座を開講してほしい','特定の先生の個別を受けたい','開講時間帯を変えてほしい','講座の難易度について','教材・テキストについて','その他'],'','#1b2a4a');
+  makeChips('req-terms',['プレ（6/8〜21）','1T（6/22〜26）','2T（7/6〜10）','3T（7/13〜17）','4T（7/20〜24）','5T（7/27〜31）','6T（8/3〜7）','7T（8/10〜14）','8T（8/17〜21）','時期は問わない'],'','#243860');
+  makeChips('req-grades',['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3'],'','#243860');
+})();
+
+loadCapacityOverrides().then(()=>{
+  // Phase U-1 / Feature A: 途中保存があれば復元モーダル、なければ通常通り生徒を1名追加
+  tryRestoreDraft();
+  fetchCourseCounts(); // GASから申込数を取得
+  // Phase U-2: 前年度の保護者情報があれば空欄に提案フィルイン
+  setTimeout(()=>{ if(typeof fillPrevParentIfEmpty==='function')fillPrevParentIfEmpty(); },200);
+});
+
+
+// ============================================================
+// ZOOM受講
+// ============================================================
+const NO_ZOOM_COURSES_ELEM_HI = ['絵本','書道','美術','理科実験','調理','紙芝居','トートバッグ','編み物','小石アート','算数ラボ','作文'];
+const NO_ZOOM_COURSES_JHS = ['絵本','美術','トートバッグ','調理実習','算数ラボ'];
+
+function isZoomAllowed(c, level) {
+  if (level === 'elem_lo') return false;
+  if (level === 'elem_hi') return !NO_ZOOM_COURSES_ELEM_HI.some(name => c.label.includes(name));
+  if (level === 'jhs') return !NO_ZOOM_COURSES_JHS.some(name => c.label.includes(name));
+  if (level === 'hs') return true;
+  return false;
+}
+
+function toggleZoom(courseId, isChecked) {
+  const s = students[activeStudent];
+  if (!s.zoomCourses) s.zoomCourses = [];
+  if (isChecked) {
+    if (!s.zoomCourses.includes(courseId)) s.zoomCourses.push(courseId);
+  } else {
+    s.zoomCourses = s.zoomCourses.filter(id => id !== courseId);
+  }
+  renderCourses();
+}
+
+function setZoomType(courseId, type) {
+  const s = students[activeStudent];
+  if (!s.zoomType) s.zoomType = {};
+  s.zoomType[courseId] = type;
+  renderCourses();
+}
+
+function handleZoomCheck(event, courseId, type) {
+  event.stopPropagation();
+  const s = students[activeStudent];
+  if (!s.zoomType) s.zoomType = {};
+  // 同じタイプを再クリックしたら解除
+  if (s.zoomType[courseId] === type) {
+    delete s.zoomType[courseId];
+    if (s.zoomScope) delete s.zoomScope[courseId];
+    if (s.zoomDates) delete s.zoomDates[courseId];
+  } else {
+    s.zoomType[courseId] = type;
+  }
+  renderCourses();
+}
+
+function setZoomScope(courseId, dateStr, scope) {
+  const s = students[activeStudent];
+  if (!s.zoomScope) s.zoomScope = {};
+  s.zoomScope[courseId] = scope;
+  if (scope === 'all') {
+    if (!s.zoomDates) s.zoomDates = {};
+    delete s.zoomDates[courseId];
+  }
+  renderCourses();
+}
+
+function toggleZoomDate(courseId, date, checked) {
+  const s = students[activeStudent];
+  if (!s.zoomDates) s.zoomDates = {};
+  if (!s.zoomDates[courseId]) s.zoomDates[courseId] = [];
+  if (checked) {
+    if (!s.zoomDates[courseId].includes(date)) s.zoomDates[courseId].push(date);
+  } else {
+    s.zoomDates[courseId] = s.zoomDates[courseId].filter(d => d !== date);
+  }
+  renderCourses();
+}
+
+function getTermDates(dateStr) {
+  // "6/22〜26" → ["6/22","6/23","6/24","6/25","6/26"]
+  const m = dateStr.match(/(\d+)\/(\d+)〜(\d+)/);
+  if (!m) return [];
+  const month = m[1], start = parseInt(m[2]), end = parseInt(m[3]);
+  const dates = [];
+  for (let d = start; d <= end; d++) dates.push(month + '/' + d);
+  return dates;
+}
+
+// ============================================================

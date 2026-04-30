@@ -1,0 +1,350 @@
+// GAS設定
+// ============================================================
+// ★ GASのWebアプリURLをここに設定してください
+// GAS環境かどうかを判定
+const IS_GAS = typeof google !== 'undefined' && typeof google.script !== 'undefined';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPRzkXe95XDJ_PIwapjCkI_XxPTuIL3sSeVp1f7soFKWpFstqR-zYptRZfDywBHoNp/exec';
+
+// 申込数キャッシュ（GASから取得）
+let gasCounts = {};
+let enrollmentStatuses = {}; // courseId → '停止' or ''
+
+// 起動時にGASから申込数と募集状況を取得
+function fetchCourseCounts(){
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(function(data){
+        if(data && data.counts) gasCounts = data.counts;
+        if(data && data.statuses) enrollmentStatuses = data.statuses;
+        if(data && data.courses && data.courses.length > 0){
+          COURSES.length = 0;
+          data.courses.forEach(c => COURSES.push(c));
+        }
+        renderCourses();
+      })
+      .withFailureHandler(function(e){ console.log('申込数取得失敗:', e); })
+      .getMasterData();
+  } else {
+    fetch(getGasUrl()+'?action=counts')
+      .then(r=>r.json())
+      .then(data=>{ if(data.status==='ok'){ gasCounts=data.counts||{}; renderCourses(); }})
+      .catch(e=>console.log('申込数取得失敗:', e.message));
+  }
+}
+
+// GASの申込数 + セッション内の選択数
+function getEnrolledCount(cid){
+  const gasCount = gasCounts[cid]||0;
+  const sessionCount = students.filter(s=>s.courses.includes(cid)).length;
+  return gasCount + sessionCount;
+}
+
+// 外部申込数のみ（カード色用）
+function getExternalEnrolled(cid){
+  return gasCounts[cid]||0;
+}
+
+function saveGasUrl(){
+  const url=document.getElementById('gas-url-input').value.trim();
+  localStorage.setItem('gas_url_override',url);
+  updateGasStatus();
+  alert('保存しました');
+}
+function loadGasUrl(){
+  const saved=localStorage.getItem('gas_url_override');
+  if(saved&&document.getElementById('gas-url-input')) document.getElementById('gas-url-input').value=saved;
+  updateGasStatus();
+}
+function getGasUrl(){
+  return localStorage.getItem('gas_url_override')||GAS_URL;
+}
+function updateGasStatus(){
+  const url=getGasUrl();
+  const el=document.getElementById('admin-footer-status');
+  if(el) el.innerHTML=url
+    ?'<span style="color:#166534;font-weight:700">✅ URL設定済み</span>'
+    :'<span style="color:#991b1b;font-weight:700">⚠️ URL未設定</span>';
+}
+function toggleAdminFooter(){
+  const body=document.getElementById('admin-footer-body');
+  body.style.display=body.style.display==='none'?'block':'none';
+}
+
+// ============================================================
+// 管理ページ
+// ============================================================
+let adminData = null;
+
+let _adminPass = '';
+
+function adminLogin(){
+  _adminPass = document.getElementById('admin-pass-input').value;
+  document.getElementById('admin-login').style.display='none';
+  document.getElementById('admin-content').style.display='block';
+  loadAdminData(_adminPass);
+}
+
+async function loadAdminData(pass){
+  const p = pass || _adminPass || '';
+  document.getElementById('admin-loading').style.display='block';
+  document.getElementById('admin-dashboard').style.display='none';
+
+  if(IS_GAS){
+    google.script.run
+      .withSuccessHandler(function(ok){
+        if(!ok){ document.getElementById('admin-loading').textContent='❌ パスワードが違います'; return; }
+        renderAdminDashboard();
+      })
+      .withFailureHandler(function(e){
+        document.getElementById('admin-loading').textContent='エラー: '+e.message;
+      })
+      .checkAdminPass(String(p));
+  } else {
+    try{
+      const res=await fetch(`${getGasUrl()}?action=admin&pass=${encodeURIComponent(p)}`);
+      const data=await res.json();
+      if(data.status==='error'){ document.getElementById('admin-loading').textContent='❌ '+data.message; return; }
+      renderAdminDashboard();
+    }catch(e){
+      document.getElementById('admin-loading').textContent='通信エラー: '+e.message;
+    }
+  }
+}
+
+function renderAdminDashboard(){
+  document.getElementById('admin-loading').style.display='none';
+  document.getElementById('admin-dashboard').style.display='block';
+
+  // COURSESが読み込まれていない場合は少し待って再試行
+  if(COURSES.length === 0){
+    setTimeout(renderAdminDashboard, 500);
+    return;
+  }
+  renderAdminControl();
+}
+
+function showAdminTab(tab, btn){
+  ['control'].forEach(t=>{
+    const el = document.getElementById('admin-tab-'+t);
+    if(el) el.style.display=t===tab?'block':'none';
+  });
+  if(tab==='control') renderAdminControl();
+}
+
+function renderAdminControl(){
+  const cont=document.getElementById('admin-tab-control');
+  const TIMES=['9:00〜10:30','10:30〜12:00','12:30〜14:00','14:00〜15:30','15:30〜17:00'];
+  const terms=[...new Set(COURSES.map(c=>c.term))].sort((a,b)=>a-b);
+
+  let html=`<div style="margin-bottom:12px;font-size:12px;color:var(--muted)">
+    各講座の募集状況を切り替えられます。「停止」にすると申込画面でグレーアウトされ選択不可になります。
+  </div>`;
+
+  terms.forEach(term=>{
+    const tCourses=COURSES.filter(c=>c.term===term);
+    if(!tCourses.length) return;
+    const date=tCourses[0].date;
+    html+=`<div style="margin-bottom:16px">
+      <div style="font-family:'Shippori Mincho',serif;font-size:13px;color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:4px;margin-bottom:8px">${term}ターム（${date}）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">
+        <thead><tr>
+          <th style="background:var(--navy);color:#fff;padding:6px 10px;text-align:left">時間帯</th>
+          <th style="background:var(--navy);color:#fff;padding:6px 10px;text-align:left">先生</th>
+          <th style="background:var(--navy);color:#fff;padding:6px 10px;text-align:left">講座名</th>
+          <th style="background:var(--navy);color:#fff;padding:6px 10px;text-align:center">状態</th>
+          <th style="background:var(--navy);color:#fff;padding:6px 10px;text-align:center">操作</th>
+        </tr></thead><tbody>`;
+
+    tCourses.forEach(slot=>{
+      const isClosed=enrollmentStatuses[slot.id]==='停止';
+      const enrolled=getExternalEnrolled(slot.id);
+      const max=getMaxStudents(slot);
+      html+=`<tr style="background:${isClosed?'#eef2ff':'#fff'}">
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${slot.time}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${slot.teacher}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${slot.label}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center">
+          ${isClosed
+            ?'<span style="background:#6366f1;color:#fff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700">🔒 停止中</span>'
+            :`<span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700">✅ 募集中</span>　<span style="font-size:11px;color:var(--muted)">${enrolled}/${max}名</span>`
+          }
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center">
+          <button class="btn btn-sm" style="font-size:11px;background:${isClosed?'#22c55e':'#6366f1'};color:#fff"
+            onclick="toggleEnrollmentStatus('${slot.id}','${isClosed?'':'停止'}')">
+            ${isClosed?'▶ 募集再開':'⏸ 募集停止'}
+          </button>
+        </td>
+      </tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+
+  cont.innerHTML=html;
+}
+
+async function toggleEnrollmentStatus(courseId, newStatus){
+  if(!IS_GAS){ alert('この機能はGAS環境でのみ使用できます'); return; }
+  const btn=event.target;
+  btn.disabled=true; btn.textContent='処理中...';
+  google.script.run
+    .withSuccessHandler(function(counts){
+      enrollmentStatuses[courseId]=newStatus;
+      if(counts) gasCounts=counts;
+      renderCourses();
+      renderAdminControl();
+    })
+    .withFailureHandler(function(e){
+      alert('エラー: '+e.message);
+      btn.disabled=false;
+    })
+    .setEnrollmentStatus(courseId, newStatus);
+}
+
+function renderAdminList(){
+  const enrollments = adminData?.enrollments || [];
+  if(!enrollments.length){
+    document.getElementById('admin-tab-list').innerHTML='<div style="padding:20px;color:var(--muted);text-align:center">申込データがありません</div>';
+    return;
+  }
+  let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">
+    <thead><tr>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:left;white-space:nowrap">申込日時</th>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:left">保護者名</th>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:left">メール</th>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:left">電話</th>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:left">生徒情報</th>
+      <th style="background:var(--navy);color:#fff;padding:7px 10px;text-align:right">合計</th>
+    </tr></thead><tbody>`;
+  enrollments.forEach((e,i)=>{
+    html+=`<tr style="background:${i%2?'var(--cream)':'#fff'}">
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap">${e['申込日時']||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600">${e['保護者名']||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e['メール']||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e['電話']||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${e['生徒情報']||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700">${e['合計金額']||''}</td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('admin-tab-list').innerHTML=html;
+}
+
+function renderAdminTimetable(){
+  // 各講座の申込者を集計
+  const enrollments = adminData?.enrollments || [];
+  // courseId → [{保護者名, 生徒情報}]
+  const courseMap = {};
+
+  enrollments.forEach(e=>{
+    const detail = e['講座詳細']||'';
+    // 講座詳細から講座名を抽出（・で始まる行）
+    detail.split('\n').forEach(line=>{
+      const m = line.match(/^[　\s]*・(.+?)（(\d+)T/);
+      if(m){
+        const key = m[1].trim();
+        if(!courseMap[key]) courseMap[key]=[];
+        courseMap[key].push(e['生徒情報']||e['保護者名']);
+      }
+    });
+  });
+
+  // 先生別にグルーピング
+  const teacherMap = {};
+  TEACHERS.forEach(t=>{ teacherMap[t]=[]; });
+
+  COURSES.forEach(c=>{
+    if(courseMap[c.label]){
+      if(!teacherMap[c.teacher]) teacherMap[c.teacher]=[];
+      const existing = teacherMap[c.teacher].find(x=>x.id===c.id);
+      if(!existing) teacherMap[c.teacher].push({
+        id:c.id, label:c.label, term:c.term, date:c.date, time:c.time,
+        students: courseMap[c.label]||[]
+      });
+    }
+  });
+
+  let html='';
+  TEACHERS.forEach(teacher=>{
+    const courses = teacherMap[teacher];
+    if(!courses||!courses.length) return;
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-family:'Shippori Mincho',serif;font-size:14px;color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:4px;margin-bottom:8px">${teacher}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">
+        <thead><tr>
+          <th style="background:var(--navy2);color:#fff;padding:6px 10px;text-align:left">ターム</th>
+          <th style="background:var(--navy2);color:#fff;padding:6px 10px;text-align:left">時間帯</th>
+          <th style="background:var(--navy2);color:#fff;padding:6px 10px;text-align:left">講座名</th>
+          <th style="background:var(--navy2);color:#fff;padding:6px 10px;text-align:left">申込者</th>
+          <th style="background:var(--navy2);color:#fff;padding:6px 10px;text-align:center">人数</th>
+        </tr></thead><tbody>`;
+    courses.sort((a,b)=>a.term-b.term||(a.time<b.time?-1:1)).forEach((c,i)=>{
+      html+=`<tr style="background:${i%2?'var(--cream)':'#fff'}">
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${c.term}T（${c.date}）</td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap">${c.time}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600">${c.label}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${c.students.join('、')}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">${c.students.length}人</td>
+      </tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+
+  document.getElementById('admin-tab-timetable').innerHTML=html||'<div style="padding:20px;color:var(--muted);text-align:center">データがありません</div>';
+}
+
+function renderAdminRoster(){
+  const enrollments = adminData?.enrollments || [];
+  // 講座名 → 生徒リスト
+  const rosterMap = {};
+
+  enrollments.forEach(e=>{
+    const detail = e['講座詳細']||'';
+    detail.split('\n').forEach(line=>{
+      const m = line.match(/^[　\s]*・(.+)/);
+      if(m){
+        const key = m[1].trim();
+        if(!rosterMap[key]) rosterMap[key]=[];
+        rosterMap[key].push({
+          name: e['生徒情報']||e['保護者名'],
+          parent: e['保護者名'],
+          email: e['メール']
+        });
+      }
+    });
+  });
+
+  if(!Object.keys(rosterMap).length){
+    document.getElementById('admin-tab-roster').innerHTML='<div style="padding:20px;color:var(--muted);text-align:center">データがありません</div>';
+    return;
+  }
+
+  let html='';
+  Object.entries(rosterMap).sort((a,b)=>a[0]<b[0]?-1:1).forEach(([courseName,students])=>{
+    html+=`<div style="margin-bottom:16px;background:#fff;border:1px solid var(--border);border-top:3px solid var(--navy)">
+      <div style="padding:8px 14px;background:var(--cream2);font-weight:700;font-size:13px;display:flex;justify-content:space-between">
+        <span>${courseName}</span>
+        <span style="color:var(--muted);font-size:12px;font-weight:400">${students.length}名</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="padding:6px 14px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px">No.</th>
+          <th style="padding:6px 14px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px">生徒情報</th>
+          <th style="padding:6px 14px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px">保護者名</th>
+          <th style="padding:6px 14px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px">メール</th>
+        </tr></thead><tbody>`;
+    students.forEach((s,i)=>{
+      html+=`<tr style="background:${i%2?'var(--cream)':'#fff'}">
+        <td style="padding:6px 14px;border-bottom:1px solid var(--border);color:var(--muted)">${i+1}</td>
+        <td style="padding:6px 14px;border-bottom:1px solid var(--border);font-weight:600">${s.name}</td>
+        <td style="padding:6px 14px;border-bottom:1px solid var(--border)">${s.parent}</td>
+        <td style="padding:6px 14px;border-bottom:1px solid var(--border)">${s.email}</td>
+      </tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+
+  document.getElementById('admin-tab-roster').innerHTML=html;
+}
+
+// ============================================================

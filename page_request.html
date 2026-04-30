@@ -1,0 +1,48 @@
+<!-- ④ REQUEST -->
+<div class="page" id="pg-request">
+  <div class="panel">
+    <div class="panel-title">📬 講座リクエスト・ご要望</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.9">
+      「こんな講座をやってほしい」「○○先生に個別を教えてもらいたい」「この時間帯に開講してほしい」など、<br>
+      どんなご要望もお気軽にお送りください。できる限り対応いたします。
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="form-field">
+        <label>お名前（保護者・生徒）</label>
+        <input id="req-name" placeholder="山田 花子">
+      </div>
+      <div class="form-field">
+        <label>メールアドレス</label>
+        <input id="req-email" type="email" placeholder="parent@example.com">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;margin-bottom:8px">リクエストの種類（複数選択可）</div>
+      <div id="req-cats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;margin-bottom:6px">希望するターム・時期（任意）</div>
+      <div id="req-terms" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;margin-bottom:6px">対象の生徒の学年</div>
+      <div id="req-grades" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="form-field" style="margin-bottom:14px">
+      <label>ご要望・詳細内容 <span style="color:var(--red)">*</span></label>
+      <textarea id="req-body" rows="6" placeholder="例：算数が苦手な小3の子どもに、基礎から丁寧に教えてもらえる個別講座を宮嶋先生にお願いしたいです。できれば午前中の時間帯でお願いできますか？"
+        style="width:100%;font-size:13px;border:1px solid var(--border);padding:8px 10px;border-radius:3px;resize:vertical;min-height:120px;font-family:inherit;outline:none"></textarea>
+    </div>
+
+    <div id="req-status" class="status-msg"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="btn btn-gold" onclick="sendRequest()">📨 リクエストを送信する</button>
+    </div>
+  </div>
+</div>
+

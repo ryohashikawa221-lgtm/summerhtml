@@ -1,0 +1,94 @@
+<!-- ③ INVOICE -->
+<div class="page" id="pg-invoice">
+  <div class="inv-wrap">
+    <div class="inv-head">
+      <div><div class="inv-title">受講申込書・請求書<small>ENROLLMENT / INVOICE</small></div></div>
+      <div class="inv-school">駿台ミシガン国際学院<br>Sundai Michigan International Academy<br>24277 Novi Rd, Novi, MI 48375<br>TEL: 248-349-5234</div>
+    </div>
+    <!-- 印刷時のみ表示される宛先ヘッダ（領収書フォーマット参考） -->
+    <div class="print-only" style="display:none;border-bottom:2px solid #1b2a4a;padding:12px 0 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+        <div style="flex:1">
+          <div style="font-size:11px;color:#888;letter-spacing:.1em">宛先 / TO</div>
+          <div id="print-recipient" style="font-size:18px;font-weight:700;color:#1b2a4a;border-bottom:1px solid #888;padding:6px 0 4px;min-width:280px">　</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">様</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#555;line-height:1.7">
+          <div>発行日 / Date: <span id="print-issue-date">　</span></div>
+          <div>No. <span id="print-invoice-no">　</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="inv-body">
+      <div id="inv-students-section"></div>
+
+      <!-- 差額請求 -->
+      <div class="diff-section" id="diff-section" style="display:none">
+        <h3>💡 追加請求・差額計算</h3>
+        <div class="diff-grid">
+          <div class="field">
+            <label>既にお支払い済みの金額</label>
+            <input type="number" id="paid-amount" placeholder="0" min="0" step="0.01" oninput="updateDiff()">
+          </div>
+          <div class="field">
+            <label>新しい合計金額</label>
+            <div style="font-family:'Shippori Mincho',serif;font-size:18px;color:var(--navy);padding:6px 0" id="new-total-display">$0</div>
+          </div>
+          <div class="field">
+            <label>差額（追加請求額）</label>
+            <div class="diff-result" id="diff-result">$0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 差額計算ボタン（通常時） -->
+      <div id="diff-toggle-btn" style="margin-top:14px">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('diff-section').style.display='block';document.getElementById('diff-toggle-btn').style.display='none';document.getElementById('paid-amount').focus()">
+          💰 追加請求・差額計算を使う（変更申込の場合）
+        </button>
+      </div>
+
+      <!-- 定員管理パネル（管理者用） -->
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="document.getElementById('cap-panel').style.display=document.getElementById('cap-panel').style.display==='none'?'block':'none'">
+          <div style="font-family:'Shippori Mincho',serif;font-size:14px;color:var(--navy)">🔧 定員管理（管理者用）</div>
+          <div style="font-size:11px;color:var(--muted)">▶ クリックで展開</div>
+        </div>
+        <div id="cap-panel" style="display:none;background:var(--cream2);border:1px solid var(--border);border-left:3px solid var(--gold);padding:12px 16px;border-radius:2px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">各講座の「すでに受け付けた申込人数」を入力してください。入力値＋今回のセッションの選択数で定員チェックを行います。</div>
+          <div id="cap-inputs" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">※ 入力内容はブラウザ間で共有されます（共有ストレージ）</div>
+        </div>
+      </div>
+
+      <!-- 申込フォーム -->
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy)">申込者情報・送信</div>
+          <div style="display:flex;gap:14px;align-items:center;font-size:11px">
+            <span id="auto-save-indicator" style="color:#22c55e;display:none">✓ 自動保存しました</span>
+            <span id="progress-indicator" style="color:var(--muted)">入力進捗: <strong id="progress-text" style="color:var(--navy)">0/0</strong></span>
+          </div>
+        </div>
+        <!-- 必須項目進捗バー -->
+        <div id="progress-bar-container" style="background:#f3f4f6;border-radius:3px;height:6px;margin-bottom:14px;overflow:hidden">
+          <div id="progress-bar-fill" style="width:0%;background:linear-gradient(90deg,var(--gold),#22c55e);height:100%;transition:width .3s ease-out"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-field"><label>代表保護者氏名</label><input id="f-parent" placeholder="山田 花子"><span id="err-parent" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
+          <div class="form-field"><label>連絡先メールアドレス</label><input id="f-email" type="email" placeholder="parent@example.com"><span id="err-email" class="field-err" style="display:none;color:var(--red);font-size:11px"></span></div>
+          <div class="form-field"><label>電話番号</label><input id="f-tel" type="tel" placeholder="000-000-0000"></div>
+          <div class="form-field"><label>発行日</label><input id="f-date" type="text"></div>
+          <div class="form-field"><label>緊急連絡先（任意）</label><input id="f-emergency-tel" type="tel" placeholder="例：祖父母・配偶者の電話"></div>
+          <div class="form-field"><label>緊急連絡先 続柄</label><input id="f-emergency-rel" type="text" placeholder="例：祖母 / 父 / 母"></div>
+          <div class="form-field form-full"><label>備考・ご要望</label><textarea id="f-note" placeholder="特記事項があればご記入ください"></textarea></div>
+        </div>
+        <div id="send-status" class="status-msg"></div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="printInvoice()">🖨 印刷 / PDF保存</button>
+          <button class="btn btn-gold" onclick="openConfirmModal()" id="btn-send">📧 申込内容を送信する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,161 @@
+:root{
+  --navy:#1b2a4a;--navy2:#243860;
+  --gold:#c9a84c;--gold2:#e8c96a;
+  --cream:#faf8f3;--cream2:#f0ebe0;
+  --red:#c0392b;--green:#1a6b3c;--blue:#1a5fa5;
+  --text:#1a1a1a;--muted:#666;
+  --border:#ddd;--radius:4px;
+  --shadow:0 2px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+
+/* HEADER */
+.site-header{background:var(--navy);color:#fff;border-bottom:3px solid var(--gold)}
+.header-inner{max-width:1200px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;justify-content:space-between}
+.logo-en{font-size:10px;letter-spacing:.25em;color:var(--gold2);display:block;margin-bottom:2px}
+.logo-ja{font-family:'Shippori Mincho',serif;font-size:19px;letter-spacing:.1em}
+.nav-tabs{background:var(--navy2)}
+.nav-tabs-inner{max-width:1200px;margin:0 auto;display:flex;padding:0 20px}
+.nav-tab{padding:10px 20px;font-size:13px;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:.15s;letter-spacing:.06em;font-weight:500}
+.nav-tab.active{color:#fff;border-bottom-color:var(--gold)}
+.nav-tab:hover:not(.active){color:rgba(255,255,255,.8)}
+.ntag{display:inline-block;background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:5px;vertical-align:middle}
+
+/* MAIN */
+.main{max-width:1200px;margin:0 auto;padding:18px}
+.page{display:none}.page.active{display:block}
+
+/* PANEL */
+.panel{background:#fff;border:1px solid var(--border);border-top:3px solid var(--navy);margin-bottom:14px;padding:14px 18px}
+.panel-title{font-family:'Shippori Mincho',serif;font-size:15px;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* STUDENT CARDS */
+.students-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.student-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.student-card.active-student{border-color:var(--navy)}
+.student-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--cream2);cursor:pointer;user-select:none}
+.student-num{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.student-name-display{font-size:14px;font-weight:500;flex:1}
+.student-summary{font-size:12px;color:var(--muted);margin-left:auto}
+.student-del{font-size:11px;padding:2px 8px;background:#fee;color:#c00;border:1px solid #fcc;border-radius:3px;cursor:pointer;font-family:inherit}
+.student-body{padding:12px 14px;border-top:1px solid var(--border)}
+.student-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--muted);letter-spacing:.08em;font-weight:500}
+.field input,.field select{border:1px solid var(--border);padding:6px 9px;font-size:13px;font-family:inherit;border-radius:var(--radius);outline:none}
+.field input:focus,.field select:focus{border-color:var(--navy)}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--cream2);border-bottom:1px solid var(--border);margin-bottom:10px}
+.filter-bar label{font-size:11px;color:var(--muted);letter-spacing:.08em;font-weight:500}
+.pill{padding:4px 11px;font-size:12px;border:1px solid var(--border);border-radius:2px;cursor:pointer;background:#fff;font-family:inherit;transition:.12s}
+.pill.on,.pill:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fsep{width:1px;height:18px;background:var(--border)}
+
+/* SECTION */
+.sec{margin-bottom:20px}
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.sec-head h3{font-family:'Shippori Mincho',serif;font-size:14px;color:var(--navy);letter-spacing:.08em;white-space:nowrap}
+.sec-hr{flex:1;height:1px;background:linear-gradient(to right,var(--navy2),transparent)}
+
+/* COURSE GRID */
+.course-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:7px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:11px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--cc,#888)}
+.card:hover{border-color:var(--navy);box-shadow:var(--shadow)}
+.card.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.card.on::after{content:'✓';position:absolute;top:7px;right:9px;font-size:13px;color:var(--gold2);font-weight:700}
+.card.on .ctag{background:rgba(255,255,255,.15);color:#fff}
+.card.on .cmeta,.card.on .cprice{color:rgba(255,255,255,.65)}
+.card.on .clabel{color:#fff}
+.card.ind::before{background:#7c3aed}
+.clabel{font-size:13px;font-weight:700;margin-bottom:3px}
+.ctag{display:inline-block;font-size:10px;padding:1px 6px;background:var(--cream2);border-radius:1px;color:var(--muted);margin-bottom:6px}
+.cmeta{font-size:11px;color:var(--muted);line-height:1.65;margin-bottom:5px}
+.cprice{font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy);font-weight:700}
+.cprice small{font-size:10px;font-family:'Noto Sans JP',sans-serif;color:var(--muted);font-weight:400}
+
+/* PRE CALENDAR */
+.pre-cal{margin-bottom:10px}
+.pre-cal-head{font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.7}
+.cal-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:6px}
+.cal-day{border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.cal-day-head{background:var(--cream2);text-align:center;font-size:10px;font-weight:700;padding:3px;color:var(--navy)}
+.cal-day-head.sun{background:#fee2e2;color:var(--red)}
+.cal-day-head.sat{background:#e0f0ff;color:var(--blue)}
+.cal-slot{padding:3px 4px;cursor:pointer;font-size:10px;text-align:center;border-top:1px solid var(--border);transition:.1s;line-height:1.3;min-height:32px;display:flex;align-items:center;justify-content:center}
+.cal-slot:hover{background:var(--cream2)}
+.cal-slot.on{background:var(--navy);color:#fff}
+.cal-slot.disabled{background:#f5f5f5;color:#ccc;cursor:default;pointer-events:none}
+.cal-week-label{font-size:10px;color:var(--muted);text-align:center;margin-bottom:3px;font-weight:700}
+
+/* TOTAL BAR */
+.total-bar{
+  position:sticky;bottom:0;background:var(--navy);color:#fff;
+  padding:10px 18px;display:flex;align-items:center;gap:16px;
+  border-top:2px solid var(--gold);z-index:50;
+}
+.total-bar-items{font-size:12px;color:rgba(255,255,255,.7)}
+.total-bar-amount{font-family:'Shippori Mincho',serif;font-size:22px;font-weight:700}
+.total-bar-amount small{font-size:12px;font-family:'Noto Sans JP',sans-serif;color:rgba(255,255,255,.6);margin-left:4px}
+.total-bar .btn{margin-left:auto}
+
+/* SIBLING DISCOUNT TABLE */
+.disc-table{width:100%;font-size:12px;border-collapse:collapse;margin-top:8px}
+.disc-table th{background:var(--navy);color:#fff;padding:5px 8px;font-size:11px;letter-spacing:.08em;font-weight:500}
+.disc-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.disc-table tr:nth-child(even) td{background:var(--cream)}
+.disc-table .r{text-align:right;font-family:'Shippori Mincho',serif;font-size:14px}
+.disc-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:2px;font-weight:700}
+.disc-none{background:#f0f0f0;color:#666}
+.disc-20{background:#dcfce7;color:#166534}
+.disc-30{background:#bbf7d0;color:#14532d}
+
+/* DIFF BILLING */
+.diff-section{margin-top:16px;padding:14px;background:var(--cream2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:2px}
+.diff-section h3{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end}
+.diff-result{font-family:'Shippori Mincho',serif;font-size:20px;color:var(--red);font-weight:700}
+.diff-result.zero{color:var(--muted)}
+
+/* INVOICE */
+.inv-wrap{background:#fff;border:1px solid var(--border);border-top:3px solid var(--navy)}
+.inv-head{background:var(--navy);color:#fff;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start}
+.inv-title{font-family:'Shippori Mincho',serif;font-size:24px;letter-spacing:.15em}
+.inv-title small{display:block;font-size:10px;letter-spacing:.15em;color:rgba(255,255,255,.55);margin-top:3px;font-family:'Noto Sans JP',sans-serif}
+.inv-school{text-align:right;font-size:11px;line-height:2;color:rgba(255,255,255,.75)}
+.inv-body{padding:22px 28px}
+.inv-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
+.inv-table th{background:var(--navy);color:#fff;padding:7px 10px;font-size:11px;letter-spacing:.08em;font-weight:500;text-align:left}
+.inv-table td{padding:7px 10px;border-bottom:1px solid var(--border)}
+.inv-table tr:nth-child(even) td{background:var(--cream)}
+.inv-table .r{text-align:right}
+.inv-table .total-row td{font-family:'Shippori Mincho',serif;font-size:16px;font-weight:700;padding:10px;border-top:2px solid var(--navy);border-bottom:none;background:#fff!important}
+.inv-table .disc-row td{color:var(--green);font-size:11px}
+.inv-table .diff-row td{color:var(--red);font-weight:700;border-top:1px dashed var(--red)}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:11px;color:var(--muted);letter-spacing:.08em;font-weight:500}
+.form-field input,.form-field textarea{border:1px solid var(--border);padding:8px 10px;font-size:13px;font-family:inherit;border-radius:var(--radius);outline:none}
+.form-field input:focus,.form-field textarea:focus{border-color:var(--navy)}
+.form-field textarea{resize:vertical;min-height:70px}
+.form-full{grid-column:1/-1}
+.ejs-note{background:var(--cream2);border:1px solid var(--border);border-left:3px solid var(--gold);padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8}
+.ejs-cfg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.ejs-cfg input{font-family:'Courier New',monospace;font-size:11px;border:1px solid var(--border);padding:5px 7px}
+
+/* BUTTONS */
+.btn{padding:9px 22px;font-size:13px;border:none;cursor:pointer;font-family:inherit;letter-spacing:.06em;border-radius:var(--radius);transition:.13s;font-weight:500}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{background:var(--navy2)}
+.btn-primary:disabled{background:#aaa;cursor:not-allowed}
+.btn-outline{background:#fff;color:var(--navy);border:1px solid var(--navy)}.btn-outline:hover{background:var(--cream)}
+.btn-gold{background:var(--gold);color:var(--navy);font-weight:700}.btn-gold:hover{background:var(--gold2)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#145c30}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.status-msg{font-size:13px;padding:9px 14px;border-radius:var(--radius);display:none;margin-top:8px}
+.status-ok{background:#dcfce7;color:#166534;display:block}
+.status-ng{background:#fee2e2;color:#991b1b;display:block}

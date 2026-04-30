@@ -1,0 +1,125 @@
+// ============================================================
+// PRICE CALC（新割引ルール）
+// ============================================================
+function unitPrice(c,level){
+  // コースに固定価格が設定されている場合はそちらを優先（0は除く）
+  if(c.price) return c.price;
+  const lv=level||'elem_lo';
+  return TPRICE[c.type]?.[lv]||0;
+}
+function prePricePerKoma(type,level){
+  return PPRICE[type]?.[level||'elem_lo']||0;
+}
+
+// Step1: きょうだい割引
+// 全生徒の割引前合計を高い順にソートし、1人目なし・2人目20%・3人目以降30%
+function siblingDiscRate(studentIdx){
+  const totals=students.map((_,i)=>rawStudentTotal(i));
+  const sorted=[...totals].sort((a,b)=>b-a);
+  const rank=sorted.findIndex(v=>v===totals[studentIdx]);
+  if(rank===0)return 0;
+  if(rank===1)return 0.20;
+  return 0.30;
+}
+
+// Step3: コマ数割引（グループ・個別を合算して計算）
+// サマー1講座＝5コマ換算、プレコマ数を合計して統一テーブル適用
+// （1〜5なし/6〜10→10%/11〜15→20%/16以上→30%）
+function komaDiscRate(studentIdx){
+  const s=students[studentIdx];
+  if(!s)return 0;
+
+  // サマースクール全講座数（グループ＋個別）→ 1講座＝5コマ換算
+  const summerN=s.courses.length;
+
+  // プレ講習全コマ数（グループ＋個別）
+  const preN=s.preSlots.length;
+
+  // 合算コマ数
+  const total=summerN*5+preN;
+
+  // 統一割引テーブル
+  return total>=16?0.30:total>=11?0.20:total>=6?0.10:0;
+}
+
+// 割引前合計（きょうだい割引ソート用・プレ含む）
+function rawStudentTotal(i){
+  const s=students[i];
+  if(!s||!s.level)return 0;
+  let total=0;
+  s.courses.forEach(id=>{const c=COURSES.find(x=>x.id===id);if(c)total+=unitPrice(c,s.level);});
+  s.preSlots.forEach(sl=>total+=prePricePerKoma(sl.type,s.level));
+  return total;
+}
+
+// 1コマ・1講座の割引後価格を計算（乗算方式・端数は最後にまとめて切り上げ）
+// Step1→Step2→Step3→Step4 の順に乗算
+function calcItemPrice(c, s, si, friendDisc=false){
+  const base=unitPrice(c,s.level);
+  if(!base)return 0;
+  // Step1: きょうだい割引
+  const sib=siblingDiscRate(si);
+  // Step2: 補習校/AS割引
+  const school=s.schoolDisc?0.10:0;
+  // Step3: コマ数割引
+  const koma=komaDiscRate(si);
+  // 乗算
+  let price=base*(1-sib)*(1-school)*(1-koma);
+  // Step4: お友達割引（該当コマのみ）
+  if(friendDisc||c.friendDisc)price=price*(1-0.10);
+  // 端数切り上げ（ドル単位）
+  return Math.ceil(price);
+}
+
+function calcPreItemPrice(type, s, si, friendDisc=false){
+  const base=prePricePerKoma(type,s.level);
+  if(!base)return 0;
+  const sib=siblingDiscRate(si);
+  const school=s.schoolDisc?0.10:0;
+  const koma=komaDiscRate(si);
+  let price=base*(1-sib)*(1-school)*(1-koma);
+  if(friendDisc)price=price*(1-0.10);
+  return Math.ceil(price);
+}
+
+// 生徒合計（割引後・端数処理込み）
+function calcStudentTotal(i){
+  const s=students[i];
+  if(!s||!s.level)return 0;
+  let total=0;
+  s.courses.forEach(cid=>{
+    const c=COURSES.find(x=>x.id===cid);
+    if(!c)return;
+    const det=(s.courseDetails&&s.courseDetails[cid])||{};
+    total+=calcItemPrice(c,s,i,det.friendDisc);
+  });
+  s.preSlots.forEach(sl=>{
+    total+=calcPreItemPrice(sl.type,s,i,sl.friendDisc);
+  });
+  return total;
+}
+
+function calcGrandTotal(){
+  return students.reduce((sum,_,i)=>sum+calcStudentTotal(i),0);
+}
+
+function fmtUSD(v){return'$'+v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
+
+// ============================================================
+// FILTER
+// ============================================================
+function setFT(v,btn){
+  filterTerm=v;
+  document.querySelectorAll('.filter-bar .pill').forEach(b=>{
+    if(['全て','プレ','1','2','3','4','5','6','7','8'].includes(b.textContent.trim()))b.classList.remove('on');
+  });
+  btn.classList.add('on');renderCourses();
+}
+function setFP(v,btn){
+  filterType=v;
+  ['全タイプ','グループ','個別'].forEach(t=>{
+    document.querySelectorAll('.filter-bar .pill').forEach(b=>{if(b.textContent.trim()===t)b.classList.remove('on')});
+  });
+  btn.classList.add('on');renderCourses();
+}
+

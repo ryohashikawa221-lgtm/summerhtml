@@ -1,0 +1,25 @@
+<div id="formal-invoice-print"></div>
+
+<div id="admin-footer" style="margin-top:40px;border-top:1px dashed #ccc;padding:12px 18px;background:#f9f9f9">
+  <div style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none" onclick="toggleAdminFooter()">
+    <span style="font-size:10px;color:#bbb;letter-spacing:.1em">⚙ 管理者設定</span>
+    <span id="admin-footer-status" style="font-size:10px"></span>
+    <span style="font-size:10px;color:#bbb;margin-left:auto">v Phase U-3-A / 2026-05-01 02:30 JST</span>
+  </div>
+  <div id="admin-footer-body" style="display:none;margin-top:12px">
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-left:3px solid #e65100;border-radius:3px;padding:10px 14px;margin-bottom:12px;font-size:11px;line-height:1.8;color:#555">
+      🔒 <strong>この設定は管理者専用です。</strong><br>
+      保護者・生徒の方はこちらの操作は不要です。触れないようにお願いします。<br>
+      GAS（Google Apps Script）のWebアプリURLを設定してください。
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:10px;color:#999;margin-bottom:4px">GAS WebアプリURL</div>
+      <div style="display:flex;gap:8px">
+        <input id="gas-url-input" placeholder="https://script.google.com/macros/s/xxxxxx/exec" type="password" autocomplete="off"
+          style="flex:1;font-family:monospace;font-size:11px;border:1px solid #ddd;padding:5px 7px;border-radius:3px">
+        <button onclick="saveGasUrl()" style="padding:5px 14px;background:#1b2a4a;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer;font-family:inherit">保存</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#aaa">GAS URLはHTMLに直接設定済みです。変更が必要な場合はHTMLファイルのGAS_URL変数を書き換えてください。</div>
+  </div>
+</div>

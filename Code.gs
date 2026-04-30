@@ -212,6 +212,14 @@ function getMasterData() {
 // ============================================================
 // doGet
 // ============================================================
+// ============================================================
+// HtmlService include ヘルパー（Phase U-4 分割リファクタ用）
+// 使い方: index.html 内で <?!= include('partial_name') ?>
+// ============================================================
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
 function doGet(e) {
   // 起動時にスキーママイグレーションを実行（軽量・冪等）
   try { runMigrations(); } catch (err) { Logger.log('runMigrations on doGet failed: ' + err.message); }
