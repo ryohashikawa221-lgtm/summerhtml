@@ -241,18 +241,18 @@ li{margin:.2em 0;}
 /* TOC ------------------------------------------------- */
 .toc{
   background:#fff; border:1px solid var(--line);
-  padding:6mm 10mm; margin-top:4mm;
+  padding:14mm 18mm; margin-top:6mm;
 }
 .toc ol{list-style:none; padding-left:0; counter-reset:toc;}
 .toc ol li{
   counter-increment:toc;
   display:flex; justify-content:space-between;
   border-bottom:1px dotted var(--line);
-  padding:3px 0; font-size:10.5pt;
+  padding:7px 0; font-size:13pt; line-height:1.6;
 }
 .toc ol li::before{
   content:counter(toc) ".";
-  color:var(--gold); font-weight:700; width:2.4em;
+  color:var(--gold); font-weight:700; width:2.4em; font-size:14pt;
 }
 .toc ol li.zero::before{content:"0.";}
 .toc ol li span.title{flex:1;}
@@ -547,15 +547,6 @@ tr:nth-child(even) td{background:#fbf8ee;}
     確認メールの本文（申込番号・Zelle QR・お支払い案内が見える状態）
   </div>
 
-  <h3>各ステップで使う項目</h3>
-  <table>
-    <tr><th style="width:42mm;">ステップ</th><th>使う項目</th></tr>
-    <tr><td>① 申込</td><td>受講申込URL（QR / 直接入力）／ 保護者・お子様の情報</td></tr>
-    <tr><td>② 確認メール</td><td>申込番号（マイページ照会・領収書再送に使用）</td></tr>
-    <tr><td>③ 入金</td><td>Zelle QR（メール内）／ Check 送付先</td></tr>
-    <tr><td>④ 領収書</td><td>受信メール（紛失時はマイページから再送依頼）</td></tr>
-  </table>
-
   <div class="callout navy">
     <div class="ttl">💡 マイページもご活用ください</div>
     確認メールに記載の <strong>申込番号 + メールアドレス</strong> でログインすると、申込内容・お支払い状況・ウェイティング登録の確認ができます（詳しくは P.12）。
@@ -597,18 +588,9 @@ tr:nth-child(even) td{background:#fbf8ee;}
     画面上部の5つのタブが並んでいる状態
   </div>
 
-  <h3>1-3. 便利な使い方のコツ</h3>
-  <table>
-    <tr><th style="width:46mm;">場面</th><th>おすすめ</th></tr>
-    <tr><td>後でまた開きたい</td><td>ブラウザに <strong>ブックマーク</strong>しておくと便利です</td></tr>
-    <tr><td>スマホでQRが読み取れない</td><td>カメラ／QRリーダーアプリで再度試すか、配布資料のURLを直接入力</td></tr>
-    <tr><td>家族で共有したい</td><td>メールで URL をご家族に転送できます（同じ申込画面に複数端末からアクセス可）</td></tr>
-    <tr><td>動かない・表示が崩れる</td><td>ブラウザを最新版にアップデート、またはキャッシュ削除をお試しください</td></tr>
-  </table>
-
   <div class="callout">
-    <div class="ttl">⚠️ ご注意</div>
-    申込画面は <strong>1つのデバイス・1つのブラウザ</strong> で続けて入力するのがおすすめです。複数デバイスで同時に入力すると、入力内容が上書きされる場合があります。
+    <div class="ttl">⚠️ ご利用のヒント</div>
+    申込画面は <strong>1つのデバイス・1つのブラウザ</strong> で続けて入力するのがおすすめ（自動保存）。後でまた開きたいときは <strong>ブックマーク</strong> しておくと便利です。動かない場合はブラウザを最新版にアップデート or キャッシュ削除をお試しください。
   </div>
 </section>
 
@@ -643,21 +625,11 @@ tr:nth-child(even) td{background:#fbf8ee;}
     <li>学校から <strong>2営業日以内</strong> に確認のご連絡をいたします</li>
   </ul>
 
-  <h3>2-5. パンフレットで見るべきポイント</h3>
-  <table>
-    <tr><th style="width:42mm;">セクション</th><th>主なチェック内容</th></tr>
-    <tr><td>講座一覧・時間割</td><td>各タームでどんな講座が開講されるか</td></tr>
-    <tr><td>受講料</td><td>ターム料金・個別講座・プレ講習の単価</td></tr>
-    <tr><td>👫 割引制度</td><td>コマ数・きょうだい・補習校・お友達の組み合わせ</td></tr>
-    <tr><td>担当講師</td><td>各講師のプロフィール・指導科目</td></tr>
-    <tr><td>会場・送迎</td><td>校舎の住所、駐車場情報、送迎可否</td></tr>
-  </table>
-
   <div class="callout navy">
     <div class="ttl">📌 お申込み前のチェックリスト</div>
     □ 受講したい講座のタームと時間帯を確認した<br>
     □ 受講方法（対面 / ZOOM / 録画）を決めた<br>
-    □ 該当する割引を確認した<br>
+    □ 該当する割引を確認した（詳細は次ページ）<br>
     □ 第1次締切（5/24）を意識している
   </div>
 </section>
@@ -857,18 +829,10 @@ tr:nth-child(even) td{background:#fbf8ee;}
     時間の重複・送迎しづらいスケジュール・受講方法（対面／ZOOM／録画）の選択ミスは、ここで気付きやすくなります。問題があればタブ「①」に戻って修正してください。
   </div>
 
-  <h3>4-4. 時間割を活用するヒント</h3>
-  <table>
-    <tr><th style="width:42mm;">場面</th><th>活用方法</th></tr>
-    <tr><td>送迎計画</td><td>「全員」表示で、まとめて送迎できる時間帯を確認</td></tr>
-    <tr><td>お弁当の有無</td><td>12:30〜14:00 のコマがある日はお弁当持参、ない日はお迎え</td></tr>
-    <tr><td>個別講座の調整</td><td>個別講座は時間調整可能なので、空き時間に合わせて相談</td></tr>
-    <tr><td>本人用の控え</td><td>「個別」表示で印刷し、お子様にお渡しください</td></tr>
-  </table>
-
   <div class="callout navy">
     <div class="ttl">🚗 送迎が楽になる組み方</div>
-    きょうだいで <strong>同じターム・近い時間帯</strong> に組むと、送迎が一度で済みます。「全員」表示で空白時間を確認しながら調整しましょう。
+    きょうだいで <strong>同じターム・近い時間帯</strong> に組むと、送迎が一度で済みます。「全員」表示で空白時間を確認しながら調整しましょう。<br>
+    お弁当：12:30〜14:00 のコマがある日は持参、ない日はお迎え調整。
   </div>
 </section>
 
