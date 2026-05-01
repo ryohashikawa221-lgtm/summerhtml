@@ -10,13 +10,19 @@ function launchConfetti(){
   canvas.height=window.innerHeight;
   const ctx=canvas.getContext('2d');
   // 申込合計金額に応じて紙吹雪の量をスケール
-  // $0   → 80枚（最低保証）
-  // $500 → 約180枚
-  // $1000→ 約280枚
-  // $2000→ 約480枚（上限）
+  // ～$300:   60枚（控えめ）
+  // $300〜$1000: 60〜250枚（標準）
+  // $1000〜$2000: 350〜700枚（豪華）
+  // $2000+:  800枚（最大・お祭り）
   let total=0;
   try{ total=calcGrandTotal()||0; }catch(e){}
-  const pieceCount=Math.min(480, Math.max(80, Math.round(80 + total*0.2)));
+  let pieceCount;
+  if(total<300)        pieceCount=60;
+  else if(total<1000)  pieceCount=Math.round(60+(total-300)*0.27);     // 60→250
+  else if(total<2000)  pieceCount=Math.round(350+(total-1000)*0.35);   // 350→700
+  else                 pieceCount=800;
+  // 高額時はアニメーション時間も延長
+  const maxFrames=total>=1000?280:200;
   const pieces=Array.from({length:pieceCount},()=>({
     x:Math.random()*canvas.width,
     y:-20-Math.random()*100,
@@ -30,7 +36,6 @@ function launchConfetti(){
     spinSpeed:(Math.random()-0.5)*0.15,
   }));
   let frame=0;
-  const maxFrames=200;
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     pieces.forEach(p=>{
