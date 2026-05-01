@@ -2,9 +2,25 @@ const ZELLE_RECIPIENT_EMAIL = 'michi-info@sundai-kaigai.jp';
 const ZELLE_RECIPIENT_NAME  = 'Sundai USA, Inc. Novi, MI';
 const CHECK_PAYABLE_TO      = 'Sundai USA, Inc.';
 const CHECK_MAIL_TO         = '24277 Novi Rd, Novi, MI 48375';
-// Zelle QR画像URL。空文字の場合はプレースホルダ（テキストのみ）を表示。
-// 後日 Drive 直リンク等を入れると自動で QR画像入りに切り替わる。
+// Zelle QR の Google Drive ファイルID（CID インライン埋め込み用・推奨）
+// 空文字なら下の ZELLE_QR_IMAGE_URL（外部URL）を使用、それも空ならテキストプレースホルダ。
+const ZELLE_QR_DRIVE_FILE_ID = '1O2fXV-6MPUw210YLuRjuZbMudq2Bx0VZ';
+// Zelle QR画像URL（フォールバック）。Drive ID が設定されていればこちらは無視される。
 const ZELLE_QR_IMAGE_URL    = '';
+
+// ============================================================
+// Drive から Zelle QR Blob を取得（CIDインライン埋め込み用）
+// 失敗時は null を返し、呼び出し側でフォールバック
+// ============================================================
+function _getZelleQrBlob() {
+  if (!ZELLE_QR_DRIVE_FILE_ID) return null;
+  try {
+    return DriveApp.getFileById(ZELLE_QR_DRIVE_FILE_ID).getBlob().setName('zelle_qr.png');
+  } catch (e) {
+    console.error('_getZelleQrBlob failed:', e && e.message);
+    return null;
+  }
+}
 
 // ============================================================
 // HTMLエスケープ
@@ -63,15 +79,22 @@ d.courses + '\n\n合計金額：' + d.total + '\n\n' +
 '  お支払い確認後、改めて領収書をメールにてお送りいたします。\n\n' +
 SCHOOL_NAME + '\nTEL: 248-349-5234';
 
-  const parentHtml = _buildEnrollmentEmailHtml(d);
+  // Zelle QR を Drive から取得（成功すれば CID インライン埋め込み）
+  const qrBlob = _getZelleQrBlob();
+  const qrSrc = qrBlob ? 'cid:zelle_qr' : ZELLE_QR_IMAGE_URL;
+  const parentHtml = _buildEnrollmentEmailHtml(d, qrSrc);
 
   // 申込画面そのものが請求書フォーマットになっているため、保護者は申込画面の
   // 「🖨 印刷 / PDF保存」ボタンから自分で控えを取得できる設計（PDF添付しない）
   // Phase U-3-A 1-2: _safeSendEmail でクォータ対策 + ステータス記録
-  const parentResult = _safeSendEmail(d.reply_to, parentSubject, parentText, {
+  const mailOptions = {
     name: SCHOOL_NAME,
     htmlBody: parentHtml
-  });
+  };
+  if (qrBlob) {
+    mailOptions.inlineImages = { zelle_qr: qrBlob };
+  }
+  const parentResult = _safeSendEmail(d.reply_to, parentSubject, parentText, mailOptions);
 
   // 申込一覧シートにステータス記録（最新行=この申込）
   try {
@@ -91,18 +114,21 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
 
 // ============================================================
 // 保護者向け確認メールのHTML本文生成（Phase U-2 / Feature C）
+// qrSrc: 'cid:zelle_qr'（インライン埋め込み）または 外部URL or 空文字
 // ============================================================
-function _buildEnrollmentEmailHtml(d) {
+function _buildEnrollmentEmailHtml(d, qrSrc) {
   const navy = '#1b2a4a';
   const gold = '#c9a84c';
   const cream = '#faf8f3';
 
-  // Zelle QRブロック（画像URLが設定されていれば画像、無ければテキストプレースホルダ）
+  // Zelle QRブロック（QRソースが指定されていれば画像、無ければテキストプレースホルダ）
   let qrBlock;
-  if (ZELLE_QR_IMAGE_URL) {
+  if (qrSrc) {
+    // cid: で始まる場合は inlineImages に対応するキーが必要
+    const safeSrc = qrSrc.indexOf('cid:') === 0 ? qrSrc : _esc(qrSrc);
     qrBlock =
       '<div style="text-align:center;margin:14px 0">' +
-        '<img src="' + _esc(ZELLE_QR_IMAGE_URL) + '" alt="Zelle QR" style="max-width:200px;border:1px solid #ddd;padding:6px;background:#fff">' +
+        '<img src="' + safeSrc + '" alt="Zelle QR" style="max-width:200px;border:1px solid #ddd;padding:6px;background:#fff">' +
         '<div style="font-size:11px;color:#666;margin-top:6px">スマホでQRをスキャン → Zelleアプリが起動</div>' +
       '</div>';
   } else {
