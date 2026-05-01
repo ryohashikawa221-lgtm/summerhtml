@@ -124,7 +124,8 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
   // 申込URL QR を動的生成（再アクセス用）
   const appUrlQrBlob = _getAppUrlQrBlob();
   const appUrl = _getAppUrl();
-  const parentHtml = _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrBlob ? 'cid:app_url_qr' : '', appUrl);
+  const mypageUrl = appUrl ? appUrl + '?page=mypage' : '';
+  const parentHtml = _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrBlob ? 'cid:app_url_qr' : '', appUrl, mypageUrl);
 
   // 申込画面そのものが請求書フォーマットになっているため、保護者は申込画面の
   // 「🖨 印刷 / PDF保存」ボタンから自分で控えを取得できる設計（PDF添付しない）
@@ -162,8 +163,9 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
 // qrSrc: Zelle QR ('cid:zelle_qr' / 外部URL / 空文字)
 // appUrlQrSrc: 申込URL QR ('cid:app_url_qr' / 空文字)
 // appUrl: 申込ページのURL文字列（テキストリンク表示用）
+// mypageUrl: マイページのURL（申込番号下のボタンリンク用）
 // ============================================================
-function _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrSrc, appUrl) {
+function _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrSrc, appUrl, mypageUrl) {
   const navy = '#1b2a4a';
   const gold = '#c9a84c';
   const cream = '#faf8f3';
@@ -207,6 +209,15 @@ function _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrSrc, appUrl) {
           '<div style="font-size:10px;color:#888;margin-top:2px">マイページ照会・領収書再送等で使用します</div>' +
         '</div>' : '') +
       '</div>' +
+      (mypageUrl ?
+        '<div style="margin-top:14px;text-align:center">' +
+          '<a href="' + _esc(mypageUrl) + '" ' +
+             'style="display:inline-block;padding:10px 22px;background:' + navy + ';color:#fff;text-decoration:none;font-size:13px;font-weight:700;border-radius:4px;border:2px solid ' + gold + '">' +
+            '📋 マイページを開く / My Page' +
+          '</a>' +
+          '<div style="font-size:10px;color:#888;margin-top:6px">申込内容の確認・お支払い状況・領収書再送・変更希望はこちら</div>' +
+        '</div>'
+      : '') +
     '</div>' +
     '<div style="margin:18px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">■ 申込内容</div>' +
     '<div style="font-size:12px;line-height:1.9;white-space:pre-wrap;background:#fff;border:1px solid #eee;padding:12px;border-radius:3px">' + _nl2br(d.courses) + '</div>' +
