@@ -23,6 +23,45 @@ function _getZelleQrBlob() {
 }
 
 // ============================================================
+// 申込ページのデプロイURL を取得（再アクセス用QRに埋め込む）
+// ============================================================
+function _getAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl() || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// ============================================================
+// 申込URL の QR Blob を動的生成（qrserver.com の無料API）
+// CacheService で6時間キャッシュ。失敗時は null
+// ============================================================
+function _getAppUrlQrBlob() {
+  const url = _getAppUrl();
+  if (!url) return null;
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'app_url_qr_' + Utilities.base64EncodeWebSafe(url).slice(0, 40);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return Utilities.newBlob(Utilities.base64Decode(cached), 'image/png', 'app_url_qr.png');
+    }
+    const apiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=' + encodeURIComponent(url);
+    const response = UrlFetchApp.fetch(apiUrl, { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) return null;
+    const blob = response.getBlob().setName('app_url_qr.png');
+    try {
+      cache.put(cacheKey, Utilities.base64Encode(blob.getBytes()), 21600); // 6時間
+    } catch (e) { /* キャッシュ失敗は無視 */ }
+    return blob;
+  } catch (e) {
+    console.error('_getAppUrlQrBlob failed:', e && e.message);
+    return null;
+  }
+}
+
+// ============================================================
 // HTMLエスケープ
 // ============================================================
 function _esc(s) {
@@ -82,17 +121,23 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
   // Zelle QR を Drive から取得（成功すれば CID インライン埋め込み）
   const qrBlob = _getZelleQrBlob();
   const qrSrc = qrBlob ? 'cid:zelle_qr' : ZELLE_QR_IMAGE_URL;
-  const parentHtml = _buildEnrollmentEmailHtml(d, qrSrc);
+  // 申込URL QR を動的生成（再アクセス用）
+  const appUrlQrBlob = _getAppUrlQrBlob();
+  const appUrl = _getAppUrl();
+  const parentHtml = _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrBlob ? 'cid:app_url_qr' : '', appUrl);
 
   // 申込画面そのものが請求書フォーマットになっているため、保護者は申込画面の
   // 「🖨 印刷 / PDF保存」ボタンから自分で控えを取得できる設計（PDF添付しない）
   // Phase U-3-A 1-2: _safeSendEmail でクォータ対策 + ステータス記録
+  const inlineImages = {};
+  if (qrBlob) inlineImages.zelle_qr = qrBlob;
+  if (appUrlQrBlob) inlineImages.app_url_qr = appUrlQrBlob;
   const mailOptions = {
     name: SCHOOL_NAME,
     htmlBody: parentHtml
   };
-  if (qrBlob) {
-    mailOptions.inlineImages = { zelle_qr: qrBlob };
+  if (Object.keys(inlineImages).length > 0) {
+    mailOptions.inlineImages = inlineImages;
   }
   const parentResult = _safeSendEmail(d.reply_to, parentSubject, parentText, mailOptions);
 
@@ -114,9 +159,11 @@ SCHOOL_NAME + '\nTEL: 248-349-5234';
 
 // ============================================================
 // 保護者向け確認メールのHTML本文生成（Phase U-2 / Feature C）
-// qrSrc: 'cid:zelle_qr'（インライン埋め込み）または 外部URL or 空文字
+// qrSrc: Zelle QR ('cid:zelle_qr' / 外部URL / 空文字)
+// appUrlQrSrc: 申込URL QR ('cid:app_url_qr' / 空文字)
+// appUrl: 申込ページのURL文字列（テキストリンク表示用）
 // ============================================================
-function _buildEnrollmentEmailHtml(d, qrSrc) {
+function _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrSrc, appUrl) {
   const navy = '#1b2a4a';
   const gold = '#c9a84c';
   const cream = '#faf8f3';
@@ -186,6 +233,14 @@ function _buildEnrollmentEmailHtml(d, qrSrc) {
     '</div>' +
     '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">■ 申込内容の控え（請求書）</div>' +
     '<p style="margin:8px 0;font-size:12px">申込画面の右上にある「印刷 / PDF保存」ボタンから、申込内容を請求書として PDF 保存・印刷していただけます。<br><strong>お支払い確認後、改めて領収書をメールにてお送りいたします。</strong></p>' +
+    (appUrlQrSrc || appUrl ?
+    '<div style="margin:24px 0 6px;font-size:13px;color:' + navy + ';font-weight:700;border-bottom:2px solid ' + navy + ';padding-bottom:4px">■ 申込ページに戻る / Back to Application</div>' +
+    '<p style="margin:8px 0;font-size:12px">申込内容の変更・追加申込・お知り合いとの共有は、下記のQRコードまたはURLからアクセスできます。</p>' +
+    '<div style="text-align:center;margin:14px 0">' +
+      (appUrlQrSrc ? '<img src="' + (appUrlQrSrc.indexOf('cid:') === 0 ? appUrlQrSrc : _esc(appUrlQrSrc)) + '" alt="申込ページ QR" style="max-width:160px;border:1px solid #ddd;padding:6px;background:#fff">' : '') +
+      (appUrl ? '<div style="font-size:10px;color:#666;margin-top:8px;word-break:break-all"><a href="' + _esc(appUrl) + '" style="color:' + navy + '">' + _esc(appUrl) + '</a></div>' : '') +
+    '</div>'
+    : '') +
   '</div>' +
   '<div style="background:' + navy + ';color:#fff;padding:14px 24px;font-size:11px;line-height:1.8">' +
     '<div style="font-weight:700;font-size:13px;margin-bottom:4px">' + _esc(SCHOOL_NAME) + '</div>' +
