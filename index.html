@@ -1224,7 +1224,19 @@ function calcPreItemPrice(type, s, si, friendDisc=false){
   return Math.ceil(price);
 }
 
-// 生徒合計（割引後・端数処理込み）
+// 生徒の教材費合計（割引対象外・固定加算）
+function calcStudentMaterialFee(i){
+  const s=students[i];
+  if(!s)return 0;
+  let total=0;
+  s.courses.forEach(cid=>{
+    const c=COURSES.find(x=>x.id===cid);
+    if(c&&c.materialFee)total+=Number(c.materialFee)||0;
+  });
+  return total;
+}
+
+// 生徒合計（割引後・端数処理込み・教材費加算）
 function calcStudentTotal(i){
   const s=students[i];
   if(!s||!s.level)return 0;
@@ -1238,6 +1250,7 @@ function calcStudentTotal(i){
   s.preSlots.forEach(sl=>{
     total+=calcPreItemPrice(sl.type,s,i,sl.friendDisc);
   });
+  total+=calcStudentMaterialFee(i);
   return total;
 }
 
@@ -1404,6 +1417,10 @@ if (!levels.includes('all') && !levels.includes(s.level)) return false;
                         </div>
                         ${on ? `
                         <div style="font-size:10px;margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,255,255,.2)" onclick="event.stopPropagation()">
+                          ${c.materialFee?`<div style="background:rgba(255,255,255,.1);padding:4px 6px;border-radius:2px;margin-bottom:5px;font-size:10px">
+                            <span style="color:#fde68a;font-weight:600">📚 教材費 ${fmtUSD(c.materialFee)}</span>
+                            <span style="color:rgba(255,255,255,.7);margin-left:6px;font-size:9px">（授業料とは別途請求／割引対象外）</span>
+                          </div>`:''}
                           <div style="color:rgba(255,255,255,.6);margin-bottom:4px;font-size:9px">※以下の受講を希望する場合はチェックを入れてください</div>
                           ${isZoomAllowed(c,s.level)?`
                           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2058,6 +2075,7 @@ function renderInvoice(){
         <tbody>${rows}</tbody>
         <tfoot>
           ${discNotes.length>0?`<tr class="disc-row"><td colspan="7" style="font-size:11px;padding:6px 10px">適用割引：${discNotes.join('　/　')}</td></tr>`:''}
+          ${(()=>{const mf=calcStudentMaterialFee(i);return mf>0?`<tr><td colspan="6" style="text-align:right;font-size:11px;color:var(--muted);padding:6px 10px">📚 教材費（割引対象外）</td><td class="r" style="font-size:11px">${fmtUSD(mf)}</td></tr>`:'';})()}
           <tr class="inv-table total-row">
             <td colspan="6" style="text-align:right">小計</td>
             <td class="r">${fmtUSD(stTotal)}</td>
