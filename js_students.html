@@ -13,6 +13,11 @@ function updateStudentHeader(i){
 }
 
 function addStudent(){
+  // きょうだい登録は最大5人まで（CLAUDE.md / 業務ルール）
+  if(students.length>=5){
+    alert('きょうだい登録は最大5人までです。\nそれ以上のお子様の申込は学校までお問い合わせください。');
+    return;
+  }
   const sid=nextSid++;
   // 兄弟自動継承: 直前生徒から姓のみ引き継ぐ（補習校・AS生割引は引き継がない／
   // 兄弟で在籍が異なるケースが多く、誤って割引適用 → 後から差額徴収を避けるため）

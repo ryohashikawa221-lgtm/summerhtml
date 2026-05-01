@@ -40,15 +40,27 @@ p,li{font-size:12pt;}
 /* page wrapper -- US Letter (8.5 × 11 in = 215.9 × 279.4 mm) */
 .page{
   width:8.5in;
-  min-height:11in;
-  margin:8mm auto;
-  padding:0.7in 0.6in 0.8in 0.6in;
+  margin:6mm auto;
+  padding:0.45in 0.6in 0.5in 0.6in;
   background:var(--cream);
   box-shadow:0 2px 12px rgba(0,0,0,.15);
   position:relative;
+}
+/* 表紙だけは確実に1ページ占有 */
+.cover{
+  min-height:11in;
   page-break-after:always;
 }
-.page:last-child{page-break-after:auto;}
+/* キー要素の改ページ制御：途中で切れたら困るブロックは avoid、
+   章見出しは直前で切れる方が自然 */
+table, .callout, .flow, .friend-banner, .screenshot-placeholder, .toc, .info-box{
+  page-break-inside:avoid;
+  break-inside:avoid;
+}
+h2, h3{
+  page-break-after:avoid;
+  break-after:avoid;
+}
 
 /* top accent strip (navy + gold) on every page */
 .page::before{
