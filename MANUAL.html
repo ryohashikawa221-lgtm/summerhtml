@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2026 ミシガンサマースクール 受講申込ガイド</title>
+<style>
+/* =========================================================
+   Manual Styles  (print-friendly A4)
+   ========================================================= */
+:root{
+  --navy:#1b2a4a;
+  --navy-soft:#2c4470;
+  --gold:#c9a84c;
+  --gold-soft:#e6d49a;
+  --cream:#faf8f3;
+  --cream-deep:#f3eedd;
+  --red:#c0392b;
+  --ink:#1c1c1c;
+  --muted:#6b6b6b;
+  --line:#d8d2c0;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Hiragino Kaku Gothic Pro','Yu Gothic','Meiryo',sans-serif;
+  color:var(--ink);
+  background:#e9e7e0;
+  font-size:12pt;
+  line-height:1.7;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+
+/* page wrapper -- A4 */
+.page{
+  width:210mm;
+  min-height:297mm;
+  margin:8mm auto;
+  padding:18mm 16mm 20mm 16mm;
+  background:var(--cream);
+  box-shadow:0 2px 12px rgba(0,0,0,.15);
+  position:relative;
+  page-break-after:always;
+}
+.page:last-child{page-break-after:auto;}
+
+/* footer */
+.page::after{
+  content:"駿台ミシガン国際学院  /  2026 Summer School Application Guide";
+  position:absolute;
+  left:16mm; right:16mm; bottom:8mm;
+  font-size:9pt;
+  color:var(--muted);
+  border-top:1px solid var(--line);
+  padding-top:4mm;
+  text-align:center;
+  letter-spacing:.04em;
+}
+
+/* headings */
+h1,h2,h3,h4{font-family:'Hiragino Mincho Pro','Yu Mincho',serif; color:var(--navy); margin:0 0 .6em 0;}
+h1{font-size:26pt; line-height:1.3;}
+h2{font-size:18pt; border-bottom:3px solid var(--gold); padding-bottom:6px; margin-top:0;}
+h3{font-size:14pt; color:var(--navy-soft); margin-top:1.2em;}
+h4{font-size:12pt; color:var(--navy-soft);}
+p{margin:.4em 0 .8em 0;}
+
+a{color:var(--navy); text-decoration:underline;}
+
+ul,ol{margin:.3em 0 .8em 0; padding-left:1.4em;}
+li{margin:.2em 0;}
+
+/* COVER ----------------------------------------------- */
+.cover{
+  display:flex; flex-direction:column; justify-content:center;
+  text-align:center;
+  background:linear-gradient(180deg,var(--cream) 0%,var(--cream-deep) 100%);
+  border:1px solid var(--line);
+}
+.cover .brand-bar{
+  height:8px; background:var(--navy); margin:-18mm -16mm 16mm -16mm;
+  border-bottom:4px solid var(--gold);
+}
+.cover .crest{
+  font-size:42pt; color:var(--gold); margin:8mm 0;
+}
+.cover h1{font-size:30pt; color:var(--navy); letter-spacing:.04em;}
+.cover .subtitle{
+  font-size:15pt; color:var(--navy-soft); margin-top:6mm; letter-spacing:.04em;
+}
+.cover .tag{
+  display:inline-block; padding:6px 18px;
+  background:var(--navy); color:var(--cream);
+  font-size:12pt; letter-spacing:.18em; margin-top:8mm;
+}
+.cover .info-box{
+  margin:14mm auto 0 auto; max-width:130mm;
+  border:2px solid var(--gold); padding:10mm; background:#fff;
+  text-align:left; font-size:11pt; line-height:2;
+}
+.cover .info-box .lbl{display:inline-block; width:5em; color:var(--gold); font-weight:700;}
+.cover .qr-block{
+  display:flex; gap:8mm; align-items:center; justify-content:center; margin-top:8mm;
+}
+.cover .qr-placeholder{
+  width:36mm; height:36mm; border:2px dashed var(--navy);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--muted); font-size:9pt; text-align:center; background:#fff;
+}
+.cover .url-text{font-size:10pt; color:var(--muted); word-break:break-all; max-width:90mm;}
+
+/* TOC ------------------------------------------------- */
+.toc{
+  background:#fff; border:1px solid var(--line);
+  padding:10mm 12mm; margin-top:6mm;
+}
+.toc ol{list-style:none; padding-left:0; counter-reset:toc;}
+.toc ol li{
+  counter-increment:toc;
+  display:flex; justify-content:space-between;
+  border-bottom:1px dotted var(--line);
+  padding:5px 0; font-size:12pt;
+}
+.toc ol li::before{
+  content:counter(toc) ".";
+  color:var(--gold); font-weight:700; width:2.4em;
+}
+.toc ol li.zero::before{content:"0.";}
+.toc ol li span.title{flex:1;}
+.toc ol li span.pg{color:var(--muted); font-variant-numeric:tabular-nums;}
+
+/* callouts -------------------------------------------- */
+.callout{
+  border-left:6px solid var(--gold);
+  background:#fff;
+  padding:10px 14px;
+  margin:1em 0;
+}
+.callout.navy{border-left-color:var(--navy);}
+.callout.red{border-left-color:var(--red); background:#fdf3f1;}
+.callout .ttl{font-weight:700; color:var(--navy); margin-bottom:4px;}
+
+/* tables ---------------------------------------------- */
+table{
+  width:100%; border-collapse:collapse; margin:.6em 0 1em 0;
+  font-size:11pt; background:#fff;
+}
+th,td{
+  border:1px solid var(--line);
+  padding:8px 10px; text-align:left; vertical-align:top;
+}
+th{background:var(--navy); color:var(--cream); font-weight:600; letter-spacing:.04em;}
+tr:nth-child(even) td{background:#fbf8ee;}
+
+/* flow boxes ------------------------------------------ */
+.flow{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin:1em 0;
+}
+.flow-step{
+  background:#fff; border:2px solid var(--navy);
+  padding:10px; text-align:center;
+  position:relative;
+}
+.flow-step .num{
+  display:inline-block; width:28px; height:28px; line-height:28px;
+  border-radius:50%; background:var(--gold); color:#fff;
+  font-weight:700; margin-bottom:6px;
+}
+.flow-step .ttl{font-weight:700; color:var(--navy); font-size:11pt;}
+.flow-step .desc{font-size:10pt; color:var(--muted); margin-top:4px;}
+.flow-step:not(:last-child)::after{
+  content:"▶";
+  position:absolute; right:-12px; top:50%; transform:translateY(-50%);
+  color:var(--gold); font-size:14pt; z-index:2;
+}
+
+/* screenshot placeholder ------------------------------ */
+.screenshot-placeholder{
+  border:2px dashed var(--navy-soft);
+  background:#fff;
+  padding:14mm 6mm;
+  text-align:center;
+  color:var(--muted);
+  font-size:10pt;
+  margin:.8em 0;
+  border-radius:4px;
+}
+.screenshot-placeholder strong{color:var(--navy); display:block; font-size:11pt; margin-bottom:4px;}
+
+/* discount section ------------------------------------ */
+.discount-page{
+  background:linear-gradient(180deg,#fff 0%,var(--cream) 100%);
+}
+.discount-card{
+  border:1px solid var(--line);
+  background:#fff;
+  padding:10px 14px;
+  margin:.6em 0;
+  border-left:6px solid var(--navy);
+}
+.discount-card.gold{border-left-color:var(--gold);}
+.discount-card .name{font-weight:700; color:var(--navy); font-size:13pt;}
+.discount-card .name small{color:var(--muted); font-size:9pt; font-weight:400;}
+
+/* friend-discount banner (most visible) -- */
+.friend-banner{
+  background:linear-gradient(135deg,var(--gold) 0%,var(--gold-soft) 100%);
+  color:var(--navy);
+  border:3px solid var(--navy);
+  padding:14px 18px;
+  margin:1em 0 1.2em 0;
+  position:relative;
+}
+.friend-banner .badge-new{
+  position:absolute; top:-12px; right:14px;
+  background:var(--red); color:#fff;
+  font-size:10pt; font-weight:700; padding:3px 10px;
+  letter-spacing:.1em;
+}
+.friend-banner h3{
+  margin:0 0 6px 0; color:var(--navy); font-size:16pt;
+  font-family:'Hiragino Mincho Pro','Yu Mincho',serif;
+}
+.friend-banner .lead{font-size:12pt; margin:0;}
+.friend-banner .rule{
+  margin-top:8px; padding:6px 10px; background:#fff;
+  border:1px dashed var(--navy); font-size:11pt;
+}
+
+/* stats / status colors ------------------------------- */
+.dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle;}
+.dot.green{background:#3d8b3d;}
+.dot.orange{background:#e08a17;}
+.dot.red{background:var(--red);}
+.dot.gray{background:#888;}
+
+/* sibling color chips */
+.chip{
+  display:inline-block; padding:2px 10px; border-radius:12px;
+  font-size:10pt; margin:2px 4px 2px 0; color:#fff;
+}
+.chip.b{background:#2e6db4;}
+.chip.p{background:#c8528a;}
+.chip.g{background:#3d8b3d;}
+.chip.o{background:#d7791b;}
+.chip.v{background:#7b4ea3;}
+.chip.y{background:#b8941b;}
+
+/* faq ------------------------------------------------- */
+.faq-item{
+  border:1px solid var(--line);
+  background:#fff;
+  margin:.5em 0;
+  padding:8px 12px;
+}
+.faq-q{
+  color:var(--navy); font-weight:700;
+}
+.faq-q::before{content:"Q. "; color:var(--gold);}
+.faq-a{margin:4px 0 0 1.4em; color:#222;}
+.faq-a::before{content:"A. "; color:var(--navy); font-weight:700;}
+
+/* helper ---------------------------------------------- */
+.kbd{
+  display:inline-block; border:1px solid #999; border-bottom-width:2px;
+  padding:1px 6px; border-radius:3px; font-size:10pt; background:#fff;
+  font-family:inherit;
+}
+.tag-pill{
+  display:inline-block; padding:1px 8px; border-radius:10px;
+  background:var(--navy); color:#fff; font-size:10pt;
+  margin-right:4px;
+}
+.tag-pill.gold{background:var(--gold); color:var(--navy);}
+
+.section-lead{
+  background:var(--cream-deep); padding:8px 12px;
+  border-left:5px solid var(--navy); margin:0 0 1em 0;
+}
+
+/* PRINT ----------------------------------------------- */
+@media print{
+  body{background:#fff;}
+  .page{
+    margin:0; box-shadow:none;
+    width:auto; min-height:auto;
+    padding:14mm 12mm 18mm 12mm;
+  }
+  .no-print{display:none !important;}
+  a{color:var(--ink); text-decoration:none;}
+  h2{break-inside:avoid;}
+  .flow,.discount-card,.friend-banner,.callout,table,.faq-item{break-inside:avoid;}
+}
+
+@page{ size:A4 portrait; margin:12mm; }
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     COVER PAGE
+============================================================ -->
+<section class="page cover">
+  <div class="brand-bar"></div>
+  <div class="crest">&#10047;</div>
+  <h1>2026 ミシガン<br>サマースクール<br>受講申込ガイド</h1>
+  <div class="subtitle">お申込みから入金・領収書まで完全ガイド</div>
+  <div class="tag">FOR PARENTS &nbsp;|&nbsp; 保護者の皆様へ</div>
+
+  <div class="info-box">
+    <div><span class="lbl">学院名</span>駿台ミシガン国際学院 (Sundai Michigan)</div>
+    <div><span class="lbl">電 話</span>248-349-5234</div>
+    <div><span class="lbl">Email</span>michi-info@sundai-kaigai.jp</div>
+    <div><span class="lbl">所在地</span>24277 Novi Rd, Novi, MI 48375</div>
+  </div>
+
+  <div class="qr-block">
+    <!-- ここに申込URLのQRコード画像を差し替え -->
+    <div class="qr-placeholder">
+      QR<br>申込URL<br>(差し替え)
+    </div>
+    <div style="text-align:left;">
+      <div style="font-weight:700; color:var(--navy);">受講申込URL</div>
+      <div class="url-text">script.google.com/macros/s/AKfyc...DywBHoNp/exec</div>
+      <div style="font-size:10pt; color:var(--muted); margin-top:4mm;">
+        スマホ・タブレット・PCどれでも<br>お使いいただけます
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14mm; font-size:10pt; color:var(--muted);">
+    第1次申込締切：2026年5月24日（日）&nbsp;&nbsp;|&nbsp;&nbsp;説明会：5月2日（土）
+  </div>
+</section>
+
+<!-- ============================================================
+     TABLE OF CONTENTS
+============================================================ -->
+<section class="page">
+  <h2>目 次</h2>
+  <p class="section-lead">本マニュアルは「受講申込URLにアクセス → 講座を選ぶ → 申込書を送る → 入金 → 領収書受領」の一連の流れに沿って構成されています。お手元に置いてご活用ください。</p>
+
+  <div class="toc">
+    <ol>
+      <li class="zero"><span class="title">全体フロー図</span><span class="pg">P.3</span></li>
+      <li><span class="title">申込URLにアクセスする</span><span class="pg">P.4</span></li>
+      <li><span class="title">パンフレットを読む（タブ「概要」）</span><span class="pg">P.5</span></li>
+      <li><span class="title">割引制度のご案内（重要）</span><span class="pg">P.6</span></li>
+      <li><span class="title">講座を選ぶ（タブ「① 講座を選ぶ」）</span><span class="pg">P.7</span></li>
+      <li><span class="title">時間割を確認する（タブ「② 時間割」）</span><span class="pg">P.9</span></li>
+      <li><span class="title">申込書を作成する（タブ「③ 申込・請求書」）</span><span class="pg">P.10</span></li>
+      <li><span class="title">申込内容を送信する</span><span class="pg">P.11</span></li>
+      <li><span class="title">お支払い（Zelle / Check）</span><span class="pg">P.12</span></li>
+      <li><span class="title">領収書が届く</span><span class="pg">P.12</span></li>
+      <li><span class="title">マイページで申込内容を確認</span><span class="pg">P.13</span></li>
+      <li><span class="title">講座リクエスト</span><span class="pg">P.13</span></li>
+      <li><span class="title">よくある質問（FAQ）</span><span class="pg">P.14</span></li>
+      <li><span class="title">困ったとき</span><span class="pg">P.14</span></li>
+    </ol>
+  </div>
+
+  <div class="callout navy" style="margin-top:8mm;">
+    <div class="ttl">★ 今年の新着情報</div>
+    今年から <strong>「お友達割引」</strong> が新設されました。お友達と同じコマを受講すると、その対象コマが10%引きになります。詳しくは P.6 をご覧ください。
+  </div>
+</section>
+
+<!-- ============================================================
+     0. FLOW
+============================================================ -->
+<section class="page">
+  <h2>0. 全体フロー図</h2>
+  <p class="section-lead">受講申込から領収書受領までは、おおむね <strong>4ステップ</strong>です。学校から自動・手動で送られるメールが目印になります。</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="num">1</div>
+      <div class="ttl">申込</div>
+      <div class="desc">URLにアクセスし、生徒・講座を選んで送信</div>
+    </div>
+    <div class="flow-step">
+      <div class="num">2</div>
+      <div class="ttl">確認メール</div>
+      <div class="desc">学校から自動で届く（申込番号・Zelle QR含む）</div>
+    </div>
+    <div class="flow-step">
+      <div class="num">3</div>
+      <div class="ttl">入 金</div>
+      <div class="desc">Zelle または Check（小切手）でお支払い</div>
+    </div>
+    <div class="flow-step">
+      <div class="num">4</div>
+      <div class="ttl">領収書</div>
+      <div class="desc">入金確認後、学校からHTML領収書が届く</div>
+    </div>
+  </div>
+
+  <h3>所要時間の目安</h3>
+  <table>
+    <tr><th style="width:42mm;">ステップ</th><th>目安</th><th>備考</th></tr>
+    <tr><td>① 申込（入力）</td><td>15〜30分</td><td>自動保存されるので途中で閉じてもOK</td></tr>
+    <tr><td>② 確認メール</td><td>送信直後</td><td>届かない場合は迷惑メール確認</td></tr>
+    <tr><td>③ 入金</td><td>2〜3営業日で確認</td><td>Zelle推奨／Check可</td></tr>
+    <tr><td>④ 領収書到着</td><td>入金確認後すぐ</td><td>HTMLメール本文がそのまま正式な領収書</td></tr>
+  </table>
+
+  <div class="callout">
+    <div class="ttl">大切なメールが届く先は…</div>
+    申込フォームで入力した <strong>保護者メールアドレス</strong> に、確認メール・入金確認・領収書のすべてが届きます。普段ご覧になるアドレスを正確にご入力ください。
+  </div>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    確認メールの本文（申込番号・Zelle QR・お支払い案内が見える状態）
+  </div>
+</section>
+
+<!-- ============================================================
+     1. URL ACCESS
+============================================================ -->
+<section class="page">
+  <h2>1. 申込URLにアクセスする</h2>
+  <p class="section-lead">申込はすべて <strong>1つのウェブページ</strong> から行います。ログイン用パスワードはありません。URLにアクセスするだけで始められます。</p>
+
+  <h3>1-1. アクセス方法</h3>
+  <ul>
+    <li>説明会で配布された QRコード をスマホで読み取る</li>
+    <li>後日、学校から届くメール内のリンクをタップ／クリック</li>
+    <li>PCのブラウザにURLを直接入力 (Chrome / Edge / Safari いずれも対応)</li>
+  </ul>
+
+  <div class="callout navy">
+    <div class="ttl">スマホでもPCでもOK</div>
+    画面の大きさに合わせて自動でレイアウトが切り替わります。スマートフォンで途中まで入力 → PCで続きを入力、というように <strong>同じメールアドレス</strong> でログインすれば続きから作業できます（自動保存）。
+  </div>
+
+  <h3>1-2. 画面の構成（5つのタブ）</h3>
+  <table>
+    <tr><th style="width:62mm;">タブ</th><th>主な内容</th></tr>
+    <tr><td><span class="tag-pill gold">概要・パンフレット</span></td><td>講座のご案内・受講方法・割引制度・締切</td></tr>
+    <tr><td><span class="tag-pill gold">① 講座を選ぶ</span></td><td>生徒登録・講座選択・プレ講習・ウェイティング</td></tr>
+    <tr><td><span class="tag-pill gold">② 時間割</span></td><td>選んだ講座を時間割表示／印刷</td></tr>
+    <tr><td><span class="tag-pill gold">③ 申込・請求書</span></td><td>連絡先入力・お友達割引チェック・送信</td></tr>
+    <tr><td><span class="tag-pill gold">④ 講座リクエスト</span></td><td>開講希望・個別希望の連絡</td></tr>
+  </table>
+  <p style="font-size:10pt; color:var(--muted);">※「⑤ 管理」は学校スタッフ用です。保護者の皆様は使用しません。</p>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    画面上部の5つのタブが並んでいる状態
+  </div>
+</section>
+
+<!-- ============================================================
+     2. PAMPHLET TAB
+============================================================ -->
+<section class="page">
+  <h2>2. パンフレットを読む</h2>
+  <p class="section-lead">最初のタブ「概要・パンフレット」では、サマースクール全体のご案内をご覧いただけます。お申込み前にぜひお読みください。</p>
+
+  <h3>2-1. 講座の概要</h3>
+  <p>サマースクールは、現地校がお休みになる夏の期間に、日本語・英語・算数／数学・理科・社会・個別講座 などを集中的に学べるプログラムです。学年・目的に合わせて講座を組み合わせてご受講いただけます。</p>
+
+  <h3>2-2. 受講方法（3種類）</h3>
+  <table>
+    <tr><th style="width:30mm;">方法</th><th>特徴</th><th>申込時の操作</th></tr>
+    <tr><td><strong>対 面</strong></td><td>校舎で先生・お友達と一緒に学ぶ。最も推奨。</td><td>講座カードを選ぶだけ</td></tr>
+    <tr><td><strong>ZOOM</strong></td><td>ご自宅からオンライン参加。離れた地域の方に。</td><td>講座カード内の「ZOOM」にチェック</td></tr>
+    <tr><td><strong>録 画</strong></td><td>後日録画で視聴。スケジュールが合わない時に。</td><td>講座カード内の「録画」にチェック</td></tr>
+  </table>
+
+  <h3>2-3. 第1次申込締切</h3>
+  <div class="callout red">
+    <div class="ttl">第1次締切：2026年5月24日（日）</div>
+    第1次締切までにお申込み・ご入金まで完了していただくと、希望講座の優先確保ができます。締切後も空席があればお申込み可能です。
+  </div>
+
+  <h3>2-4. キャンセルについて</h3>
+  <ul>
+    <li>マイページの <strong>問い合わせフォーム</strong> からご連絡ください</li>
+    <li>システムによる自動キャンセルはありません</li>
+    <li>学校から <strong>2営業日以内</strong> に確認のご連絡をいたします</li>
+  </ul>
+</section>
+
+<!-- ============================================================
+     2-5. DISCOUNTS  (independent page, prominent)
+============================================================ -->
+<section class="page discount-page">
+  <h2>★ 割引制度のご案内</h2>
+  <p class="section-lead">サマースクールでは、コマ数・きょうだい・補習校／AS・お友達 の<strong>4種類の割引</strong>をご用意しています。すべての割引はシステムが自動で計算します。</p>
+
+  <!-- friend discount banner -- most prominent -->
+  <div class="friend-banner">
+    <span class="badge-new">NEW 2026</span>
+    <h3>👫 お友達割引</h3>
+    <p class="lead">お友達と <strong>同じコマ</strong> を受講する場合、その<strong>対象コマのみ10%引き</strong>になります。</p>
+    <div class="rule">
+      ▷ 申込書（タブ③）の各講座・プレ講習コマの下に表示される<strong>黄色のチェックボックス</strong>にチェック<br>
+      ▷ お友達のお名前を記入欄に入力（必須）<br>
+      ▷ 複数のコマで別々のお友達を申請することも可能です
+    </div>
+    <p style="font-size:10pt; margin-top:8px;">
+      ※「該当コマのみ」とは、お友達と一緒のコマだけが10%引きになる、という意味です。同じ講座でも他のコマは通常料金です。
+    </p>
+  </div>
+
+  <h3>① コマ数割引</h3>
+  <div class="discount-card gold">
+    <div class="name">受講するコマ数が多いほどお得 <small>(1講座 = 5コマ換算 / プレ講習1コマ = 1コマ)</small></div>
+    <table style="margin-top:6px;">
+      <tr><th>コマ数</th><th>割引率</th></tr>
+      <tr><td>10〜14コマ</td><td><strong>10%引き</strong></td></tr>
+      <tr><td>15〜19コマ</td><td><strong>20%引き</strong></td></tr>
+      <tr><td>20コマ以上</td><td><strong>30%引き</strong></td></tr>
+    </table>
+  </div>
+
+  <h3>② きょうだい割引</h3>
+  <div class="discount-card gold">
+    <div class="name">2人目以降のお子様が割引対象</div>
+    <ul style="margin:.3em 0;">
+      <li>2人目： <strong>20%引き</strong></li>
+      <li>3人目以降： <strong>30%引き</strong></li>
+    </ul>
+    <p style="font-size:10pt; color:var(--muted); margin:0;">※全生徒の割引前合計を比較し、金額が高い生徒から優先で「1人目」扱いとなります（自動計算）。</p>
+  </div>
+
+  <h3>③ 補習校・AS生割引</h3>
+  <div class="discount-card gold">
+    <div class="name">対象生徒は<strong>10%引き</strong></div>
+    <p style="margin:.2em 0;">生徒登録時に「補習校・AS生」のチェックを入れてください。ウェイティング登録の生徒も対象です。</p>
+  </div>
+
+  <div class="callout">
+    <div class="ttl">割引の組み合わせについて</div>
+    上記の割引は条件を満たせば <strong>重ねて適用</strong>されます。タブ③「申込・請求書」で、最終的な割引適用後の金額をご確認いただけます。
+  </div>
+
+  <h3>計算例（お友達割引込み）</h3>
+  <table>
+    <tr><th>項目</th><th>金額</th></tr>
+    <tr><td>受講料 合計（割引前）</td><td>$1,000</td></tr>
+    <tr><td>コマ数割引（10コマ → 10%）</td><td>− $100</td></tr>
+    <tr><td>お友達割引（対象コマ $200 の10%）</td><td>− $20</td></tr>
+    <tr><td><strong>お支払い金額</strong></td><td><strong>$880</strong></td></tr>
+  </table>
+  <p style="font-size:10pt; color:var(--muted);">※あくまでイメージです。実際の金額は申込書画面でご確認ください。</p>
+</section>
+
+<!-- ============================================================
+     3. SELECT COURSES
+============================================================ -->
+<section class="page">
+  <h2>3. 講座を選ぶ（タブ「① 講座を選ぶ」）</h2>
+  <p class="section-lead">このタブは「生徒登録 → 講座選択 → プレ講習選択」の順で進めていきます。きょうだいでまとめて申し込むこともできます。</p>
+
+  <h3>3-1. 生徒を登録する</h3>
+  <ol>
+    <li>画面上の <span class="kbd">＋ 生徒を追加</span> ボタンを押す</li>
+    <li>氏名・学年・対象区分（小学生／中学生／高校生 など）を入力</li>
+    <li>補習校または現地校アフタースクール（AS）に通っているお子様は、<strong>「補習校・AS生割引」のチェック</strong>を入れる</li>
+    <li>2人目以降を追加すると、姓は1人目から自動で引き継がれます（必要なら変更可）</li>
+  </ol>
+  <p style="font-size:10pt; color:var(--muted);">※生徒の削除は、生徒カード右上のメニューから行えます。</p>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    生徒追加フォーム（補習校・AS生のチェックボックスが見える状態）
+  </div>
+
+  <h3>3-2. 講座を選ぶ</h3>
+  <ul>
+    <li>画面上部の <strong>フィルター</strong>（ターム・タイプ・先生・キーワード）で講座を絞り込めます</li>
+    <li><strong>講座カード</strong>をクリック／タップで選択。もう一度タップで解除</li>
+    <li>同じ時間帯に2つ以上の講座を選ぶと、警告メッセージが表示されます</li>
+    <li>ZOOM受講・録画受講を希望される場合は、講座カード内のチェックを入れる</li>
+    <li>個別講座を選んだ場合は、希望科目を記入する欄が出てきます</li>
+  </ul>
+
+  <h4>残席表示の見方</h4>
+  <p>
+    <span class="dot green"></span>緑：余裕あり &nbsp;
+    <span class="dot orange"></span>オレンジ：残りわずか &nbsp;
+    <span class="dot red"></span>赤：満席に近い &nbsp;
+    <span class="dot gray"></span>グレー：満席（ウェイティング受付）
+  </p>
+
+  <h3>3-3. プレ講習を選ぶ</h3>
+  <p>プレ講習は <strong>カレンダー形式</strong>で表示されます。日付ごと・時間帯ごとにコマを選択してください。平日と日曜では時間帯が異なります（平日は夕方中心、日曜は午前中心）。</p>
+</section>
+
+<!-- continue selecting -->
+<section class="page">
+  <h2>3. 講座を選ぶ（つづき）</h2>
+
+  <h3>3-4. きょうだいがいる場合の便利機能</h3>
+  <div class="callout navy">
+    <div class="ttl">📋 「コピー」ボタンで時短</div>
+    生徒カードの上部にある <span class="kbd">📋 コピー</span> ボタンを押すと、<strong>他の生徒が選んだ講座をそのまま取り込む</strong>ことができます。<br>
+    ※以下の条件にあたる講座は、自動でスキップされます。
+    <ul style="margin:.3em 0;">
+      <li>すでにその生徒が同じ時間帯に別の講座を選んでいる</li>
+      <li>その生徒の対象学年と合わない講座</li>
+      <li>満席で選択できない講座</li>
+    </ul>
+  </div>
+
+  <h3>3-5. 満員講座のウェイティング登録</h3>
+  <p>満員（グレー表示）の講座でも、<strong>ウェイティング登録</strong>が可能です。空きが出た場合に学校からご連絡します。ウェイティング登録は申込書送信時に同時に確定されます。</p>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    講座カード3枚並び（緑／オレンジ／グレー＝ウェイティング表示）
+  </div>
+
+  <h3>3-6. 全体の流れの目安</h3>
+  <table>
+    <tr><th>順番</th><th>操作</th></tr>
+    <tr><td>1</td><td>生徒を追加（きょうだいの場合は人数分）</td></tr>
+    <tr><td>2</td><td>1人目の講座を選択</td></tr>
+    <tr><td>3</td><td>必要ならプレ講習も選択</td></tr>
+    <tr><td>4</td><td>2人目以降は「📋 コピー」で取り込み → 個別調整</td></tr>
+    <tr><td>5</td><td>タブ「② 時間割」で全体確認</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================
+     4. TIMETABLE
+============================================================ -->
+<section class="page">
+  <h2>4. 時間割を確認する（タブ「② 時間割」）</h2>
+  <p class="section-lead">選んだ講座が時間割の形で一覧表示されます。重複や抜けがないか、ここで最終確認します。</p>
+
+  <h3>4-1. 表示の見方</h3>
+  <ul>
+    <li>横軸：曜日／日付　縦軸：時間帯</li>
+    <li>講座は色付きのブロックで表示されます</li>
+    <li>きょうだいごとに <strong>色分け</strong>されます</li>
+  </ul>
+
+  <p>
+    色分け例：
+    <span class="chip b">青 1人目</span>
+    <span class="chip p">ピンク 2人目</span>
+    <span class="chip g">緑 3人目</span>
+    <span class="chip o">橙 4人目</span>
+    <span class="chip v">紫 5人目</span>
+    <span class="chip y">黄 6人目</span>
+  </p>
+
+  <h3>4-2. 「全員」と「個別」の切り替え</h3>
+  <ul>
+    <li><strong>全員</strong>：きょうだい全員の時間割を1枚に重ねて表示。送迎の計画を立てるときに便利</li>
+    <li><strong>個別</strong>：1人ずつの時間割を表示。本人用の控えとして印刷するときに</li>
+  </ul>
+
+  <h3>4-3. 印刷／PDF保存</h3>
+  <p>画面右上の <span class="kbd">🖨 印刷</span> ボタンから印刷できます。プリンタ選択画面で「PDFとして保存」を選べば、PDFファイルとしても保存できます。</p>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    時間割「全員」表示できょうだい3人分が色分けされている状態
+  </div>
+
+  <div class="callout">
+    <div class="ttl">この段階で最終確認を</div>
+    時間の重複・送迎しづらいスケジュール・受講方法（対面／ZOOM／録画）の選択ミスは、ここで気付きやすくなります。問題があればタブ「①」に戻って修正してください。
+  </div>
+</section>
+
+<!-- ============================================================
+     5. APPLICATION FORM
+============================================================ -->
+<section class="page">
+  <h2>5. 申込書を作成する（タブ「③ 申込・請求書」）</h2>
+  <p class="section-lead">最後のタブで、連絡先の入力・お友達割引のチェック・最終金額の確認を行います。</p>
+
+  <h3>5-1. 個別講座の詳細記入</h3>
+  <p>個別講座を選んだ場合は、以下の項目を入力してください。</p>
+  <ul>
+    <li><strong>希望する内容・科目</strong>（例：「英文法の復習を中心に」など）</li>
+    <li><strong>教材選択</strong>： ① 自分で用意 ／ ② 学校で用意 ／ ③ 相談したい のいずれか</li>
+  </ul>
+
+  <!-- friend discount detail -->
+  <h3>5-2. 👫 お友達割引のチェック方法 ★詳細</h3>
+  <div class="friend-banner" style="margin-top:.4em;">
+    <span class="badge-new">重 要</span>
+    <h3>該当コマの下にある「黄色のチェック」を忘れずに</h3>
+    <p class="lead">各講座カード・各プレ講習コマの下に、お友達割引用の<strong>黄色のチェックボックス</strong>が表示されます。</p>
+    <div class="rule">
+      ① チェックを入れる<br>
+      ② お友達のお名前（漢字またはローマ字）を記入<br>
+      ③ 複数コマで別々のお友達を申請することもできます<br>
+      ④ 「該当コマのみ」が10%引きの対象です（同じ講座でも別コマは通常料金）
+    </div>
+  </div>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    申込書画面でお友達割引のチェックボックスとお名前入力欄が見える状態
+  </div>
+
+  <h3>5-3. 連絡先・備考の入力</h3>
+  <table>
+    <tr><th style="width:34mm;">項目</th><th>必須／任意</th><th>備考</th></tr>
+    <tr><td>保護者氏名</td><td><strong>必 須</strong></td><td>領収書に記載されます</td></tr>
+    <tr><td>メールアドレス</td><td><strong>必 須</strong></td><td>確認メール・領収書の送付先</td></tr>
+    <tr><td>電話番号</td><td>任意</td><td>緊急時の連絡用</td></tr>
+    <tr><td>緊急連絡先</td><td>任意</td><td>保護者と連絡が取れない場合に</td></tr>
+    <tr><td>続柄</td><td>任意</td><td>父・母・祖父母 など</td></tr>
+    <tr><td>備考</td><td>任意</td><td>アレルギー・送迎事情などご自由に</td></tr>
+  </table>
+
+  <h3>5-4. 自動保存機能</h3>
+  <div class="callout navy">
+    入力中の内容は <strong>自動で保存</strong> されます。途中でブラウザを閉じても、同じURLとメールアドレスでアクセスすれば続きから再開できます。お時間のない時は無理せず分けて入力してください。
+  </div>
+</section>
+
+<!-- ============================================================
+     6. SUBMIT
+============================================================ -->
+<section class="page">
+  <h2>6. 申込内容を送信する</h2>
+  <p class="section-lead">入力がすべて完了したら、画面下部の送信ボタンを押して、学校へ申込書を送ります。</p>
+
+  <h3>6-1. 送信ボタンを押す</h3>
+  <ol>
+    <li>申込書ページ下部の <span class="kbd">📧 申込内容を送信する</span> ボタンを押す</li>
+    <li>確認モーダル（小さなウィンドウ）が開くので、内容に間違いがないかチェック</li>
+    <li>問題なければ「送信する」を押す</li>
+    <li>送信完了画面が表示されます（紙吹雪のアニメーション！）</li>
+  </ol>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    送信完了画面（紙吹雪アニメーション・申込番号の表示）
+  </div>
+
+  <h3>6-2. 確認メールが届きます</h3>
+  <ul>
+    <li>送信直後に、ご入力いただいた保護者メールに <strong>確認メール</strong>が届きます</li>
+    <li>差出人は <strong>「駿台ミシガン国際学院」</strong>として表示されます</li>
+    <li>本文には <strong>申込番号</strong> ・申込内容のサマリー・<strong>Zelle QRコード</strong>・お支払い案内が含まれます</li>
+  </ul>
+
+  <div class="callout">
+    <div class="ttl">申込番号は大切に保管</div>
+    申込番号は <strong>マイページのログイン</strong> や <strong>学校への問い合わせ</strong> の際に必要になります。確認メールはすぐに削除せず、スクールが終わるまで保管してください。
+  </div>
+
+  <h3>6-3. 確認メールが届かない場合</h3>
+  <ol>
+    <li>迷惑メール（スパム）フォルダをご確認ください</li>
+    <li>メールアドレスの入力ミスがないか、申込画面で確認</li>
+    <li>それでも見つからない場合は <strong>248-349-5234</strong> までご連絡ください</li>
+  </ol>
+</section>
+
+<!-- ============================================================
+     7. PAYMENT
+============================================================ -->
+<section class="page">
+  <h2>7. お支払い（Zelle / Check）</h2>
+  <p class="section-lead">お支払い方法は <strong>Zelle</strong>（推奨）または <strong>Check（小切手）</strong>のいずれかをお選びください。</p>
+
+  <h3>7-1. Zelleでお支払いの場合</h3>
+  <table>
+    <tr><th style="width:42mm;">項目</th><th>内容</th></tr>
+    <tr><td>受取アドレス</td><td><strong>michi-info@sundai-kaigai.jp</strong></td></tr>
+    <tr><td>受取口座名</td><td><strong>Sundai USA, Inc. Novi, MI</strong></td></tr>
+    <tr><td>送金額</td><td>確認メール記載の金額</td></tr>
+    <tr><td>メモ欄</td><td>申込番号・生徒氏名 を入力</td></tr>
+  </table>
+  <p>確認メールに添付されている <strong>Zelle QRコード</strong>を、お使いの銀行アプリで読み取ると、上記情報が自動入力されてスムーズです。</p>
+
+  <div class="callout red">
+    <div class="ttl">U.S. Bankをご利用の方への注意</div>
+    U.S. Bankでは1日の送金額に制限があり、金額によっては送金エラーが発生することがあります。エラーが出た場合は、無理に再送金せず <strong>248-349-5234</strong> まで一度ご連絡ください。
+  </div>
+
+  <h3>7-2. Check（小切手）でお支払いの場合</h3>
+  <table>
+    <tr><th style="width:42mm;">項目</th><th>内容</th></tr>
+    <tr><td>宛 名</td><td><strong>Sundai USA, Inc.</strong></td></tr>
+    <tr><td>送付先</td><td><strong>24277 Novi Rd, Novi, MI 48375</strong></td></tr>
+    <tr><td>メモ欄</td><td>申込番号・生徒氏名 を記入</td></tr>
+  </table>
+
+  <h3>7-3. 入金確認まで</h3>
+  <p>ご入金後、学校で確認できるまで <strong>2〜3営業日</strong>ほどかかります。週末・祝日を挟む場合はもう少しかかることがあります。お急ぎの場合はZelleが最速です。</p>
+
+  <h2 style="margin-top:14mm;">8. 領収書が届く</h2>
+  <ul>
+    <li>入金確認後、学校から <strong>領収書メール</strong> が届きます</li>
+    <li>HTML形式のメール本文がそのまま <strong>正式な領収書</strong> となります</li>
+    <li>確定申告・職場提出などの際は、メール本文を印刷／PDF化してご利用ください</li>
+    <li><strong>紛失時の再発行</strong>：マイページから「領収書再送依頼」をクリックしてください</li>
+  </ul>
+</section>
+
+<!-- ============================================================
+     9. MYPAGE  + 10. REQUEST
+============================================================ -->
+<section class="page">
+  <h2>9. マイページで申込内容を確認する</h2>
+  <p class="section-lead">マイページでは、ご自身の申込状況・支払い状況・ウェイティング状況をいつでもご確認いただけます。</p>
+
+  <h3>9-1. アクセス方法</h3>
+  <ul>
+    <li>申込URLの末尾に <span class="kbd">?page=mypage</span> を付けてアクセス</li>
+    <li>または、確認メール本文の <strong>「マイページを開く」リンク</strong>をクリック</li>
+  </ul>
+  <p style="font-size:10pt; color:var(--muted);">申込URL（短縮表記）: script.google.com/macros/s/AKfyc...DywBHoNp/exec</p>
+
+  <h3>9-2. ログイン情報</h3>
+  <ul>
+    <li><strong>申込番号</strong>（確認メールに記載）</li>
+    <li><strong>メールアドレス</strong>（申込時に入力したもの）</li>
+  </ul>
+  <p style="font-size:10pt; color:var(--muted);">※パスワードは設定不要。申込番号とメールが鍵代わりです。</p>
+
+  <h3>9-3. マイページでできること</h3>
+  <table>
+    <tr><th style="width:55mm;">項目</th><th>説明</th></tr>
+    <tr><td>申込内容サマリー</td><td>選択した講座・プレ講習・割引・合計金額の確認</td></tr>
+    <tr><td>支払いステータス</td><td>未入金 ／ 入金確認済み の表示</td></tr>
+    <tr><td>ウェイティング登録状況</td><td>満席講座への登録状況を一覧で確認</td></tr>
+    <tr><td>領収書再送依頼</td><td>紛失時にワンクリックで再送依頼</td></tr>
+    <tr><td>変更・キャンセル問い合わせ</td><td>専用フォームから学校へご連絡</td></tr>
+  </table>
+
+  <div class="screenshot-placeholder">
+    <strong>📷 スクリーンショット</strong>
+    マイページのトップ画面（申込内容と支払いステータスが見える状態）
+  </div>
+
+  <h2 style="margin-top:14mm;">10. 講座リクエスト（タブ「④」）</h2>
+  <p>「こんな講座があったら受講したい」「この時間帯に開講してほしい」などのご要望は、タブ <strong>「④ 講座リクエスト」</strong>からお寄せください。</p>
+  <ul>
+    <li>希望内容・対象学年・希望時間帯 などを記入</li>
+    <li>リクエストは学校で集計し、可能な範囲で開講検討の参考にします</li>
+    <li>確定したご希望（例：個別講座の科目）はリクエストではなく <strong>申込書の備考欄</strong>にご記入ください</li>
+  </ul>
+</section>
+
+<!-- ============================================================
+     11. FAQ + 12. CONTACT
+============================================================ -->
+<section class="page">
+  <h2>11. よくあるご質問（FAQ）</h2>
+
+  <div class="faq-item">
+    <div class="faq-q">スマートフォンでも使えますか？</div>
+    <div class="faq-a">はい、スマホ・タブレット・PCすべてに対応しています。画面サイズに合わせて自動でレイアウトが変わります。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">きょうだいは同じ申込画面でまとめて申し込めますか？</div>
+    <div class="faq-a">はい、「＋ 生徒を追加」ボタンで何人でも登録できます。同じ申込書で送信すれば、きょうだい割引も自動適用されます。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">途中で中断しても保存されますか？</div>
+    <div class="faq-a">入力内容は自動で保存されます。ブラウザを閉じても、後で同じURLにアクセスすれば続きから再開できます。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">申込後に講座を追加・変更したい</div>
+    <div class="faq-a">マイページの「変更・キャンセル問い合わせ」フォームからご連絡ください。学校で内容を確認し、対応いたします。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">確認メールが届きません</div>
+    <div class="faq-a">迷惑メールフォルダをまずご確認ください。それでも見つからない場合は、メールアドレスの入力ミスの可能性があります。お電話（248-349-5234）でお問い合わせください。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">領収書を紛失してしまった、再発行したい</div>
+    <div class="faq-a">マイページの「領収書再送依頼」をクリックしてください。同じメールアドレス宛にすぐ再送されます。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">パスワードはありますか？</div>
+    <div class="faq-a">パスワードは不要です。申込URLにアクセスするだけで使えます。マイページは「申込番号 + メールアドレス」でログインします。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">PCに不慣れなのですが大丈夫ですか？</div>
+    <div class="faq-a">大丈夫です。画面の指示通りに進めれば、特別な操作は必要ありません。困ったときは学校までお電話ください。</div>
+  </div>
+
+  <h2 style="margin-top:12mm;">12. 困ったとき</h2>
+  <div class="callout navy">
+    <div class="ttl">駿台ミシガン国際学院</div>
+    <table style="margin-top:6px;">
+      <tr><th style="width:34mm;">電 話</th><td><strong>248-349-5234</strong></td></tr>
+      <tr><th>メール</th><td><strong>michi-info@sundai-kaigai.jp</strong></td></tr>
+      <tr><th>所在地</th><td>24277 Novi Rd, Novi, MI 48375</td></tr>
+    </table>
+    <p style="margin:.6em 0 0 0;">操作で迷われた場合は、画面のスクリーンショットを添えてメールでお送りいただくとスムーズです。</p>
+  </div>
+
+  <p style="text-align:center; margin-top:20mm; color:var(--gold); font-family:'Hiragino Mincho Pro','Yu Mincho',serif; font-size:14pt;">
+    2026年のサマースクールで、<br>お子様にすばらしい夏の学びをお届けします。
+  </p>
+  <p style="text-align:center; color:var(--navy); margin-top:6mm; letter-spacing:.2em;">— 駿台ミシガン国際学院 —</p>
+</section>
+
+</body>
+</html>
