@@ -108,33 +108,32 @@ li{margin:.2em 0;}
     linear-gradient(180deg,#1b2a4a 0%,#0f1a30 100%);
   color:#fff;
   border:none;
-  padding:24mm 16mm;
+  padding:14mm 14mm;
 }
 .cover::after{display:none;} /* 表紙ではフッター文字を隠す */
 .cover .brand-bar{display:none;}
 .cover .top-mark{
-  font-size:9pt; letter-spacing:.32em; color:var(--gold-soft);
-  margin-bottom:6mm; text-transform:uppercase;
+  font-size:8pt; letter-spacing:.28em; color:var(--gold-soft);
+  margin-bottom:4mm; text-transform:uppercase;
   border-top:1px solid rgba(201,168,76,.4);
   border-bottom:1px solid rgba(201,168,76,.4);
-  padding:4mm 0;
+  padding:2.5mm 0;
 }
 .cover .crest{
-  margin:6mm auto; text-align:center;
+  margin:4mm auto; text-align:center;
 }
 .cover .crest-circle{
-  width:34mm; height:34mm;
+  width:30mm; height:30mm;
   border-radius:50%;
   overflow:hidden;
   border:2px solid var(--gold);
   margin:0 auto;
   box-shadow:0 4px 18px rgba(0,0,0,.45);
-  background:#fff;
-  display:flex; align-items:center; justify-content:center;
+  background:#0a1428;
 }
 .cover .crest-circle img{
-  width:140%; height:140%;
-  object-fit:contain;
+  width:100%; height:100%;
+  object-fit:cover;
   display:block;
 }
 .cover .crest-fallback{
@@ -143,38 +142,38 @@ li{margin:.2em 0;}
 }
 .cover h1{
   font-family:'Hiragino Mincho Pro','Yu Mincho',serif;
-  font-size:38pt; color:#fff; letter-spacing:.12em; margin:6mm 0 2mm 0;
+  font-size:30pt; color:#fff; letter-spacing:.12em; margin:4mm 0 2mm 0;
   font-weight:500;
 }
 .cover .year-badge{
-  font-family:Georgia,serif; font-size:24pt; color:var(--gold);
-  letter-spacing:.18em; margin-bottom:5mm;
+  font-family:Georgia,serif; font-size:20pt; color:var(--gold);
+  letter-spacing:.18em; margin-bottom:3mm;
 }
 .cover .school-jp{
   font-family:'Hiragino Mincho Pro','Yu Mincho',serif;
-  font-size:14pt; color:#fff; letter-spacing:.18em; margin-top:2mm;
+  font-size:13pt; color:#fff; letter-spacing:.18em; margin-top:2mm;
 }
 .cover .school-en{
-  font-size:9pt; letter-spacing:.34em; color:var(--gold-soft);
+  font-size:8pt; letter-spacing:.32em; color:var(--gold-soft);
   margin-top:1mm; text-transform:uppercase;
 }
 .cover .subtitle{
-  font-size:11pt; color:rgba(255,255,255,.7); margin-top:8mm; letter-spacing:.06em;
+  font-size:10pt; color:rgba(255,255,255,.7); margin-top:5mm; letter-spacing:.06em;
 }
 .cover .tag{
-  display:inline-block; padding:5px 18px;
+  display:inline-block; padding:4px 16px;
   background:transparent; color:var(--gold); border:1px solid var(--gold);
-  font-size:10pt; letter-spacing:.24em; margin-top:6mm;
+  font-size:9pt; letter-spacing:.24em; margin-top:4mm;
 }
 .cover .info-box{
-  margin:12mm auto 0 auto; max-width:130mm;
-  border:1px solid rgba(201,168,76,.5); padding:8mm 10mm;
+  margin:6mm auto 0 auto; max-width:120mm;
+  border:1px solid rgba(201,168,76,.5); padding:5mm 8mm;
   background:rgba(255,255,255,.06);
-  text-align:left; font-size:10pt; line-height:1.9; color:#fff;
+  text-align:left; font-size:9pt; line-height:1.7; color:#fff;
 }
 .cover .info-box .lbl{display:inline-block; width:5em; color:var(--gold); font-weight:700;}
 .cover .qr-block{
-  display:flex; gap:8mm; align-items:center; justify-content:center; margin-top:8mm;
+  display:flex; gap:6mm; align-items:center; justify-content:center; margin-top:5mm;
 }
 .cover .qr-block > div:first-child{
   background:#fff !important;
@@ -187,8 +186,8 @@ li{margin:.2em 0;}
 }
 .cover .url-text{font-size:9pt; color:rgba(255,255,255,.85); word-break:break-all; max-width:90mm; font-family:Georgia,monospace;}
 .cover .deadline{
-  margin-top:10mm; font-size:9pt; color:rgba(255,255,255,.6);
-  border-top:1px solid rgba(201,168,76,.3); padding-top:5mm;
+  margin-top:6mm; font-size:8pt; color:rgba(255,255,255,.6);
+  border-top:1px solid rgba(201,168,76,.3); padding-top:3mm;
   letter-spacing:.06em;
 }
 
@@ -378,7 +377,16 @@ tr:nth-child(even) td{background:#fbf8ee;}
   .flow,.discount-card,.friend-banner,.callout,table,.faq-item{break-inside:avoid;}
 }
 
-@page{ size:Letter portrait; margin:0.5in; }
+@page{ size:Letter portrait; margin:0; }
+@media print {
+  body{ background:#fff; }
+  .page{
+    margin:0;
+    box-shadow:none;
+    page-break-after:always;
+  }
+  .page:last-child{ page-break-after:auto; }
+}
 
 </style>
 </head>
