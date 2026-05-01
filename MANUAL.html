@@ -50,7 +50,19 @@ p,li{font-size:10pt;}
   position:relative;
 }
 @media print {
-  .page{ overflow:visible; }
+  body{ background:#fff; }
+  .page{
+    overflow:visible;
+    margin:0;
+    box-shadow:none;
+    page-break-after:always;
+    /* width/min-height/max-height は通常の指定を維持（強制1ページのため） */
+  }
+  .page:last-child{ page-break-after:auto; }
+  .no-print{display:none !important;}
+  a{color:var(--ink); text-decoration:none;}
+  h2, h3{break-inside:avoid;}
+  .flow,.discount-card,.friend-banner,.callout,table,.faq-item,.toc,.info-box{break-inside:avoid;}
 }
 /* 表紙だけは確実に1ページ占有 */
 .cover{
@@ -396,30 +408,8 @@ tr:nth-child(even) td{background:#fbf8ee;}
   border-left:5px solid var(--navy); margin:0 0 1em 0;
 }
 
-/* PRINT ----------------------------------------------- */
-@media print{
-  body{background:#fff;}
-  .page{
-    margin:0; box-shadow:none;
-    width:auto; min-height:auto;
-    padding:14mm 12mm 18mm 12mm;
-  }
-  .no-print{display:none !important;}
-  a{color:var(--ink); text-decoration:none;}
-  h2{break-inside:avoid;}
-  .flow,.discount-card,.friend-banner,.callout,table,.faq-item{break-inside:avoid;}
-}
-
 @page{ size:Letter portrait; margin:0; }
-@media print {
-  body{ background:#fff; }
-  .page{
-    margin:0;
-    box-shadow:none;
-    page-break-after:always;
-  }
-  .page:last-child{ page-break-after:auto; }
-}
+/* PRINT ルールは上の @media print に統合済み */
 
 </style>
 </head>
