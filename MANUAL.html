@@ -80,47 +80,83 @@ li{margin:.2em 0;}
 .cover{
   display:flex; flex-direction:column; justify-content:center;
   text-align:center;
-  background:linear-gradient(180deg,var(--cream) 0%,var(--cream-deep) 100%);
-  border:1px solid var(--line);
+  background:
+    repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 2px,transparent 2px 14px),
+    linear-gradient(180deg,#1b2a4a 0%,#0f1a30 100%);
+  color:#fff;
+  border:none;
+  padding:24mm 16mm;
 }
-.cover .brand-bar{
-  height:8px; background:var(--navy); margin:-18mm -16mm 16mm -16mm;
-  border-bottom:4px solid var(--gold);
+.cover::after{display:none;} /* 表紙ではフッター文字を隠す */
+.cover .brand-bar{display:none;}
+.cover .top-mark{
+  font-size:9pt; letter-spacing:.32em; color:var(--gold-soft);
+  margin-bottom:6mm; text-transform:uppercase;
+  border-top:1px solid rgba(201,168,76,.4);
+  border-bottom:1px solid rgba(201,168,76,.4);
+  padding:4mm 0;
 }
 .cover .crest{
-  margin:8mm auto; width:80mm; max-width:80%; text-align:center;
+  margin:6mm auto; width:60mm; max-width:60%; text-align:center;
 }
 .cover .crest img{
-  max-height:32mm; max-width:100%; object-fit:contain;
+  max-height:48mm; max-width:100%; object-fit:contain;
+  filter:drop-shadow(0 4px 14px rgba(0,0,0,.45));
 }
 .cover .crest-fallback{
-  display:inline-block; padding:8mm 12mm; border:2px dashed var(--gold);
+  display:none; padding:8mm 12mm; border:2px dashed var(--gold);
   color:var(--gold); font-size:12pt; line-height:1.6;
 }
-.cover h1{font-size:30pt; color:var(--navy); letter-spacing:.04em;}
+.cover h1{
+  font-family:'Hiragino Mincho Pro','Yu Mincho',serif;
+  font-size:38pt; color:#fff; letter-spacing:.12em; margin:6mm 0 2mm 0;
+  font-weight:500;
+}
+.cover .year-badge{
+  font-family:Georgia,serif; font-size:24pt; color:var(--gold);
+  letter-spacing:.18em; margin-bottom:5mm;
+}
+.cover .school-jp{
+  font-family:'Hiragino Mincho Pro','Yu Mincho',serif;
+  font-size:14pt; color:#fff; letter-spacing:.18em; margin-top:2mm;
+}
+.cover .school-en{
+  font-size:9pt; letter-spacing:.34em; color:var(--gold-soft);
+  margin-top:1mm; text-transform:uppercase;
+}
 .cover .subtitle{
-  font-size:15pt; color:var(--navy-soft); margin-top:6mm; letter-spacing:.04em;
+  font-size:11pt; color:rgba(255,255,255,.7); margin-top:8mm; letter-spacing:.06em;
 }
 .cover .tag{
-  display:inline-block; padding:6px 18px;
-  background:var(--navy); color:var(--cream);
-  font-size:12pt; letter-spacing:.18em; margin-top:8mm;
+  display:inline-block; padding:5px 18px;
+  background:transparent; color:var(--gold); border:1px solid var(--gold);
+  font-size:10pt; letter-spacing:.24em; margin-top:6mm;
 }
 .cover .info-box{
-  margin:14mm auto 0 auto; max-width:130mm;
-  border:2px solid var(--gold); padding:10mm; background:#fff;
-  text-align:left; font-size:11pt; line-height:2;
+  margin:12mm auto 0 auto; max-width:130mm;
+  border:1px solid rgba(201,168,76,.5); padding:8mm 10mm;
+  background:rgba(255,255,255,.06);
+  text-align:left; font-size:10pt; line-height:1.9; color:#fff;
 }
 .cover .info-box .lbl{display:inline-block; width:5em; color:var(--gold); font-weight:700;}
 .cover .qr-block{
   display:flex; gap:8mm; align-items:center; justify-content:center; margin-top:8mm;
+}
+.cover .qr-block > div:first-child{
+  background:#fff !important;
+  padding:3mm; border:none !important;
 }
 .cover .qr-placeholder{
   width:36mm; height:36mm; border:2px dashed var(--navy);
   display:flex; align-items:center; justify-content:center;
   color:var(--muted); font-size:9pt; text-align:center; background:#fff;
 }
-.cover .url-text{font-size:10pt; color:var(--muted); word-break:break-all; max-width:90mm;}
+.cover .url-text{font-size:9pt; color:rgba(255,255,255,.85); word-break:break-all; max-width:90mm; font-family:Georgia,monospace;}
+.cover .deadline{
+  margin-top:10mm; font-size:9pt; color:rgba(255,255,255,.6);
+  border-top:1px solid rgba(201,168,76,.3); padding-top:5mm;
+  letter-spacing:.06em;
+}
 
 /* TOC ------------------------------------------------- */
 .toc{
@@ -318,22 +354,25 @@ tr:nth-child(even) td{background:#fbf8ee;}
      COVER PAGE
 ============================================================ -->
 <section class="page cover">
-  <div class="brand-bar"></div>
+  <div class="top-mark">SUNDAI MICHIGAN INTERNATIONAL ACADEMY &nbsp;—&nbsp; SUMMER 2026</div>
+
   <div class="crest">
-    <!-- 校章を入れる場合は school_crest.png をこのHTMLと同じフォルダに置く -->
     <img src="school_crest.png" alt="駿台ミシガン国際学院 校章"
          onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'">
     <span class="crest-fallback">📷 ここに校章<br>school_crest.png</span>
   </div>
-  <h1>2026<br>サマースクール<br>受講申込ガイド</h1>
-  <div class="subtitle" style="font-family:'Hiragino Mincho Pro','Yu Mincho',serif;">
-    駿台ミシガン国際学院<br>
-    <span style="font-size:11pt;letter-spacing:.08em;">SUNDAI MICHIGAN INTERNATIONAL ACADEMY</span>
-  </div>
+
+  <h1>サマースクール</h1>
+  <div class="year-badge">2026</div>
+
+  <div class="school-jp">駿台ミシガン国際学院</div>
+  <div class="school-en">Sundai Michigan International Academy</div>
+
+  <div class="subtitle">受講申込ガイド ─ お申込みから入金・領収書まで完全ガイド</div>
+
   <div class="tag">FOR PARENTS &nbsp;|&nbsp; 保護者の皆様へ</div>
 
   <div class="info-box">
-    <div><span class="lbl">学院名</span>駿台ミシガン国際学院<br><span style="font-size:9pt;color:var(--muted);">Sundai Michigan International Academy</span></div>
     <div><span class="lbl">電 話</span>248-349-5234</div>
     <div><span class="lbl">Email</span>michi-info@sundai-kaigai.jp</div>
     <div><span class="lbl">所在地</span>24277 Novi Rd, Novi, MI 48375</div>
@@ -341,22 +380,22 @@ tr:nth-child(even) td{background:#fbf8ee;}
 
   <div class="qr-block">
     <!-- 申込URLのQR画像を application_qr.png として同じフォルダに置くと表示されます -->
-    <div style="width:34mm;height:34mm;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);">
+    <div style="width:34mm;height:34mm;display:flex;align-items:center;justify-content:center;background:#fff;">
       <img src="application_qr.png" alt="申込URL QR"
            style="max-width:100%;max-height:100%;object-fit:contain;"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
       <div class="qr-placeholder" style="display:none;">QR<br>申込URL<br>(差し替え)</div>
     </div>
     <div style="text-align:left;">
-      <div style="font-weight:700; color:var(--navy); font-size:13pt;">受講申込URL</div>
+      <div style="font-weight:700; color:var(--gold); font-size:11pt; letter-spacing:.06em;">受講申込URL</div>
       <div class="url-text">script.google.com/macros/s/AKfyc...DywBHoNp/exec</div>
-      <div style="font-size:10pt; color:var(--muted); margin-top:4mm;">
-        スマホ・タブレット・PCどれでも<br>お使いいただけます
+      <div style="font-size:9pt; color:rgba(255,255,255,.6); margin-top:3mm;">
+        スマホ・タブレット・PCどれでもお使いいただけます
       </div>
     </div>
   </div>
 
-  <div style="margin-top:14mm; font-size:10pt; color:var(--muted);">
+  <div class="deadline">
     第1次申込締切：2026年5月24日（日）&nbsp;&nbsp;|&nbsp;&nbsp;説明会：5月2日（土）
   </div>
 </section>
