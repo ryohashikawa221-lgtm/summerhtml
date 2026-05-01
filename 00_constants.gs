@@ -28,6 +28,7 @@ const S_COUNTS    = '申込数集計';
 const S_TIMETABLE = '先生別時間割';
 const S_ROSTER    = '講座別名簿';
 const S_SUMMARY   = '申込サマリー';
+const S_SALES     = '売上一覧';
 
 const SHEET_ENROLL = S_ENROLL;
 const SHEET_COUNTS = S_COUNTS;
