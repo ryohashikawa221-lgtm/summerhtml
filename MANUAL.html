@@ -27,11 +27,15 @@ body{
   font-family:'Hiragino Kaku Gothic Pro','Yu Gothic','Meiryo',sans-serif;
   color:var(--ink);
   background:#e9e7e0;
-  font-size:12pt;
-  line-height:1.7;
+  font-size:13pt;
+  line-height:1.85;
   -webkit-print-color-adjust:exact;
   print-color-adjust:exact;
+  font-weight:400;
 }
+strong{font-weight:700;color:var(--navy);}
+table th{font-size:12pt;}
+p,li{font-size:12pt;}
 
 /* page wrapper -- A4 */
 .page{
@@ -84,7 +88,14 @@ li{margin:.2em 0;}
   border-bottom:4px solid var(--gold);
 }
 .cover .crest{
-  font-size:42pt; color:var(--gold); margin:8mm 0;
+  margin:8mm auto; width:80mm; max-width:80%; text-align:center;
+}
+.cover .crest img{
+  max-height:32mm; max-width:100%; object-fit:contain;
+}
+.cover .crest-fallback{
+  display:inline-block; padding:8mm 12mm; border:2px dashed var(--gold);
+  color:var(--gold); font-size:12pt; line-height:1.6;
 }
 .cover h1{font-size:30pt; color:var(--navy); letter-spacing:.04em;}
 .cover .subtitle{
@@ -308,25 +319,36 @@ tr:nth-child(even) td{background:#fbf8ee;}
 ============================================================ -->
 <section class="page cover">
   <div class="brand-bar"></div>
-  <div class="crest">&#10047;</div>
-  <h1>2026 ミシガン<br>サマースクール<br>受講申込ガイド</h1>
-  <div class="subtitle">お申込みから入金・領収書まで完全ガイド</div>
+  <div class="crest">
+    <!-- 校章を入れる場合は school_crest.png をこのHTMLと同じフォルダに置く -->
+    <img src="school_crest.png" alt="駿台ミシガン国際学院 校章"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'">
+    <span class="crest-fallback">📷 ここに校章<br>school_crest.png</span>
+  </div>
+  <h1>2026<br>サマースクール<br>受講申込ガイド</h1>
+  <div class="subtitle" style="font-family:'Hiragino Mincho Pro','Yu Mincho',serif;">
+    駿台ミシガン国際学院<br>
+    <span style="font-size:11pt;letter-spacing:.08em;">SUNDAI MICHIGAN INTERNATIONAL ACADEMY</span>
+  </div>
   <div class="tag">FOR PARENTS &nbsp;|&nbsp; 保護者の皆様へ</div>
 
   <div class="info-box">
-    <div><span class="lbl">学院名</span>駿台ミシガン国際学院 (Sundai Michigan)</div>
+    <div><span class="lbl">学院名</span>駿台ミシガン国際学院<br><span style="font-size:9pt;color:var(--muted);">Sundai Michigan International Academy</span></div>
     <div><span class="lbl">電 話</span>248-349-5234</div>
     <div><span class="lbl">Email</span>michi-info@sundai-kaigai.jp</div>
     <div><span class="lbl">所在地</span>24277 Novi Rd, Novi, MI 48375</div>
   </div>
 
   <div class="qr-block">
-    <!-- ここに申込URLのQRコード画像を差し替え -->
-    <div class="qr-placeholder">
-      QR<br>申込URL<br>(差し替え)
+    <!-- 申込URLのQR画像を application_qr.png として同じフォルダに置くと表示されます -->
+    <div style="width:34mm;height:34mm;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);">
+      <img src="application_qr.png" alt="申込URL QR"
+           style="max-width:100%;max-height:100%;object-fit:contain;"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="qr-placeholder" style="display:none;">QR<br>申込URL<br>(差し替え)</div>
     </div>
     <div style="text-align:left;">
-      <div style="font-weight:700; color:var(--navy);">受講申込URL</div>
+      <div style="font-weight:700; color:var(--navy); font-size:13pt;">受講申込URL</div>
       <div class="url-text">script.google.com/macros/s/AKfyc...DywBHoNp/exec</div>
       <div style="font-size:10pt; color:var(--muted); margin-top:4mm;">
         スマホ・タブレット・PCどれでも<br>お使いいただけます
@@ -543,15 +565,55 @@ tr:nth-child(even) td{background:#fbf8ee;}
     上記の割引は条件を満たせば <strong>重ねて適用</strong>されます。タブ③「申込・請求書」で、最終的な割引適用後の金額をご確認いただけます。
   </div>
 
-  <h3>計算例（お友達割引込み）</h3>
+  <h3>計算例 ── きょうだい2人で割引を最大限活用</h3>
+  <p>例えば、きょうだい2人で申込・どちらも補習校生・1講座をお友達と一緒に受講する場合：</p>
+
   <table>
-    <tr><th>項目</th><th>金額</th></tr>
-    <tr><td>受講料 合計（割引前）</td><td>$1,000</td></tr>
-    <tr><td>コマ数割引（10コマ → 10%）</td><td>− $100</td></tr>
-    <tr><td>お友達割引（対象コマ $200 の10%）</td><td>− $20</td></tr>
-    <tr><td><strong>お支払い金額</strong></td><td><strong>$880</strong></td></tr>
+    <tr><th>受講内容</th><th>単価</th><th>小計</th></tr>
+    <tr><td>太郎（中1）グループ講座 × 2</td><td>$200</td><td>$400</td></tr>
+    <tr><td>太郎 プレ講習 × 2コマ</td><td>$40</td><td>$80</td></tr>
+    <tr><td>花子（小4）グループ講座 × 1</td><td>$150</td><td>$150</td></tr>
+    <tr><td colspan="2" style="text-align:right;"><strong>受講料合計（割引前）</strong></td><td><strong>$630</strong></td></tr>
   </table>
-  <p style="font-size:10pt; color:var(--muted);">※あくまでイメージです。実際の金額は申込書画面でご確認ください。</p>
+
+  <p style="margin-top:6mm;">この申込に4種類の割引がかかります：</p>
+  <table>
+    <tr><th>生徒</th><th>適用される割引</th><th>割引後金額</th></tr>
+    <tr>
+      <td>太郎</td>
+      <td>
+        コマ数割引 10%（合計12コマ）<br>
+        補習校・AS生割引 10%<br>
+        お友達割引 10%（1講座のみ）<br>
+        きょうだい割引 0%（合計額が高いため1人目）
+      </td>
+      <td><strong>$374</strong><br><span style="font-size:9pt;color:var(--muted);">($480 → $374)</span></td>
+    </tr>
+    <tr>
+      <td>花子</td>
+      <td>
+        コマ数割引 0%（合計5コマ）<br>
+        補習校・AS生割引 10%<br>
+        きょうだい割引 20%（2人目）
+      </td>
+      <td><strong>$108</strong><br><span style="font-size:9pt;color:var(--muted);">($150 → $108)</span></td>
+    </tr>
+    <tr style="background:#fff7e0;">
+      <td colspan="2" style="text-align:right;"><strong>お支払い金額</strong></td>
+      <td><strong style="color:var(--gold);font-size:14pt;">$482</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="text-align:right;color:var(--green-soft);"><strong>節約額</strong></td>
+      <td style="color:var(--green-soft);"><strong>− $148（約 24% off）</strong></td>
+    </tr>
+  </table>
+
+  <div class="callout callout-friend" style="margin-top:6mm;">
+    <div class="ttl">💡 お友達割引が大きく効きます</div>
+    お友達と一緒に受講するコマが増えるほど節約額も増えます。3人きょうだいの場合は3人目に <strong>30%</strong> のきょうだい割引が適用されるので、さらにお得です。
+  </div>
+
+  <p style="font-size:10pt; color:var(--muted); margin-top:4mm;">※実際の金額は申込書画面（タブ③）に自動で反映されます。1ドル未満は切り上げ表示。</p>
 </section>
 
 <!-- ============================================================
@@ -567,6 +629,7 @@ tr:nth-child(even) td{background:#fbf8ee;}
     <li>氏名・学年・対象区分（小学生／中学生／高校生 など）を入力</li>
     <li>補習校または現地校アフタースクール（AS）に通っているお子様は、<strong>「補習校・AS生割引」のチェック</strong>を入れる</li>
     <li>2人目以降を追加すると、姓は1人目から自動で引き継がれます（必要なら変更可）</li>
+    <li><strong>きょうだいは最大 5人</strong>まで同じ申込画面で登録できます。それぞれに個別の講座を選択可能です</li>
   </ol>
   <p style="font-size:10pt; color:var(--muted);">※生徒の削除は、生徒カード右上のメニューから行えます。</p>
 
