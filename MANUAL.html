@@ -53,13 +53,22 @@ p,li{font-size:12pt;}
 }
 /* キー要素の改ページ制御：途中で切れたら困るブロックは avoid、
    章見出しは直前で切れる方が自然 */
+/* 章見出し (h2) の直前で必ず改ページ → 各章が新しいページから始まる */
+h2{
+  page-break-before:always;
+  break-before:page;
+  page-break-after:avoid;
+  break-after:avoid;
+}
+/* h3 はページ分割を避ける（直後に内容が続くので） */
+h3{
+  page-break-after:avoid;
+  break-after:avoid;
+}
+/* 重要ブロックは途中で分割禁止 */
 table, .callout, .flow, .friend-banner, .screenshot-placeholder, .toc, .info-box{
   page-break-inside:avoid;
   break-inside:avoid;
-}
-h2, h3{
-  page-break-after:avoid;
-  break-after:avoid;
 }
 
 /* top accent strip (navy + gold) on every page */
