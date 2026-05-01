@@ -25,7 +25,7 @@ function siblingDiscRate(studentIdx){
 
 // Step3: コマ数割引（グループ・個別を合算して計算）
 // サマー1講座＝5コマ換算、プレコマ数を合計して統一テーブル適用
-// （1〜5なし/6〜10→10%/11〜15→20%/16以上→30%）
+// （1〜9なし/10〜14→10%/15〜19→20%/20以上→30%）
 function komaDiscRate(studentIdx){
   const s=students[studentIdx];
   if(!s)return 0;
@@ -40,7 +40,7 @@ function komaDiscRate(studentIdx){
   const total=summerN*5+preN;
 
   // 統一割引テーブル
-  return total>=16?0.30:total>=11?0.20:total>=6?0.10:0;
+  return total>=20?0.30:total>=15?0.20:total>=10?0.10:0;
 }
 
 // 割引前合計（きょうだい割引ソート用・プレ含む）
