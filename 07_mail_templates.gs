@@ -213,7 +213,7 @@ function _buildEnrollmentEmailHtml(d, qrSrc, appUrlQrSrc, appUrl, mypageUrl) {
         '<div style="margin-top:14px;text-align:center">' +
           '<a href="' + _esc(mypageUrl) + '" ' +
              'style="display:inline-block;padding:10px 22px;background:' + navy + ';color:#fff;text-decoration:none;font-size:13px;font-weight:700;border-radius:4px;border:2px solid ' + gold + '">' +
-            '📋 マイページを開く / My Page' +
+            '&#x1F4CB; マイページを開く / My Page' +
           '</a>' +
           '<div style="font-size:10px;color:#888;margin-top:6px">申込内容の確認・お支払い状況・領収書再送・変更希望はこちら</div>' +
         '</div>'

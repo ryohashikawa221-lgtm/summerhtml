@@ -92,4 +92,3 @@ function doPost(e) {
     return buildResponse({ status: 'error', message: 'サーバーエラーが発生しました' });
   }
 }
-

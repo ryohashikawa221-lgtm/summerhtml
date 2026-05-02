@@ -11,9 +11,9 @@ function launchConfetti(){
   const ctx=canvas.getContext('2d');
   // 申込合計金額に応じて紙吹雪の量をスケール
   // ～$300:   60枚（控えめ）
-  // $300〜$1000: 60〜250枚（標準）
-  // $1000〜$2000: 350〜700枚（豪華）
-  // $2000+:  800枚（最大・お祭り）
+  // $300〜$500: 60〜250枚（標準）
+  // $500〜$1000: 350〜700枚（豪華）
+  // $1000+:  800枚（最大・お祭り）
   let total=0;
   try{ total=calcGrandTotal()||0; }catch(e){}
   let pieceCount;
@@ -92,6 +92,19 @@ function buildEmailBody(){
       }
       if(det.friendDisc) lines.push(`    👫 お友達割引適用（${det.friendName||'お名前未記入'}と一緒に受講）`);
     });
+
+    // 適用割引 明細 (2026-05-01 追加: 領収書透明性のため)
+    const _sib=siblingDiscRate(i);
+    const _koma=komaDiscRate(i);
+    const _discNotes=[];
+    if(_sib>0) _discNotes.push(`きょうだい ${Math.round(_sib*100)}%（${i+1}人目）`);
+    if(_koma>0) _discNotes.push(`コマ数 ${Math.round(_koma*100)}%`);
+    const _friendCnt=(Object.values(s.courseDetails||{}).filter(d=>d&&d.friendDisc).length)
+                    +((s.preSlots||[]).filter(sl=>sl.friendDisc).length);
+    if(_friendCnt>0) _discNotes.push(`お友達割引 -10%（${_friendCnt}講座）`);
+    if(s.schoolDisc) _discNotes.push(`補習校・AS生 割引 -10%`);
+    if(_discNotes.length>0) lines.push(`  適用割引：${_discNotes.join(' / ')}`);
+
     lines.push(`  小計：${fmtUSD(calcStudentTotal(i))}`);
     lines.push('');
   });

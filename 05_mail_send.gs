@@ -144,4 +144,3 @@ function resendFailedEmails() {
   SpreadsheetApp.flush();
   ui.alert('再送完了', '✅ 成功: ' + success + ' 件\n❌ 失敗: ' + fail + ' 件', ui.ButtonSet.OK);
 }
-

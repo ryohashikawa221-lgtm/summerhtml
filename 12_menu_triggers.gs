@@ -5,13 +5,15 @@ function onOpen() {
     .addItem('└ 先生別で出力', 'outputTimetableByTeacher')
     .addItem('講座別名簿を出力', 'outputRoster')
     .addItem('申込サマリーを出力', 'outputSummary')
-    .addItem('💰 売上一覧を出力', 'outputSalesReport')
     .addSeparator()
     .addItem('全レポートを一括出力', 'outputAll')
     .addItem('申込数集計を再計算', 'rebuildCourseCounts')
     .addSeparator()
-    .addItem('💰 領収書発行（選択行）', 'sendReceiptForSelectedRow')
-    .addItem('💰 領収書発行（複数選択行）', 'sendReceiptForMultipleRows')
+    .addItem('📧 領収書プレビュー → 一括送信（推奨）', 'openReceiptPreviewSidebar')
+    .addItem('└ A 列「送信」チェックボックスをチェック → これを実行', 'openReceiptPreviewSidebar')
+    .addSeparator()
+    .addItem('💰 [旧] 領収書発行（選択行）', 'sendReceiptForSelectedRow')
+    .addItem('💰 [旧] 領収書発行（複数選択行）', 'sendReceiptForMultipleRows')
     .addSeparator()
     .addItem('📧 未送信メール再送', 'resendFailedEmails')
     .addSeparator()
@@ -24,7 +26,6 @@ function outputAll() {
   outputTimetable();
   outputRoster();
   outputSummary();
-  outputSalesReport();
   updateCourseCounts();
   SpreadsheetApp.getUi().alert('✅ 全レポートの出力が完了しました！');
 }
@@ -104,13 +105,12 @@ function onChangeAutoRefresh(e) {
       // 申込数集計は毎回（軽い）
       try { updateCourseCounts(); } catch (err) { console.warn('updateCourseCounts:', err && err.message); }
 
-      // 重いレポート4つはデバウンス付きで実行
+      // 重いレポート3つはデバウンス付きで実行
       if (heavyOk) {
         props.setProperty('LAST_AUTO_FULL_REFRESH', String(now));
         try { outputRoster(true); }   catch (err) { console.warn('outputRoster:',   err && err.message); }
         try { outputSummary(true); }  catch (err) { console.warn('outputSummary:',  err && err.message); }
         try { outputTimetable(null, true); } catch (err) { console.warn('outputTimetable:', err && err.message); }
-        try { outputSalesReport(true); } catch (err) { console.warn('outputSalesReport:', err && err.message); }
         console.log('全レポート自動再生成完了: ' + e.changeType);
       } else {
         console.log('申込数集計のみ更新（30秒デバウンス中）: ' + e.changeType);
@@ -143,8 +143,7 @@ function installAutoRefreshTrigger() {
     '  • 申込数集計（毎回更新／軽量）\n' +
     '  • 講座別名簿（30秒デバウンス）\n' +
     '  • 申込サマリー（30秒デバウンス）\n' +
-    '  • 先生別時間割（30秒デバウンス）\n' +
-    '  • 売上一覧（30秒デバウンス）\n\n' +
+    '  • 先生別時間割（30秒デバウンス）\n\n' +
     '※ 短時間に複数回編集した場合、重いレポートは30秒待って一度だけ更新されます。\n' +
     '※ ターム別/先生別の時間割サブシートは自動更新しません（必要時にメニューから出力してください）。'
   );
@@ -155,4 +154,3 @@ function installAutoRefreshTrigger() {
 // 申込一覧シートで対象行を選択 → メニューから実行
 // 「支払日」「領収書発行日」列を自動追加し、行ごとに記録
 // ============================================================
-

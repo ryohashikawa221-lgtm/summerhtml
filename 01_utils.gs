@@ -51,4 +51,3 @@ function _validEmail(s) {
   if (/[\r\n]/.test(s)) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
-

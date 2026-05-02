@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; margin: 0; padding: 0; color: #1a1a1a; background: #faf8f3; font-size: 12px; line-height: 1.5; }
+.header { position: sticky; top: 0; background: #1b2a4a; color: #fff; padding: 10px 14px; border-bottom: 3px solid #c9a84c; z-index: 10; }
+.header h1 { font-size: 14px; margin: 0 0 3px; font-weight: 700; }
+.header .meta { font-size: 11px; opacity: .8; }
+.controls { background: #fff; padding: 10px 14px; border-bottom: 1px solid #ddd; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { padding: 6px 14px; border: none; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; }
+.btn-primary { background: #1b2a4a; color: #fff; }
+.btn-primary:hover { background: #243860; }
+.btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+.btn-secondary { background: #fff; color: #1b2a4a; border: 1px solid #1b2a4a; }
+.btn-secondary:hover { background: #faf8f3; }
+.btn-gold { background: #c9a84c; color: #1b2a4a; }
+.btn-gold:hover { background: #e8c96a; }
+.summary { padding: 8px 14px; background: #fff7e0; border-bottom: 1px solid #e0d8c8; font-size: 11px; }
+.summary strong { color: #1b2a4a; font-size: 13px; }
+.list { padding: 8px; }
+.empty { padding: 30px 14px; text-align: center; color: #888; font-size: 12px; }
+.item { background: #fff; border: 1px solid #ddd; border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+.item-head { padding: 8px 10px; background: #faf8f3; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.item-head:hover { background: #f0ebe0; }
+.item-head .who { font-weight: 700; color: #1b2a4a; font-size: 12px; }
+.item-head .who small { font-weight: 400; color: #888; font-size: 10px; margin-left: 6px; }
+.item-head .total { color: #c9a84c; font-weight: 700; font-size: 13px; font-family: Georgia, serif; }
+.item-head .toggle { color: #888; font-size: 10px; }
+.item-body { display: none; padding: 0; max-height: 0; overflow: hidden; transition: max-height .2s; }
+.item.expanded .item-body { display: block; max-height: 800px; overflow: auto; padding: 0; }
+.preview-frame { width: 100%; border: none; min-height: 600px; background: #fff; }
+.preview-meta { padding: 8px 10px; background: #f5f5f5; font-size: 10px; color: #555; border-bottom: 1px solid #ddd; line-height: 1.6; }
+.preview-meta b { color: #1b2a4a; }
+.status { margin: 10px 14px; padding: 10px 12px; border-radius: 3px; font-size: 12px; line-height: 1.6; display: none; }
+.status.ok { background: #e8f5ed; color: #1e5e47; border: 1px solid #1e5e47; display: block; }
+.status.ng { background: #ffe5e5; color: #991b1b; border: 1px solid #c93a48; display: block; }
+.status pre { font-size: 10px; white-space: pre-wrap; margin: 6px 0 0; color: #555; }
+.loading { text-align: center; padding: 40px 14px; color: #888; }
+.loading::after { content: '⏳'; display: block; font-size: 24px; margin-top: 10px; animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📧 領収書プレビュー</h1>
+  <div class="meta">送信前にチェック対象の家庭ごとに件名・本文をご確認ください</div>
+</div>
+<div id="root">
+  <div class="loading">読み込み中...</div>
+</div>
+
+<script>
+let _items = [];
+
+function load() {
+  google.script.run
+    .withSuccessHandler(onLoad)
+    .withFailureHandler(onError)
+    .getReceiptPreviewData();
+}
+
+function onLoad(result) {
+  if (!result || !result.ok) {
+    document.getElementById('root').innerHTML =
+      '<div class="status ng" style="display:block">'+
+        '⚠️ ' + ((result && result.error) || '不明なエラー') +
+      '</div>';
+    return;
+  }
+  _items = result.items || [];
+  render();
+}
+
+function onError(e) {
+  document.getElementById('root').innerHTML =
+    '<div class="status ng" style="display:block">'+
+      '❌ 通信エラー: ' + ((e && e.message) || e) +
+    '</div>';
+}
+
+function render() {
+  const root = document.getElementById('root');
+  if (_items.length === 0) {
+    root.innerHTML =
+      '<div class="empty">'+
+        '📭 送信対象の行がありません<br><br>'+
+        '<small>申込一覧の <b>A 列「送信」</b> にチェック ✓ を入れて、'+
+        '<b>「領収書発行日」が空</b> の行が対象になります。</small>'+
+      '</div>';
+    return;
+  }
+
+  let html = '';
+  html += '<div class="controls">'+
+    '<button class="btn btn-gold" onclick="confirmSend()">✉️ 全 ' + _items.length + ' 件を送信</button>'+
+    '<button class="btn btn-secondary" onclick="load()">🔄 再読込</button>'+
+  '</div>';
+  html += '<div class="summary">'+
+    '<strong>' + _items.length + ' 件</strong> の家庭に送信予定:<br>'+
+    _items.map(it => '・' + escHtml(it.parent_name) + ' 様 (' + escHtml(it.email) + ')').join('<br>')+
+  '</div>';
+  html += '<div id="status"></div>';
+  html += '<div class="list">';
+  _items.forEach((it, i) => {
+    html += '<div class="item" id="item-'+i+'">'+
+      '<div class="item-head" onclick="toggleItem('+i+')">'+
+        '<div class="who">' + escHtml(it.parent_name) + ' 様 <small>行 ' + it.row + '</small></div>'+
+        '<div>'+
+          '<span class="total">' + escHtml(it.total) + '</span>'+
+          ' <span class="toggle">▼</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="item-body">'+
+        '<div class="preview-meta">'+
+          '<b>To:</b> ' + escHtml(it.email) + '<br>'+
+          '<b>Subject:</b> ' + escHtml(it.subject) + '<br>'+
+          '<b>申込番号:</b> ' + escHtml(it.app_number || '-')+
+        '</div>'+
+        '<iframe class="preview-frame" id="iframe-'+i+'" srcdoc="' + escAttr(it.html) + '"></iframe>'+
+      '</div>'+
+    '</div>';
+  });
+  html += '</div>';
+
+  root.innerHTML = html;
+}
+
+function toggleItem(i) {
+  const el = document.getElementById('item-'+i);
+  el.classList.toggle('expanded');
+  const tog = el.querySelector('.toggle');
+  if (tog) tog.textContent = el.classList.contains('expanded') ? '▲' : '▼';
+}
+
+function confirmSend() {
+  if (!confirm(_items.length + ' 件の領収書をメール送信します。よろしいですか？\n\n送信後は チェックが外れ、領収書発行日が記録されます。')) return;
+
+  const status = document.getElementById('status');
+  status.className = 'status ok';
+  status.style.display = 'block';
+  status.textContent = '送信中... ' + _items.length + ' 件処理しています。完了までお待ちください。';
+
+  // disable buttons
+  document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+
+  google.script.run
+    .withSuccessHandler(onSent)
+    .withFailureHandler(onSendError)
+    .sendReceiptsForCheckedRows();
+}
+
+function onSent(result) {
+  const status = document.getElementById('status');
+  let msg = '✅ ' + result.success + ' 件 送信完了';
+  if (result.fail > 0) {
+    msg += ' / ❌ ' + result.fail + ' 件 失敗';
+    msg += '<pre>' + result.errors.map(e => '・' + escHtml(e)).join('\n') + '</pre>';
+    status.className = 'status ng';
+  } else {
+    status.className = 'status ok';
+  }
+  status.innerHTML = msg + '<br><br>送信済み行は チェック ✓ が外れ、グレーアウトされます。再度プレビューする場合は 🔄 再読込 ボタンを押してください。';
+  // reload list after a moment
+  setTimeout(load, 2000);
+}
+
+function onSendError(e) {
+  const status = document.getElementById('status');
+  status.className = 'status ng';
+  status.innerHTML = '❌ 送信エラー: ' + escHtml((e && e.message) || String(e));
+  document.querySelectorAll('.btn').forEach(b => b.disabled = false);
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+window.addEventListener('load', load);
+</script>
+</body>
+</html>

@@ -27,6 +27,126 @@ function _ensurePaymentColumns(sheet) {
   return { paidCol: paidCol, receiptCol: receiptCol };
 }
 
+// ============================================================
+// 新フロー (2026-05-01〜): A 列「送信」チェックボックス駆動
+// チェック付き AND 領収書発行日 空 の行を抽出 → プレビューサイドバー → 一括送信
+// 送信成功後は チェックを FALSE に戻し、領収書発行日 を記録 (条件付き書式でグレーアウト)
+// ============================================================
+
+// チェック行を抽出してプレビュー用データを返す (サイドバー / 送信 双方で使用)
+function getReceiptPreviewData() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(S_ENROLL);
+  if (!sheet) return { ok: false, error: S_ENROLL + ' sheet が見つかりません', items: [] };
+
+  var info = _getEnrollColumnMap(sheet);
+  var headers = info.headers, map = info.map;
+  if (map['送信'] !== 1) {
+    return { ok: false, error: '「送信」列が A 列にありません。先に migrateAddReceiptCheckboxColumn を実行してください。', items: [] };
+  }
+  var paidReceipt = _ensurePaymentColumns(sheet);
+  var receiptCol = paidReceipt.receiptCol;
+
+  if (sheet.getLastRow() < 2) return { ok: true, items: [] };
+
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  var items = [];
+  rows.forEach(function(row, idx) {
+    var checked = row[0] === true;
+    var alreadyIssued = !!row[receiptCol - 1];
+    if (!checked || alreadyIssued) return;
+    var enroll = {
+      row: idx + 2,
+      id: map['申込ID'] ? row[map['申込ID'] - 1] : '',
+      parent_name: map['保護者名'] ? row[map['保護者名'] - 1] : '',
+      email: map['メール'] ? row[map['メール'] - 1] : '',
+      students_info: map['生徒情報'] ? row[map['生徒情報'] - 1] : '',
+      courses_text: map['講座詳細'] ? row[map['講座詳細'] - 1] : '',
+      total: map['合計金額'] ? row[map['合計金額'] - 1] : '',
+      app_number: map['申込番号'] ? row[map['申込番号'] - 1] : ''
+    };
+    var subj = '【領収書 / Receipt】サマースクール - ' + enroll.parent_name + ' 様';
+    var html = _buildReceiptEmailHtml(enroll);
+    items.push({
+      row: enroll.row,
+      parent_name: String(enroll.parent_name || ''),
+      email: String(enroll.email || ''),
+      total: String(enroll.total || ''),
+      courses_text: String(enroll.courses_text || ''),
+      students_info: String(enroll.students_info || ''),
+      app_number: String(enroll.app_number || ''),
+      subject: subj,
+      html: html
+    });
+  });
+  return { ok: true, items: items };
+}
+
+// プレビューサイドバーを開く
+function openReceiptPreviewSidebar() {
+  var output = HtmlService.createHtmlOutputFromFile('receipt_preview')
+    .setTitle('📧 領収書プレビュー')
+    .setWidth(420);
+  SpreadsheetApp.getUi().showSidebar(output);
+}
+
+// チェック済み AND 未発行 の行に領収書を発行 (サイドバーから呼ばれる)
+// 戻り値: { success: N, fail: N, errors: [...] }
+function sendReceiptsForCheckedRows() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(S_ENROLL);
+  if (!sheet) return { success: 0, fail: 0, errors: [S_ENROLL + ' sheet 無し'] };
+
+  var info = _getEnrollColumnMap(sheet);
+  var map = info.map;
+  if (map['送信'] !== 1) return { success: 0, fail: 0, errors: ['送信列が A にありません'] };
+
+  var paidReceipt = _ensurePaymentColumns(sheet);
+  var paidCol = paidReceipt.paidCol, receiptCol = paidReceipt.receiptCol;
+
+  if (sheet.getLastRow() < 2) return { success: 0, fail: 0, errors: ['データ無し'] };
+
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  var targets = [];
+  rows.forEach(function(row, idx) {
+    if (row[0] === true && !row[receiptCol - 1]) targets.push(idx + 2);
+  });
+
+  if (targets.length === 0) return { success: 0, fail: 0, errors: ['対象行無し (チェック済み AND 未発行 の行が無い)'] };
+
+  var success = 0, fail = 0, errors = [];
+  targets.forEach(function(r) {
+    try {
+      var data = sheet.getRange(r, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var enroll = {
+        id: map['申込ID'] ? data[map['申込ID'] - 1] : '',
+        parent_name: map['保護者名'] ? data[map['保護者名'] - 1] : '',
+        email: map['メール'] ? data[map['メール'] - 1] : '',
+        students_info: map['生徒情報'] ? data[map['生徒情報'] - 1] : '',
+        courses_text: map['講座詳細'] ? data[map['講座詳細'] - 1] : '',
+        total: map['合計金額'] ? data[map['合計金額'] - 1] : ''
+      };
+      if (!enroll.email || !enroll.parent_name) throw new Error('保護者名またはメールが空');
+
+      sendReceiptEmail(enroll);
+
+      var today = new Date().toLocaleDateString('ja-JP');
+      sheet.getRange(r, paidCol).setValue(today);
+      sheet.getRange(r, receiptCol).setValue(today);
+      sheet.getRange(r, 1).setValue(false);  // 送信チェックを外す
+      success++;
+      Utilities.sleep(800);
+    } catch (e) {
+      fail++;
+      errors.push('行' + r + ': ' + (e && e.message));
+    }
+  });
+
+  return { success: success, fail: fail, errors: errors };
+}
+
+// ============================================================
+// 旧フロー (後方互換): 単一行 / 複数選択行の領収書発行
+// ============================================================
+
 // 単一行の領収書発行
 function sendReceiptForSelectedRow() {
   const ui = SpreadsheetApp.getUi();

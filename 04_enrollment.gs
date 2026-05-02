@@ -54,14 +54,27 @@ function saveEnrollment(d) {
     sheet.getRange(1, appNumCol).setValue('申込番号')
       .setBackground('#1b2a4a').setFontColor('#fff').setFontWeight('bold');
   }
-  sheet.appendRow([
+  // 「送信」列 (領収書送信フラグ) が col A に存在する場合は先頭に false を追加
+  // (migrateAddReceiptCheckboxColumn 実行後の構造に対応)
+  const baseRow = [
     enrollId,
     new Date().toLocaleString('ja-JP'),
     d.parent_name, d.reply_to, d.phone || '',
     d.students_info, d.courses, d.total, d.note || ''
-  ]);
+  ];
+  const hasSendCol = headers.indexOf('送信') === 0;
+  if (hasSendCol) {
+    sheet.appendRow([false].concat(baseRow));
+  } else {
+    sheet.appendRow(baseRow);
+  }
   const newRow = sheet.getLastRow();
   sheet.getRange(newRow, appNumCol).setValue(d._appNumber);
+  // 送信列をチェックボックス化 (新規行にも DataValidation 適用)
+  if (hasSendCol) {
+    var sendRule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+    sheet.getRange(newRow, 1).setDataValidation(sendRule);
+  }
   // SpreadsheetApp.flush() で書き込み確定（Phase U-3-A 1-3 (C)）
   SpreadsheetApp.flush();
   if (d.course_counts) updateCourseCounts(d.course_counts);
@@ -133,4 +146,3 @@ function _generateAppNumber(sheet) {
   for (let i = 0; i < 3; i++) rnd += chars[Math.floor(Math.random() * chars.length)];
   return 'SS26-' + seqStr + '-' + rnd;
 }
-

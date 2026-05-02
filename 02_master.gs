@@ -115,4 +115,3 @@ function getMasterData() {
     schoolConfig: getSchoolConfig()
   };
 }
-
