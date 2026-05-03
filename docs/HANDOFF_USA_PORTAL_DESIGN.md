@@ -1,12 +1,13 @@
-# USAオンライン受講管理ポータル — 設計＆実装仕様 (HANDOFF v1.3)
+# USAオンライン受講管理ポータル — 設計＆実装仕様 (HANDOFF v1.4)
 
-**Document version:** 1.3
+**Document version:** 1.4
 **作成日:** 2026-05-02
 **更新履歴:**
 - v1.0 (2026-05-02): 初版
 - v1.1 (2026-05-02): §6.2/§9 #2 を確定 — billing_school_id 初期値=各校舎ファイル記載尊重
 - v1.2 (2026-05-02): §1.5 m_pricing 追加、§1.11 tx_billing_adj 拡張、§9 #1 大半解決（要項『2026年度高校生USAオンライン講座(太平洋部)』反映）。教材費金額・時間帯別料金有無の2点のみ未確定。シート総数 10→11。
 - v1.3 (2026-05-03): §9 #1-b/#1-c 解決 — 教材費=別line itemで全冊まとめて1計上、料金は時間帯セグメント問わず同一体系（太平洋部以外も同額）。§1.4 timezone_segment は表示用属性に格下げ、§1.5 m_pricing から timezone セグメント別料金分岐を削除。
+- v1.4 (2026-05-03): §10 月次請求生成バッチの仕組み を新規追加。§1.11 tx_billing_adj に `adj_type='textbook_fee'` を追加（教材費のタイミングは固定ルールではなくRyoが任意月にレコードを切ることで決定）。§1.1 シート総数 11→12（`tx_billing_runs` 追加・Phase 1.5）。諸経費$30は主請求元のみ計上ルールを§1.5/§10.3で確定。
 **作成者:** 橋川 ([claude.ai](http://claude.ai)セッション)
 **宛先:** Claude Code 実装セッション
 **着手目標:** 2026-08-01 以降（hoshuko_app Phase 4-B 本番運用が安定後）
@@ -69,7 +70,7 @@
 
 ## 1. データモデル
 
-### 1.1 シート一覧（全11シート）
+### 1.1 シート一覧（全12シート）
 
 | 種別 | シート名 | 用途 |
 |---|---|---|
@@ -82,7 +83,8 @@
 | トランザクション | `tx_attendance` | 出席記録 |
 | トランザクション | `tx_trial` | 体験申込 |
 | トランザクション | `tx_requests` | 申請ワークフロー（開始/停止/振替） |
-| トランザクション | `tx_billing_adj` | 請求調整メモ（パターン⑤用） |
+| トランザクション | `tx_billing_adj` | 請求調整・教材費・校舎間取り決め（§1.11） |
+| トランザクション | `tx_billing_runs` | **月次請求バッチ実行履歴**（Phase 1.5・§10.5） |
 | ログ | `audit_log` | 監査ログ（全変更履歴） |
 
 ### 1.2 m_schools（校舎マスタ）
@@ -195,12 +197,21 @@ function calculateMonthlyTuition(numSlots, pricing) {
   return numSlots * pricing.tuition_per_slot_4plus;  // 4コマ以上
 }
 
+// ※ 詳細な月次バッチの仕組みは §10 を参照
 function calculateMonthlyTotal(student, enrollments, pricing) {
-  const numSlots = enrollments.filter(e => e.status === 'active').length;
-  const tuition = calculateMonthlyTuition(numSlots, pricing);
-  const misc = numSlots > 0 ? pricing.monthly_misc_fee : 0;
-  // 兄弟割引は tx_billing_adj で個別計上（ロジックに組み込まない）
-  return tuition + misc;
+  // billing_school_id でグループ化して、各グループ内でコマ数算出
+  const groups = groupBy(enrollments.filter(e => e.status === 'active'), 'billing_school_id');
+  const subtotals = {};
+  for (const [schoolId, group] of Object.entries(groups)) {
+    const numSlots = group.length;
+    const tuition = calculateMonthlyTuition(numSlots, pricing);
+    // 諸経費 $30 は主請求元 (m_students.billing_school_id) のみ計上 (v1.4)
+    const misc = (schoolId === student.billing_school_id && numSlots > 0)
+                  ? pricing.monthly_misc_fee : 0;
+    subtotals[schoolId] = tuition + misc;
+  }
+  // 入会金・教材費・調整は §10 で tx_billing_adj から反映
+  return subtotals;
 }
 ```
 
@@ -315,7 +326,7 @@ function calculateMonthlyTotal(student, enrollments, pricing) {
 | 列 | 型 | 備考 |
 |---|---|---|
 | adj_id | string | PK |
-| adj_type | enum | `inter_school`(校舎間取り決め)/`sibling_discount`(兄弟割引)/`referral_discount`(友人紹介割引)/`other` |
+| adj_type | enum | `inter_school`(校舎間取り決め)/`textbook_fee`(教材費・v1.4追加)/`sibling_discount`(兄弟割引)/`referral_discount`(友人紹介割引)/`other` |
 | student_id | string | FK |
 | period | string | `2026-04` 形式（年月）。入会金関連は入会月 |
 | from_school_id | string | 移管元校舎（inter_school用、それ以外はnull） |
@@ -719,7 +730,165 @@ function api_<domain>_<action>(token, ...args) {
 
 ---
 
-## 10. ライセンス・著作権
+## 10. 月次請求生成バッチの仕組み（v1.4 追加）
+
+§1.5 の料金体系・§1.11 の `tx_billing_adj` を実際にどう請求書に変換するかを定義する節。Phase 1-G の実装基準。
+
+### 10.1 トリガーと運用サイクル
+
+| トリガー | 内容 |
+|---|---|
+| 自動 | GAS time-driven trigger：毎月25日 03:00（基準TZ：America/New_York）に翌月分の draft を生成 |
+| 手動 | `billing_export.html` の「YYYY-MM の請求を生成 / 再計算」ボタンから任意起動可 |
+| 確定 | Ryo がレビュー後、月初に「確定」ボタンで `status='finalized'` に遷移 |
+| 修正 | 確定済 run の period を再生成すると新 run を作成、旧 run は `status='superseded'` に |
+
+**運用フロー：**
+```
+M月25日 03:00  → 自動: M+1月分 draft 生成 (tx_billing_runs.status='draft')
+M月26日〜末日   → Ryo レビュー、必要なら tx_billing_adj に追記して再計算
+M+1月1日       → Ryo「確定」 → status='finalized' / 各校舎 CSV 配信
+M+1月以降      → 修正発生時は tx_billing_adj に「次月への調整」を切る運用を推奨
+                 （過去の finalized run はそのまま、未来 run で吸収）
+```
+
+### 10.2 入力データ
+
+| ソース | 抽出条件 |
+|---|---|
+| `m_pricing` | `effective_from <= period_end AND (effective_to IS NULL OR effective_to >= period_start)` の最新1件 |
+| `tx_enrollments` | 当該 period にアクティブ：`billing_start <= period_end AND (billing_end IS NULL OR billing_end >= period_start)` かつ `status IN ('active','suspended')` |
+| `m_students` | 主請求元 (`billing_school_id`) と入会日 (`enrolled_at`) |
+| `m_courses` | `has_textbook_fee` 判定用（情報参照のみ。教材費の計上は §10.3 Step 6） |
+| `tx_billing_adj` | `period == 'YYYY-MM'` のレコード全件 |
+
+### 10.3 計算パイプライン（1 student につき）
+
+```
+Step 1: 当該 period のアクティブ enrollments を抽出
+
+Step 2: enrollment.billing_school_id でグループ化
+        → 1 student が複数 billing_school_id に分かれることを許容
+        → 例: 学生Xが 主請求元=TX、ただし enrollment_A=NY billing で取り決め
+        　  → group = { TX: [...], NY: [enrollment_A] }
+
+Step 3: 各グループ内で授業料計算
+        numSlots = グループ内の active enrollment 件数
+        tuition  = calculateMonthlyTuition(numSlots, pricing)
+        ※ コマ数階段は「グループ内コマ数」で適用される。
+          全社コマ数で階段適用する選択肢もあるが、運用実態（各校舎が
+          自校舎請求分のみで料金を提示する）を優先してグループ内方式を採用。
+
+Step 4: 諸経費 $30 (v1.4 確定: 主請求元のみ)
+        if (schoolId === student.billing_school_id && groupSlots > 0) {
+          subtotal[schoolId] += pricing.monthly_misc_fee  // $30
+        }
+        ※ 1 student が複数校舎に分かれていても、$30 は主請求元 1 件のみ。
+          二重請求や按分はしない。
+
+Step 5: 入会金 $200
+        if (period contains student.enrolled_at) {
+          subtotal[student.billing_school_id] += pricing.enrollment_fee  // $200
+        }
+
+Step 6: 教材費 (v1.4 確定: 固定ルールなし／tx_billing_adj 経由)
+        ※ 計上タイミングは Ryo が tx_billing_adj に
+          adj_type='textbook_fee' のレコードを切ることで決定する。
+          受講開始月翌月／4月一括／学期開始 など、運用方針を変えても
+          システム側に変更は不要。
+        ※ §10.6 のヘルパー UI で一括登録可。
+
+Step 7: tx_billing_adj 反映 (period 一致レコード)
+        for each adj in adjustments where adj.period === period:
+          switch (adj.adj_type) {
+            case 'inter_school':
+              subtotal[adj.from_school_id] -= adj.amount
+              subtotal[adj.to_school_id]   += adj.amount
+              break
+            case 'textbook_fee':
+              subtotal[adj.to_school_id || student.billing_school_id] += adj.amount
+              break
+            case 'sibling_discount':
+            case 'referral_discount':
+              subtotal[student.billing_school_id] += adj.amount  // 通常 amount<0
+              break
+            case 'other':
+              subtotal[(adj.to_school_id || adj.from_school_id || student.billing_school_id)] += adj.amount
+              break
+          }
+
+Step 8: 各 (student, billing_school_id) ペアの最終金額を確定
+        → 0 のレコードも残す（ゼロ請求のトレース用）
+```
+
+### 10.4 出力
+
+| 出力物 | 内容 |
+|---|---|
+| 校舎別請求 CSV | NY/NJ/MI/TX/CA 各1ファイル。既存の各校舎ファイル形式に合わせる |
+| 内訳明細 CSV | 1行 per (student, billing_school_id, fee_type)。監査・突合用 |
+| Drive 配置 | `{Drive}/usa_portal/billing/{period}/{run_id}/` に保存、共有リンクを `tx_billing_runs.school_csv_links` に記録 |
+
+**校舎別 CSV 列：** student_id, name_kanji, grade, school_id（在籍校）, course_list, num_slots, tuition, misc_fee, enrollment_fee, textbook_fee, adjustments, total, period, run_id
+
+### 10.5 tx_billing_runs（履歴シート・Phase 1.5）
+
+| 列 | 型 | 備考 |
+|---|---|---|
+| run_id | string | PK（`R-2026-04-001`） |
+| period | string | `2026-04` |
+| status | enum | `draft`/`finalized`/`superseded` |
+| generated_at | datetime | 自動／手動の生成時刻 |
+| generated_by | string | actor staff_id |
+| finalized_at | datetime | 確定時刻 |
+| finalized_by | string | |
+| supersedes | string | 旧 run_id（再計算で置換した場合） |
+| school_csv_links | json | `{"NY":"https://drive.google.com/...","NJ":"...",...}` |
+| total_per_school | json | `{"NY":1234.5,"NJ":987.0,...}` |
+| total_amount | number | 全校舎合計 |
+| note | text | |
+
+**実装メモ：** Phase 1 MVP では CSV 生成だけ実装し、履歴は PropertiesService に最終 run の概要のみ保持で代用可。Phase 1.5 で `tx_billing_runs` シートに昇格。
+
+### 10.6 教材費スケジューラ UI（billing_export.html 内）
+
+教材費の計上を Ryo が運用判断で柔軟に決められるよう、`tx_billing_adj` への一括登録ヘルパーを設ける。
+
+```
+┌─ 教材費スケジューラ ─────────────────────────────────┐
+│ 対象講座    : [数学IA ▼]                              │
+│ 計上月      : [2026-04]                               │
+│ 金額/人     : [$50]                                   │
+│ 対象範囲    : (●) 当該講座の active enrollment 全員   │
+│              ( ) 受講開始日が _____ 以降の生徒のみ    │
+│              ( ) 個別選択 [生徒検索...]               │
+│ 請求先校舎  : (●) 各 enrollment の billing_school_id  │
+│              ( ) 全員 主請求元 (m_students.billing)   │
+│ [プレビュー] [tx_billing_adj に一括登録]              │
+└─────────────────────────────────────────────────────┘
+```
+
+**動作：** 「一括登録」押下で、対象生徒分の `tx_billing_adj` レコード（`adj_type='textbook_fee'`, `period`, `to_school_id`, `amount`, `reason`）を一気に作成。次回バッチで自動的に拾われる。
+
+### 10.7 楽観的ロック・冪等性
+
+- 同一 period に対して `status='draft'` の run は常に1つ（新規生成すると旧 draft は破棄）
+- `status='finalized'` の run は不変。再計算は新 run + supersedes 連鎖
+- バッチ処理中は `LockService.getScriptLock()` で排他、25日深夜と手動実行が競合しないよう保護
+- 計算結果は冪等：同じ入力（pricing/enrollments/adj snapshot）から常に同じ請求が出る → 監査時に再計算で検証可能
+
+### 10.8 §10 で発生した未決事項（要 Ryo 判断・実装前）
+
+| # | 論点 | 暫定方針 |
+|---|---|---|
+| a | Step 3 のコマ数階段適用範囲 — 「グループ内コマ数」 vs 「全社コマ数」 | グループ内（採用済）。ただし複数校舎跨ぎ生徒の支払総額が割高になる可能性あり、年度後半に再評価 |
+| b | 諸経費 $30 の停止判断 — `status='suspended'` の月も課金するか | 暫定：suspended でも当該月は課金（Ryo が `tx_billing_adj` で減額レコードを切る運用） |
+| c | 兄弟割引の「家族」識別 — `family_group_id` の手動付与運用 | Phase 1 では手動付与、Phase 2 で `m_students` に `family_group_id` 欄追加の検討 |
+| d | 請求 CSV の各校舎テンプレ仕様 | 各校舎ファイル『2026各校舎_受講一覧.xlsx』を Phase 1-G 着手時に再採取 |
+
+---
+
+## 11. ライセンス・著作権
 
 本ドキュメントおよび関連コード一式の著作権は駿台USA運営にある。各校舎が運用に使用することは許諾される。商用転用・他法人への提供には橋川の承認を要する（hoshuko_appと同方針）。
 
