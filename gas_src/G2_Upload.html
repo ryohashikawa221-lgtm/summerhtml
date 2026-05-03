@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_top">
+<title>駿台USA合同演習会 答案アップロード</title>
+<style>
+:root {
+  --navy: #1b2a4a;
+  --gold: #c9a84c;
+  --cream: #faf8f3;
+  --red: #c0392b;
+  --green: #1a6b3c;
+  --blue: #1a5fa5;
+  --text: #1a1a1a;
+  --muted: #666;
+  --border: #ddd;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 16px;
+}
+.wrap { max-width: 560px; margin: 0 auto; }
+.header {
+  background: var(--navy);
+  color: #fff;
+  padding: 18px 20px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 3px solid var(--gold);
+}
+.header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.05em; }
+.header .sub { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 4px; }
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+}
+.section + .section { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border); }
+.label { font-weight: 600; font-size: 13px; color: var(--muted); margin-bottom: 6px; display: block; }
+.value { font-size: 16px; font-weight: 500; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.info-grid .full { grid-column: 1 / -1; }
+
+.subjects { display: flex; flex-wrap: wrap; gap: 10px; }
+.subject-radio {
+  flex: 1 1 calc(33% - 10px);
+  min-width: 90px;
+  position: relative;
+}
+.subject-radio input { position: absolute; opacity: 0; }
+.subject-radio label {
+  display: block;
+  padding: 14px 8px;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: 0.15s;
+  background: #fafafa;
+}
+.subject-radio input:checked + label {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.subject-radio.submitted label {
+  border-color: var(--green);
+  color: var(--green);
+}
+.subject-radio.submitted label::after {
+  content: " ✓";
+  font-weight: 700;
+}
+.subject-radio input:checked + label.submitted-checked {
+  background: var(--green);
+  color: #fff;
+}
+
+.file-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  background: #fafafa;
+  cursor: pointer;
+}
+.file-zone.has-files { border-color: var(--blue); background: #eef4fb; }
+.file-zone p { font-size: 14px; color: var(--muted); }
+.file-zone .ico { font-size: 32px; margin-bottom: 8px; }
+.file-input { display: none; }
+.file-list { margin-top: 12px; text-align: left; }
+.file-list li {
+  list-style: none;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.file-list .remove {
+  background: none;
+  border: 0;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: var(--navy);
+  color: #fff;
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  margin-top: 16px;
+  transition: 0.15s;
+}
+.btn:hover:not(:disabled) { background: var(--gold); color: var(--navy); }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+.btn.secondary { background: #fff; color: var(--navy); border: 1px solid var(--navy); }
+
+.alert {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-top: 14px;
+}
+.alert.error { background: #fdecea; color: var(--red); border: 1px solid #f5c6c1; }
+.alert.success { background: #e8f5e9; color: var(--green); border: 1px solid #b8dcc0; }
+.alert.info { background: #e3f2fd; color: var(--blue); border: 1px solid #bbdefb; }
+
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-card {
+  margin-top: 14px;
+  padding: 18px;
+  background: #f1f8f4;
+  border: 1px solid #b8dcc0;
+  border-radius: var(--radius);
+}
+.result-card h3 { color: var(--green); margin-bottom: 8px; font-size: 16px; }
+.result-card .next { margin-top: 12px; font-size: 13px; color: var(--muted); }
+
+.muted { color: var(--muted); font-size: 13px; }
+.note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>駿台USA合同演習会 答案アップロード</h1>
+    <div class="sub">PDF または画像 (複数可) で答案を提出してください</div>
+  </div>
+
+  <div class="card">
+
+    <div id="bootstrapError" style="display:none"></div>
+
+    <div id="mainPane" style="display:none">
+
+      <!-- 受験生情報 -->
+      <div class="section">
+        <div class="info-grid">
+          <div>
+            <span class="label">受験番号</span>
+            <span class="value" id="vStudentId">—</span>
+          </div>
+          <div>
+            <span class="label">学年</span>
+            <span class="value" id="vGrade">—</span>
+          </div>
+          <div class="full">
+            <span class="label">氏名</span>
+            <span class="value" id="vName">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 教科選択 -->
+      <div class="section">
+        <span class="label">提出する教科を選択</span>
+        <div class="subjects" id="subjectsBox"></div>
+        <div class="note" id="submissionStatusNote"></div>
+      </div>
+
+      <!-- ファイル選択 -->
+      <div class="section">
+        <span class="label">答案ファイル</span>
+        <label class="file-zone" id="fileZone">
+          <div class="ico">📄</div>
+          <p><strong>タップしてファイルを選択</strong></p>
+          <p>PDF または画像 (写真複数枚も OK)</p>
+          <input type="file" id="fileInput" class="file-input" multiple
+            accept=".pdf,application/pdf,image/*">
+        </label>
+        <ul class="file-list" id="fileList"></ul>
+        <p class="note">画像複数枚を選んだ場合、自動的に 1 つの PDF にまとめます。1 枚あたり 10MB 以下を推奨。</p>
+      </div>
+
+      <!-- 送信 -->
+      <button class="btn" id="submitBtn" disabled>アップロード</button>
+      <div id="msgBox"></div>
+
+    </div>
+
+  </div>
+
+  <p style="text-align:center;margin-top:14px;font-size:12px;color:#888">
+    駿台USA · 合同演習会 2026
+  </p>
+
+</div>
+
+<script>
+var BOOTSTRAP = <?!= bootstrapJson ?>;
+var SELECTED_SUBJECT = null;
+var SELECTED_FILES = [];
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (BOOTSTRAP.error) {
+    showBootstrapError(BOOTSTRAP.error);
+    return;
+  }
+  document.getElementById('mainPane').style.display = 'block';
+  renderStudentInfo();
+  renderSubjects();
+  bindFileZone();
+  bindSubmit();
+  loadSubmissionStatus();
+});
+
+function showBootstrapError(msg) {
+  var box = document.getElementById('bootstrapError');
+  box.style.display = 'block';
+  box.innerHTML = '<div class="alert error">' + esc(msg) + '</div>';
+}
+
+function renderStudentInfo() {
+  document.getElementById('vStudentId').textContent = BOOTSTRAP.studentId || '';
+  document.getElementById('vName').textContent = BOOTSTRAP.name + (BOOTSTRAP.nameKana ? ' (' + BOOTSTRAP.nameKana + ')' : '');
+  document.getElementById('vGrade').textContent = BOOTSTRAP.grade || '';
+}
+
+function renderSubjects() {
+  var box = document.getElementById('subjectsBox');
+  box.innerHTML = '';
+  (BOOTSTRAP.subjects || []).forEach(function (subject, i) {
+    var id = 'sub_' + i;
+    var wrap = document.createElement('div');
+    wrap.className = 'subject-radio';
+    wrap.dataset.subject = subject;
+    wrap.innerHTML =
+      '<input type="radio" name="subject" id="' + id + '" value="' + esc(subject) + '">' +
+      '<label for="' + id + '">' + esc(subject) + '</label>';
+    box.appendChild(wrap);
+  });
+  box.addEventListener('change', function (e) {
+    if (e.target.name === 'subject') {
+      SELECTED_SUBJECT = e.target.value;
+      updateSubmitState();
+    }
+  });
+}
+
+function loadSubmissionStatus() {
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.ok) return;
+      var subs = res.submissions || {};
+      var note = '';
+      var labels = [];
+      (BOOTSTRAP.subjects || []).forEach(function (subject) {
+        var wrap = document.querySelector('.subject-radio[data-subject="' + cssEsc(subject) + '"]');
+        if (subs[subject]) {
+          if (wrap) wrap.classList.add('submitted');
+          labels.push(subject + ' = 提出済');
+        } else {
+          labels.push(subject + ' = 未提出');
+        }
+      });
+      if (labels.length) {
+        document.getElementById('submissionStatusNote').textContent = '現在の提出状況: ' + labels.join(' / ') + ' (再アップロードで上書き)';
+      }
+    })
+    .g2_getSubmissionStatus(BOOTSTRAP.studentId);
+}
+
+function bindFileZone() {
+  var zone = document.getElementById('fileZone');
+  var input = document.getElementById('fileInput');
+  input.addEventListener('change', function (e) {
+    addFiles(e.target.files);
+  });
+  // ドラッグ&ドロップ
+  ['dragover', 'dragenter'].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      zone.classList.add('has-files');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      if (ev === 'drop') addFiles(e.dataTransfer.files);
+      if (SELECTED_FILES.length === 0) zone.classList.remove('has-files');
+    });
+  });
+}
+
+function addFiles(fileList) {
+  for (var i = 0; i < fileList.length; i++) {
+    SELECTED_FILES.push(fileList[i]);
+  }
+  renderFileList();
+  updateSubmitState();
+}
+
+function renderFileList() {
+  var ul = document.getElementById('fileList');
+  ul.innerHTML = '';
+  SELECTED_FILES.forEach(function (f, idx) {
+    var li = document.createElement('li');
+    var sizeKb = Math.round(f.size / 1024);
+    li.innerHTML =
+      '<span>' + esc(f.name) + ' <span class="muted">(' + sizeKb + ' KB)</span></span>' +
+      '<button class="remove" type="button" data-idx="' + idx + '">✕</button>';
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('.remove').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      SELECTED_FILES.splice(parseInt(btn.dataset.idx, 10), 1);
+      renderFileList();
+      updateSubmitState();
+    });
+  });
+  document.getElementById('fileZone').classList.toggle('has-files', SELECTED_FILES.length > 0);
+}
+
+function updateSubmitState() {
+  var ok = SELECTED_SUBJECT && SELECTED_FILES.length > 0;
+  document.getElementById('submitBtn').disabled = !ok;
+}
+
+function bindSubmit() {
+  document.getElementById('submitBtn').addEventListener('click', function () {
+    submit();
+  });
+}
+
+function submit() {
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>アップロード中...';
+  setMsg('', null);
+
+  // 全ファイルを base64 化
+  var totalBytes = SELECTED_FILES.reduce(function (a, f) { return a + f.size; }, 0);
+  if (totalBytes > 30 * 1024 * 1024) {
+    setMsg('合計サイズが 30MB を超えています。画像を縮小してから再度お試しください。', 'error');
+    resetSubmit();
+    return;
+  }
+
+  Promise.all(SELECTED_FILES.map(toBase64))
+    .then(function (encoded) {
+      var payload = {
+        studentId: BOOTSTRAP.studentId,
+        subject: SELECTED_SUBJECT,
+        files: encoded
+      };
+      google.script.run
+        .withSuccessHandler(onUploadResult)
+        .withFailureHandler(function (err) {
+          setMsg('通信エラー: ' + (err && err.message ? err.message : err), 'error');
+          resetSubmit();
+        })
+        .g2_uploadAnswer(payload);
+    })
+    .catch(function (err) {
+      setMsg('ファイル読込エラー: ' + err, 'error');
+      resetSubmit();
+    });
+}
+
+function toBase64(file) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var b64 = reader.result.split(',')[1];
+      resolve({ name: file.name, mimeType: file.type || guessMime(file.name), base64: b64 });
+    };
+    reader.onerror = function (e) { reject(e); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function guessMime(name) {
+  var ext = (name.split('.').pop() || '').toLowerCase();
+  return ({
+    'pdf': 'application/pdf', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+    'png': 'image/png', 'heic': 'image/heic', 'webp': 'image/webp'
+  })[ext] || 'application/octet-stream';
+}
+
+function onUploadResult(res) {
+  if (!res || !res.ok) {
+    setMsg('エラー: ' + (res && res.error ? res.error : '不明なエラー'), 'error');
+    resetSubmit();
+    return;
+  }
+  // 成功 → 完了画面
+  document.getElementById('mainPane').style.display = 'none';
+  var card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML =
+    '<h3>✓ 受け取りました</h3>' +
+    '<div>' + esc(SELECTED_SUBJECT) + ' の答案を受領しました。</div>' +
+    '<div class="next">他の教科をアップロードする場合は、確認メール内のリンクから再度開いてください。</div>' +
+    '<button class="btn secondary" type="button" onclick="window.location.reload()" style="margin-top:14px">続けてアップロード</button>';
+  document.querySelector('.card').appendChild(card);
+}
+
+function resetSubmit() {
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = !(SELECTED_SUBJECT && SELECTED_FILES.length);
+  btn.innerHTML = 'アップロード';
+}
+
+function setMsg(text, type) {
+  var box = document.getElementById('msgBox');
+  if (!text) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="alert ' + (type || 'info') + '">' + esc(text) + '</div>';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function cssEsc(s) {
+  return String(s).replace(/"/g, '\\"');
+}
+</script>
+</body>
+</html>

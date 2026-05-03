@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_top">
+<title>駿台USA合同演習会 管理者ダッシュボード</title>
+<style>
+:root {
+  --navy: #1b2a4a;
+  --gold: #c9a84c;
+  --cream: #faf8f3;
+  --red: #c0392b;
+  --green: #1a6b3c;
+  --blue: #1a5fa5;
+  --text: #1a1a1a;
+  --muted: #666;
+  --border: #ddd;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 16px;
+}
+.wrap { max-width: 920px; margin: 0 auto; }
+.header {
+  background: var(--navy);
+  color: #fff;
+  padding: 18px 22px;
+  border-radius: var(--radius);
+  border-bottom: 3px solid var(--gold);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.05em; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 16px; }
+@media(max-width:640px){ .row { grid-template-columns: 1fr; } }
+
+.kpi {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.kpi .label { font-size: 12px; color: var(--muted); }
+.kpi .num { font-size: 32px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+.kpi .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi.alert { border-color: var(--red); }
+.kpi.ok { border-color: var(--green); }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-top: 16px;
+}
+.card h2 {
+  font-size: 16px;
+  border-left: 4px solid var(--gold);
+  padding-left: 10px;
+  margin-bottom: 12px;
+  color: var(--navy);
+}
+.btn {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  background: var(--navy);
+  color: #fff;
+}
+.btn:hover:not(:disabled) { background: var(--gold); color: var(--navy); }
+.btn.secondary { background: #fff; color: var(--navy); border: 1px solid var(--navy); }
+.btn.danger { background: var(--red); color: #fff; }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+
+.kill-switch-pane {
+  padding: 14px;
+  background: #fef9e7;
+  border: 1px solid #c9a84c;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.kill-switch-pane.on { background: #fdecea; border-color: var(--red); color: var(--red); }
+.kill-switch-pane .row-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table th, table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+table th { background: #f5f5f5; font-weight: 600; color: var(--navy); }
+.bar {
+  display: inline-block;
+  height: 8px;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  border-radius: 4px;
+  vertical-align: middle;
+  min-width: 4px;
+}
+.muted { color: var(--muted); font-size: 12px; }
+.right { text-align: right; }
+
+.alert {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin: 10px 0;
+}
+.alert.error { background: #fdecea; color: var(--red); border: 1px solid #f5c6c1; }
+.alert.success { background: #e8f5e9; color: var(--green); border: 1px solid #b8dcc0; }
+.alert.info { background: #e3f2fd; color: var(--blue); border: 1px solid #bbdefb; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(0,0,0,.2);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.preview-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5); display: none;
+  z-index: 1000; padding: 16px; overflow: auto;
+}
+.preview-modal.open { display: flex; align-items: flex-start; justify-content: center; }
+.preview-modal .inner {
+  background: #fff; max-width: 720px; width: 100%;
+  border-radius: var(--radius); padding: 20px;
+}
+.preview-modal h3 { margin-bottom: 10px; }
+.preview-modal .preview-html { border: 1px solid var(--border); padding: 14px; max-height: 60vh; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>駿台USA合同演習会 管理者ダッシュボード</h1>
+    <button class="btn secondary" id="refreshBtn" type="button">再読み込み</button>
+  </div>
+
+  <div id="msgBox"></div>
+
+  <div class="row">
+    <div class="kpi" id="kTotal">
+      <div class="label">採点対象 セル数</div>
+      <div class="num">—</div>
+      <div class="sub">受験生 × 教科</div>
+    </div>
+    <div class="kpi" id="kGraded">
+      <div class="label">採点済</div>
+      <div class="num">—</div>
+      <div class="sub">点数入力済セル数</div>
+    </div>
+    <div class="kpi" id="kDistributed">
+      <div class="label">配信済</div>
+      <div class="num">—</div>
+      <div class="sub">結果メール送信済セル数</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>運用操作</h2>
+    <div id="killSwitchPane" class="kill-switch-pane">
+      <div class="row-line">
+        <div>
+          <strong>一斉送信 kill switch</strong>: <span id="killStatusText">確認中...</span>
+          <div class="muted">本送信時のみ ON にしてください。終了後は必ず OFF に戻すこと。</div>
+        </div>
+        <div>
+          <button class="btn" id="toggleKillBtn" type="button">切替</button>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" id="populateBtn" type="button">tx_答案 → tx_採点 を populate</button>
+      <button class="btn secondary" id="rankBtn" type="button">順位を再計算</button>
+      <button class="btn secondary" id="dryRunBtn" type="button">配信プレビュー (dry run)</button>
+      <button class="btn danger" id="distributeBtn" type="button">結果を一斉配信</button>
+    </div>
+    <div class="muted" style="margin-top:8px">推奨運用: 採点完了 → 順位再計算 → プレビュー1件確認 → kill switch ON → 一斉配信 → kill switch OFF</div>
+  </div>
+
+  <div class="card">
+    <h2>受験者別 進捗</h2>
+    <table id="studentsTable">
+      <thead>
+        <tr>
+          <th>校舎</th><th>受験番号</th><th>氏名</th><th>学年</th>
+          <th class="right">採点</th><th>進捗</th><th class="right">配信</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>教科 × 学年 集計</h2>
+    <table id="cellsTable">
+      <thead>
+        <tr><th>学年/教科</th><th class="right">採点済 / 全数</th><th>進捗</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="preview-modal" id="previewModal">
+  <div class="inner">
+    <h3>メールプレビュー</h3>
+    <div id="previewMeta" class="muted"></div>
+    <div class="preview-html" id="previewHtml"></div>
+    <div style="margin-top:14px;text-align:right">
+      <button class="btn secondary" type="button" onclick="closePreview()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  loadProgress();
+  document.getElementById('refreshBtn').addEventListener('click', loadProgress);
+  document.getElementById('toggleKillBtn').addEventListener('click', toggleKillSwitch);
+  document.getElementById('populateBtn').addEventListener('click', runPopulate);
+  document.getElementById('rankBtn').addEventListener('click', runRanking);
+  document.getElementById('dryRunBtn').addEventListener('click', runDryDistribute);
+  document.getElementById('distributeBtn').addEventListener('click', runDistribute);
+});
+
+function loadProgress() {
+  setMsg('読み込み中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.ok) { setMsg('進捗取得失敗', 'error'); return; }
+      setMsg('', null);
+      renderProgress(res);
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_getProgress();
+}
+
+function renderProgress(res) {
+  setKpi('kTotal', res.total, null);
+  setKpi('kGraded', res.graded + ' / ' + res.total, res.pct_graded + '%');
+  setKpi('kDistributed', res.distributed + ' / ' + res.total, null);
+
+  // kill switch
+  var pane = document.getElementById('killSwitchPane');
+  var text = document.getElementById('killStatusText');
+  if (res.bulkMailEnabled) {
+    pane.classList.add('on');
+    text.innerHTML = '<strong>ON (一斉配信が可能な状態)</strong>';
+    document.getElementById('toggleKillBtn').textContent = 'OFF にする';
+  } else {
+    pane.classList.remove('on');
+    text.innerHTML = '<strong>OFF (一斉配信不可)</strong>';
+    document.getElementById('toggleKillBtn').textContent = 'ON にする';
+  }
+
+  // 受験者別
+  var tbody = document.querySelector('#studentsTable tbody');
+  tbody.innerHTML = '';
+  (res.students || []).sort(function (a, b) {
+    return (a.校舎 + a.受験番号).localeCompare(b.校舎 + b.受験番号);
+  }).forEach(function (s) {
+    var pct = s.total ? Math.round(s.graded / s.total * 100) : 0;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + esc(s.校舎) + '</td>' +
+      '<td>' + esc(s.受験番号) + '</td>' +
+      '<td>' + esc(s.氏名) + '</td>' +
+      '<td>' + esc(s.学年) + '</td>' +
+      '<td class="right">' + s.graded + ' / ' + s.total + '</td>' +
+      '<td><span class="bar" style="width:' + Math.max(pct * 2, 4) + 'px"></span> ' + pct + '%</td>' +
+      '<td class="right">' + s.distributed + ' / ' + s.total + '</td>' +
+      '<td><button class="btn secondary" type="button" onclick="previewStudent(\'' + esc(s.受験番号) + '\')">プレビュー</button></td>';
+    tbody.appendChild(tr);
+  });
+
+  // 教科 × 学年
+  var ctbody = document.querySelector('#cellsTable tbody');
+  ctbody.innerHTML = '';
+  Object.keys(res.byCell || {}).sort().forEach(function (k) {
+    var c = res.byCell[k];
+    var pct = c.total ? Math.round(c.graded / c.total * 100) : 0;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + esc(k) + '</td>' +
+      '<td class="right">' + c.graded + ' / ' + c.total + '</td>' +
+      '<td><span class="bar" style="width:' + Math.max(pct * 2, 4) + 'px"></span> ' + pct + '%</td>';
+    ctbody.appendChild(tr);
+  });
+}
+
+function setKpi(id, num, sub) {
+  var el = document.getElementById(id);
+  el.querySelector('.num').textContent = num;
+  if (sub != null) el.querySelector('.sub').textContent = sub;
+}
+
+function toggleKillSwitch() {
+  var current = document.getElementById('toggleKillBtn').textContent.indexOf('OFF') >= 0;
+  var willEnable = current; // current=true means it's ON now → toggle OFF
+  // actually if button says "OFF にする" then it's currently ON; we want to set to false
+  // if button says "ON にする" then currently OFF; we want to set to true
+  willEnable = (document.getElementById('toggleKillBtn').textContent.indexOf('ON にする') >= 0);
+  if (willEnable) {
+    if (!confirm('kill switch を ON にします。本送信時のみ ON にしてください。続行しますか?')) return;
+  }
+  setMsg('kill switch 切替中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      setMsg('kill switch: ' + (res.enabled ? 'ON' : 'OFF') + ' に変更しました', 'success');
+      loadProgress();
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_setBulkMailEnabled(willEnable);
+}
+
+function runPopulate() {
+  if (!confirm('tx_答案 から tx_採点 を populate します。続行しますか?')) return;
+  setMsg('populate 実行中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      setMsg('populate 完了: created=' + res.created + ', updated=' + res.updated, 'success');
+      loadProgress();
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_populateGrading();
+}
+
+function runRanking() {
+  setMsg('順位再計算中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      setMsg('順位再計算完了: ' + res.updated + ' 件更新', 'success');
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_computeRankings();
+}
+
+function runDryDistribute() {
+  setMsg('dry run 実行中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      setMsg('dry run 完了: 配信対象=' + res.sent + ', skipped(部分採点等)=' + res.skipped, 'success');
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_distributeResults({ dryRun: true });
+}
+
+function runDistribute() {
+  if (!confirm('結果を一斉配信します。kill switch が ON である必要があります。続行しますか?')) return;
+  if (!confirm('本当に送信しますか? (取り消しできません)')) return;
+  setMsg('一斉配信中... (時間がかかる場合があります)', 'info');
+  document.getElementById('distributeBtn').disabled = true;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      var msg = '配信完了: 送信=' + res.sent + ', スキップ=' + res.skipped;
+      if (res.failed && res.failed.length) msg += ', 失敗=' + res.failed.length;
+      setMsg(msg, res.failed && res.failed.length ? 'error' : 'success');
+      document.getElementById('distributeBtn').disabled = false;
+      loadProgress();
+    })
+    .withFailureHandler(function (e) {
+      setMsg('エラー: ' + e.message, 'error');
+      document.getElementById('distributeBtn').disabled = false;
+    })
+    .g3_distributeResults({});
+}
+
+function previewStudent(studentId) {
+  setMsg('プレビュー取得中...', 'info');
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.ok) { setMsg('プレビュー失敗: ' + (res && res.error), 'error'); return; }
+      setMsg('', null);
+      var meta = '宛先: ' + esc(res.to) + (res.cc ? ' (CC: ' + esc(res.cc) + ')' : '') + ' / 件名: ' + esc(res.subject);
+      document.getElementById('previewMeta').innerHTML = meta;
+      document.getElementById('previewHtml').innerHTML = res.html;
+      document.getElementById('previewModal').classList.add('open');
+    })
+    .withFailureHandler(function (e) { setMsg('エラー: ' + e.message, 'error'); })
+    .g3_previewResultMail(studentId);
+}
+
+function closePreview() {
+  document.getElementById('previewModal').classList.remove('open');
+}
+
+function setMsg(text, type) {
+  var box = document.getElementById('msgBox');
+  if (!text) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="alert ' + (type || 'info') + '">' + esc(text) + '</div>';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+</script>
+</body>
+</html>

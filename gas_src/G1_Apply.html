@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_top">
+<title>駿台USA合同演習会 申込フォーム</title>
+<style>
+:root {
+  --navy: #1b2a4a;
+  --gold: #c9a84c;
+  --cream: #faf8f3;
+  --red: #c0392b;
+  --green: #1a6b3c;
+  --blue: #1a5fa5;
+  --text: #1a1a1a;
+  --muted: #666;
+  --border: #ddd;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 16px;
+}
+.wrap { max-width: 600px; margin: 0 auto; }
+.header {
+  background: var(--navy);
+  color: #fff;
+  padding: 18px 20px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 3px solid var(--gold);
+}
+.header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.05em; }
+.header .sub { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 4px; }
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 22px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+}
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.field label .req { color: var(--red); margin-left: 4px; }
+.field input[type=text],
+.field input[type=email],
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  background: #fff;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(27,42,74,0.1);
+}
+.field .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.subject-group { display: flex; flex-wrap: wrap; gap: 10px; }
+.subject-check {
+  flex: 1 1 calc(33% - 10px);
+  min-width: 90px;
+  position: relative;
+}
+.subject-check input { position: absolute; opacity: 0; }
+.subject-check label {
+  display: block;
+  padding: 12px 8px;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  background: #fafafa;
+  transition: 0.15s;
+}
+.subject-check input:checked + label {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: var(--navy);
+  color: #fff;
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  margin-top: 10px;
+}
+.btn:hover:not(:disabled) { background: var(--gold); color: var(--navy); }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+
+.alert {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-top: 14px;
+}
+.alert.error { background: #fdecea; color: var(--red); border: 1px solid #f5c6c1; }
+.alert.success { background: #e8f5e9; color: var(--green); border: 1px solid #b8dcc0; }
+
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.event-info {
+  background: #f5f0e0;
+  border: 1px solid #c9a84c;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.event-info strong { color: var(--navy); }
+
+.success-card {
+  margin-top: 20px;
+  padding: 22px;
+  background: #f1f8f4;
+  border: 1px solid #b8dcc0;
+  border-radius: var(--radius);
+}
+.success-card h3 { color: var(--green); margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>駿台USA合同演習会 申込フォーム</h1>
+    <div class="sub">2026年度 / 5校舎合同</div>
+  </div>
+
+  <div class="card">
+
+    <div class="event-info" id="eventInfo"></div>
+
+    <form id="form">
+
+      <div class="field">
+        <label>校舎 <span class="req">*</span></label>
+        <select name="campus" id="fCampus" required>
+          <option value="">選択してください</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>受験番号 <span class="req">*</span></label>
+        <input type="text" name="studentId" id="fStudentId" placeholder="例: MI-001" required>
+        <div class="hint">校舎担当者から事前にお知らせした受験番号を入力してください</div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>学年 <span class="req">*</span></label>
+          <select name="grade" id="fGrade" required>
+            <option value="">選択</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>氏名 <span class="req">*</span></label>
+          <input type="text" name="name" id="fName" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>氏名カナ</label>
+        <input type="text" name="nameKana" id="fNameKana" placeholder="例: ヤマダ タロウ">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>保護者メール <span class="req">*</span></label>
+          <input type="email" name="parentEmail" id="fParentEmail" required>
+        </div>
+        <div class="field">
+          <label>本人メール</label>
+          <input type="email" name="studentEmail" id="fStudentEmail" placeholder="任意">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>受験教科 <span class="req">*</span></label>
+        <div class="subject-group" id="fSubjectsBox"></div>
+        <div class="hint" id="subjectsHint">学年を選択すると教科が表示されます</div>
+      </div>
+
+      <div class="field">
+        <label>備考</label>
+        <textarea name="note" id="fNote" rows="3"></textarea>
+      </div>
+
+      <button class="btn" id="submitBtn" type="submit">申込を送信</button>
+      <div id="msgBox"></div>
+
+    </form>
+  </div>
+
+  <p style="text-align:center;margin-top:14px;font-size:12px;color:#888">
+    駿台USA · 合同演習会 2026
+  </p>
+
+</div>
+
+<script>
+var BOOTSTRAP = <?!= bootstrapJson ?>;
+
+document.addEventListener('DOMContentLoaded', function () {
+  renderEventInfo();
+  renderCampuses();
+  renderGrades();
+  bindGrade();
+  bindForm();
+});
+
+function renderEventInfo() {
+  var html = '<strong>開催日:</strong> ' + esc(BOOTSTRAP.eventDate || '未定');
+  if (BOOTSTRAP.deadline) html += ' / <strong>申込締切:</strong> ' + esc(BOOTSTRAP.deadline);
+  document.getElementById('eventInfo').innerHTML = html;
+}
+
+function renderCampuses() {
+  var sel = document.getElementById('fCampus');
+  (BOOTSTRAP.campuses || []).forEach(function (c) {
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+function renderGrades() {
+  var sel = document.getElementById('fGrade');
+  (BOOTSTRAP.grades || []).forEach(function (g) {
+    var opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g;
+    sel.appendChild(opt);
+  });
+}
+
+function bindGrade() {
+  document.getElementById('fGrade').addEventListener('change', function (e) {
+    renderSubjects(e.target.value);
+  });
+}
+
+function renderSubjects(grade) {
+  var box = document.getElementById('fSubjectsBox');
+  var hint = document.getElementById('subjectsHint');
+  box.innerHTML = '';
+  if (!grade || !BOOTSTRAP.subjectsByGrade[grade]) {
+    hint.textContent = '学年を選択すると教科が表示されます';
+    return;
+  }
+  hint.textContent = '受験する教科にチェック (複数可)';
+  BOOTSTRAP.subjectsByGrade[grade].forEach(function (subject, i) {
+    var id = 'sub_' + i;
+    var div = document.createElement('div');
+    div.className = 'subject-check';
+    div.innerHTML =
+      '<input type="checkbox" id="' + id + '" name="subjects" value="' + esc(subject) + '">' +
+      '<label for="' + id + '">' + esc(subject) + '</label>';
+    box.appendChild(div);
+  });
+}
+
+function bindForm() {
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    submit();
+  });
+}
+
+function collectPayload() {
+  var subjects = Array.prototype.slice.call(
+    document.querySelectorAll('input[name=subjects]:checked')
+  ).map(function (el) { return el.value; });
+  return {
+    campus: document.getElementById('fCampus').value.trim(),
+    studentId: document.getElementById('fStudentId').value.trim(),
+    grade: document.getElementById('fGrade').value.trim(),
+    name: document.getElementById('fName').value.trim(),
+    nameKana: document.getElementById('fNameKana').value.trim(),
+    parentEmail: document.getElementById('fParentEmail').value.trim(),
+    studentEmail: document.getElementById('fStudentEmail').value.trim(),
+    subjects: subjects,
+    note: document.getElementById('fNote').value.trim()
+  };
+}
+
+function submit() {
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送信中...';
+  setMsg('', null);
+
+  google.script.run
+    .withSuccessHandler(onResult)
+    .withFailureHandler(function (err) {
+      setMsg('通信エラー: ' + (err && err.message ? err.message : err), 'error');
+      resetSubmit();
+    })
+    .g1_submitApplication(collectPayload());
+}
+
+function onResult(res) {
+  if (!res || !res.ok) {
+    setMsg('エラー: ' + (res && res.error ? res.error : '不明なエラー'), 'error');
+    resetSubmit();
+    return;
+  }
+  document.getElementById('form').style.display = 'none';
+  document.getElementById('eventInfo').style.display = 'none';
+  var card = document.createElement('div');
+  card.className = 'success-card';
+  card.innerHTML =
+    '<h3>✓ 申込を受け付けました</h3>' +
+    '<p>' + esc(res.message || '') + '</p>' +
+    (res.mailSent
+      ? '<p style="margin-top:8px;font-size:13px;color:#666">メールに記載された答案アップロード URL を、当日の答案提出時にご利用ください。</p>'
+      : '<p style="margin-top:8px;color:#c0392b;font-size:13px">確認メール送信に失敗しました。事務局までお問い合わせください。</p>');
+  document.querySelector('.card').appendChild(card);
+}
+
+function resetSubmit() {
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = false;
+  btn.innerHTML = '申込を送信';
+}
+
+function setMsg(text, type) {
+  var box = document.getElementById('msgBox');
+  if (!text) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="alert ' + (type || 'info') + '">' + esc(text) + '</div>';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+</script>
+</body>
+</html>
