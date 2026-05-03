@@ -250,12 +250,178 @@ function migrate_v2_setExamDefaults() {
 
 ---
 
-## 10. 議論ポイント (確定したい)
+## 10. 確定済み事項 (Ryo 2026-05-03)
 
 1. ~~「自宅」受験の意味~~ → **確定**: 保護者印刷 + 子供解答 + G-2 アップロード
-2. **対面受験の校舎別場所**: Settings に校舎別保管 (上記案) で OK? それとも m_設定 ではなく別シート?
-3. **解説授業の事前申込**: G-1 で 解説授業形式 を選ぶが、当日変更を許す UI は必要?
-4. **複数日開催**: 受験日は受験生ごとに異なる場合がある? (DESIGN_NOTES §6 の議論ポイントとも関連)
+2. ~~対面受験の校舎別場所~~ → **確定**: Settings に `exam_in_person_location_{校舎}` で保管 (上記案で実装)
+3. ~~解説授業形式の当日変更~~ → **確定: 必要**。当日でも保護者が変更できる UI を提供 → §12 参照
+4. ~~受験日~~ → **確定: 受験生ごとに異なる**。m_受験生 + tx_申込 に `受験日` 列を追加 → §11 参照
+
+---
+
+## 11. 受験日 (per-student date) 実装
+
+### 11.1 Schema (`lib_Schema.gs`)
+
+`STUDENT_COLS` と `tx_申込` に追加:
+
+```javascript
+{ name: '受験日', type: 'date' }   // 受験生ごとに異なる
+```
+
+`tx_答案` / `tx_採点` には キャッシュとして 受験日 列を入れるかは判断。
+**推奨は入れない**: 答案アップロード/採点フローでは受験日は使わないし、m_受験生 から都度参照すれば十分。後で集計時に必要になったら追加。
+
+### 11.2 G-1 申込フォーム
+
+`G1_Apply.html` フォームに date input を追加 (受験形式と並べる):
+
+```html
+<div class="field">
+  <label>受験日 <span class="req">*</span></label>
+  <input type="date" name="examDate" id="fExamDate" required>
+</div>
+```
+
+`api_G1_Apply.gs g1_submitApplication` payload バリデーション:
+```javascript
+var examDate = String(payload.examDate || '').trim();
+if (!examDate || !/^\d{4}-\d{2}-\d{2}$/.test(examDate)) {
+  throw new Error('受験日が不正です: ' + examDate);
+}
+```
+
+tx_申込 + 確認メール文面に追加。
+
+### 11.3 G-2 アップロード画面
+
+bootstrap に 受験日 を含め、画面の受験生情報セクションに表示:
+「受験日: 2026-05-17」
+
+**アップロード制限はかけない** (受験日と異なる日に upload しても許容)。
+
+### 11.4 G-3 配信メール
+
+メール文面に「受験日: ...」を表示。配信タイミング自体は変えない (admin が一括配信)。
+
+### 11.5 Migration
+
+m_受験生 既存行に 受験日 が空の場合、**Settings.event_date のデフォルト値で埋める** 1 回限り migration を用意:
+
+```javascript
+function migrate_v2_setExamDateDefault() {
+  var defaultDate = Settings.get('event_date', '2026-05-17');
+  Schema.CAMPUSES.forEach(function(campus) {
+    // 直接シート操作で 受験日 列に defaultDate を setValue
+    // (m_受験生 系は hasId: false のため SheetDB.update 不可)
+  });
+}
+```
+
+---
+
+## 12. 解説授業形式の当日変更 UI
+
+### 12.1 配置: G-2 アップロード画面に統合
+
+理由:
+- 保護者は G-2 URL を確認メール経由で既に持っている (新規 URL 不要)
+- 答案アップロードのついでに解説形式も変えられる UX 一貫性
+- 認証も同じ (受験番号 = id パラメータ)
+
+### 12.2 API 新規追加 (`api_G2_Upload.gs` に同居 or 新規 `api_G_Preferences.gs`)
+
+```javascript
+function g_updateExplanationFormat(studentId, newFormat) {
+  try {
+    var ALLOWED = ['対面', 'オンライン', '録画'];
+    if (ALLOWED.indexOf(newFormat) === -1) throw new Error('解説授業形式が不正: ' + newFormat);
+    var campus = Schema.campusOfStudentId(studentId);
+    if (!campus) throw new Error('受験番号が不正');
+    var sheetName = Schema.studentSheetName(campus);
+    var rec = SheetDB.findOne(sheetName, { 受験番号: studentId });
+    if (!rec) throw new Error('受験生が見つかりません');
+
+    // m_受験生 系は SheetDB.update 不可 (hasId: false) のため直接シート操作
+    var ss = SpreadsheetApp.openById(/* env-aware ssId */);
+    var sh = ss.getSheetByName(sheetName);
+    var data = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var header = data[0];
+    var idCol = header.indexOf('受験番号');
+    var formatCol = header.indexOf('解説授業形式');
+    if (idCol < 0 || formatCol < 0) throw new Error('列が見つかりません');
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idCol]) === String(studentId)) {
+        var oldFormat = data[i][formatCol];
+        sh.getRange(i + 1, formatCol + 1).setValue(newFormat);
+        AuditLog.log('update_explanation_format', sheetName, studentId,
+          { 解説授業形式: oldFormat }, { 解説授業形式: newFormat });
+        SheetDB.flushCache();  // m_受験生 のキャッシュをパージ
+        return { ok: true, oldFormat: oldFormat, newFormat: newFormat };
+      }
+    }
+    throw new Error('行が見つかりません');
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+```
+
+**注意**:
+- 配信済み (tx_採点.配信済フラグ=1) の受験生は変更しても次回配信に反映されない
+- だが配信済前の変更なら G-3 が m_受験生 から都度読むので自動反映
+- UI 側で「配信済以降の変更は次年度反映です」と案内
+
+### 12.3 UI (G2_Upload.html)
+
+教科選択セクションの下に `<details>` で折りたたみセクションを追加:
+
+```html
+<details class="section">
+  <summary style="cursor:pointer;font-weight:600;color:#1b2a4a">
+    解説授業の参加形式を変更
+  </summary>
+  <div style="padding-top:12px">
+    <label class="label">現在の選択: <span id="currentExplanationFormat">—</span></label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button type="button" class="explanation-btn" data-format="対面">対面に変更</button>
+      <button type="button" class="explanation-btn" data-format="オンライン">オンラインに変更</button>
+      <button type="button" class="explanation-btn" data-format="録画">録画に変更</button>
+    </div>
+    <p class="note">変更は即時反映されます。結果配信メール送信後の変更は次年度の参考情報になります。</p>
+    <div id="explanationMsgBox"></div>
+  </div>
+</details>
+```
+
+JS:
+```javascript
+document.querySelectorAll('.explanation-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var newFormat = btn.dataset.format;
+    if (!confirm('解説授業を「' + newFormat + '」に変更します。よろしいですか?')) return;
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res.ok) {
+          document.getElementById('currentExplanationFormat').textContent = res.newFormat;
+          // 成功メッセージ
+        } else {
+          // エラー
+        }
+      })
+      .g_updateExplanationFormat(BOOTSTRAP.studentId, newFormat);
+  });
+});
+```
+
+### 12.4 bootstrap 拡張
+
+`Code.gs _buildUploadBootstrap` の戻り値に `explanationFormat` を含める:
+```javascript
+explanationFormat: rec.解説授業形式 || ''
+```
+
+---
 
 ---
 
