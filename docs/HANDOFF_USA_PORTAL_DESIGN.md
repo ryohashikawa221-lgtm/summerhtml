@@ -1,13 +1,15 @@
-# USAオンライン受講管理ポータル — 設計＆実装仕様 (HANDOFF v1.4)
+# USAオンライン受講管理ポータル — 設計＆実装仕様 (HANDOFF v2.0)
 
-**Document version:** 1.4
+**Document version:** 2.0
 **作成日:** 2026-05-02
+**ステータス:** 設計確定（Ryo 「おまかせ」指示により全未決事項クローズ）。実装着手可。
 **更新履歴:**
 - v1.0 (2026-05-02): 初版
 - v1.1 (2026-05-02): §6.2/§9 #2 を確定 — billing_school_id 初期値=各校舎ファイル記載尊重
 - v1.2 (2026-05-02): §1.5 m_pricing 追加、§1.11 tx_billing_adj 拡張、§9 #1 大半解決（要項『2026年度高校生USAオンライン講座(太平洋部)』反映）。教材費金額・時間帯別料金有無の2点のみ未確定。シート総数 10→11。
 - v1.3 (2026-05-03): §9 #1-b/#1-c 解決 — 教材費=別line itemで全冊まとめて1計上、料金は時間帯セグメント問わず同一体系（太平洋部以外も同額）。§1.4 timezone_segment は表示用属性に格下げ、§1.5 m_pricing から timezone セグメント別料金分岐を削除。
 - v1.4 (2026-05-03): §10 月次請求生成バッチの仕組み を新規追加。§1.11 tx_billing_adj に `adj_type='textbook_fee'` を追加（教材費のタイミングは固定ルールではなくRyoが任意月にレコードを切ることで決定）。§1.1 シート総数 11→12（`tx_billing_runs` 追加・Phase 1.5）。諸経費$30は主請求元のみ計上ルールを§1.5/§10.3で確定。
+- v2.0 (2026-05-03): **設計確定版**。§9 #3-#8 全クローズ（teacher=Phase3送り、保護者向けPhase2、hoshuko連携Phase3、退会カスケードルール明文化、CA Phase1受け皿のみ、LA=CA配下扱い）、§10.8 a-d 全確定、§11 申請ワークフロー追加、§12 校舎間取り決め実務フロー追加、§1.3 m_students に `family_group_id` 列追加（兄弟識別）。`docs/DATA_MIGRATION.md` 骨子作成。シート総数12維持（family_group_id は m_students 内列追加のみ）。実装着手可。
 **作成者:** 橋川 ([claude.ai](http://claude.ai)セッション)
 **宛先:** Claude Code 実装セッション
 **着手目標:** 2026-08-01 以降（hoshuko_app Phase 4-B 本番運用が安定後）
@@ -123,6 +125,7 @@ USA-Online,USAオンライン,USA Online,true,America/New_York,true
 | status | enum | `active` | `active` / `inactive` / `withdrawn` |
 | enrolled_at | date | `2026-01-30` | 入塾日 |
 | withdrawn_at | date | (null) | 退塾日 |
+| family_group_id | string | `F-2026-001` | **v2.0追加。** 兄弟識別。同一家庭のみ任意付与（無くても可）。`tx_billing_adj.sibling_discount` の対象抽出に使用 |
 | note | text | (任意) | 自由記述 |
 | created_at | datetime | | システム自動 |
 | updated_at | datetime | | システム自動 |
@@ -721,12 +724,17 @@ function api_<domain>_<action>(token, ...args) {
    - **1-d：兄弟割引の運用ルール** ✅ 「総額に応じて個別決定」と要項に明記 → `tx_billing_adj` で個別計上、計算ロジックには組み込まない
    - **1-e：友人紹介割引の運用ルール** ✅ 同上（金額は要項に記載なしだがRyo判断で個別計上）
 2. ~~**billing_school_id の初期値**~~ → **解決済（2026-05-02）：各校舎ファイル記載をそのまま採用＝現状尊重。詳細は §6.2 Step 3。**
-3. **講師（teacher ロール）の参加範囲** — Phase 1から含めるか、Phase 3に回すか
-4. **生徒・保護者向け機能の優先度** — Phase 2の「My講座ページ」は生徒ログイン必要か、保護者向けか
-5. **既存hoshuko_appとの連携** — MI生徒の請求情報はhoshuko_appに自動連携するか（Phase 3で要検討）
-6. **退会・卒業の扱い** — m_students.status と tx_enrollments.status の連動ルール
-7. **CA校舎の実態** — 現状データではCA生徒1名のみ（共通講座受講ゼロ）、運用への巻き込みタイミング
-8. **LA表記の扱い** — 共通講座シートに「LA 数学ⅡB発展」「LA 数学ⅢC発展」がある。これは校舎なのか地域なのか？CAの中の地域呼称か？
+3. ~~**講師（teacher ロール）の参加範囲**~~ → **v2.0 確定：Phase 3 へ送る。** Phase 1 では運営者のみログイン。理由：講師参加は権限スコープ・通知・出席代行入力など追加設計が要り、MVP のクリティカルパスから外す。Phase 1 出席入力は運営者が代行で行う運用前提（現状エクセル運用と同じ）。
+4. ~~**生徒・保護者向け機能の優先度**~~ → **v2.0 確定：Phase 2 で保護者向け「My講座ページ」のみ実装。生徒ログインは作らない。** 理由：(a) 生徒は Zoom 直接アクセスで十分、(b) 課金当事者は保護者で実用的価値が高い、(c) 認証スコープ（minor）の取り扱いを増やしたくない。実装は m_students.email_parent をマジックリンクで認証する軽量フロー。
+5. ~~**既存hoshuko_appとの連携**~~ → **v2.0 確定：Phase 1〜2 では連携しない。Phase 3 で評価。** 暫定：MI生徒の請求は USA-portal の CSV を hoshuko_app の請求モジュールに手動取込する運用。Phase 3 で API 連携 (hoshuko_app 側に webhook 受け口) を検討。
+6. ~~**退会・卒業の扱い**~~ → **v2.0 確定：以下のカスケードルール。**
+   - `m_students.status='withdrawn'` 設定時 → アクティブな全 enrollment を `status='cancelled'`、`ended_at=今日`、`billing_end=今月末` に自動更新
+   - 卒業（高3で年度末）→ `status='inactive'` に変更、enrollment は `status='completed'` に。月次バッチは completed を請求対象外とする
+   - 退会時の月割り計算：日割りせず、`billing_end` 月までは満額請求（要項に「月途中退会の日割無し」を運用上のデフォルトとする想定。Ryo が明示的に減額したい場合は tx_billing_adj に手動レコード）
+7. ~~**CA校舎の実態**~~ → **v2.0 確定：Phase 1 で受け皿だけ用意し、運用本格化は Phase 3。** m_schools の CA レコードは初期データに含めるが、ダッシュボードの「校舎フィルタ」上で CA は active=true のままで OK。CA運営者は Phase 3 で m_staff に追加し、それまで Ryo (admin) が代理操作。
+8. ~~**LA表記の扱い**~~ → **v2.0 暫定：LA は CA 校舎主催の地域別講座群として扱う。** 移行スクリプトで `host_school_id='CA'` + course_name に "LA" を残す方針。`m_courses.region_alias` という任意フィールドを追加する案もあるが、Phase 1 では course_name に文字列保持のみ。Ryo が後日「LAは独立校舎にしたい」と判断したら m_schools にレコード追加で済む設計。
+
+**未決リストはここで全クローズ（v2.0 時点）。** 実装中に新規不明点が出た場合は `IDEAS_BACKLOG.md` または本節への追記で管理。
 
 ---
 
@@ -877,24 +885,133 @@ Step 8: 各 (student, billing_school_id) ペアの最終金額を確定
 - バッチ処理中は `LockService.getScriptLock()` で排他、25日深夜と手動実行が競合しないよう保護
 - 計算結果は冪等：同じ入力（pricing/enrollments/adj snapshot）から常に同じ請求が出る → 監査時に再計算で検証可能
 
-### 10.8 §10 で発生した未決事項（要 Ryo 判断・実装前）
+### 10.8 §10 の運用判断（v2.0 確定）
 
-| # | 論点 | 暫定方針 |
+| # | 論点 | 確定方針 |
 |---|---|---|
-| a | Step 3 のコマ数階段適用範囲 — 「グループ内コマ数」 vs 「全社コマ数」 | グループ内（採用済）。ただし複数校舎跨ぎ生徒の支払総額が割高になる可能性あり、年度後半に再評価 |
-| b | 諸経費 $30 の停止判断 — `status='suspended'` の月も課金するか | 暫定：suspended でも当該月は課金（Ryo が `tx_billing_adj` で減額レコードを切る運用） |
-| c | 兄弟割引の「家族」識別 — `family_group_id` の手動付与運用 | Phase 1 では手動付与、Phase 2 で `m_students` に `family_group_id` 欄追加の検討 |
-| d | 請求 CSV の各校舎テンプレ仕様 | 各校舎ファイル『2026各校舎_受講一覧.xlsx』を Phase 1-G 着手時に再採取 |
+| a | コマ数階段適用範囲 | **グループ内コマ数**で適用。複数校舎跨ぎ生徒の支払総額が割高になる可能性あるが、各校舎が「自校舎請求分のみで料金提示」できる運用透明性を優先。Ryo が明示的に均す場合は `tx_billing_adj` で逆算減算 |
+| b | 諸経費 $30 の停止月扱い | **suspended でも当該月は$30 課金**。Ryo が `tx_billing_adj` で `adj_type='other'` -$30 レコードを切ることで個別免除 |
+| c | `family_group_id` 配置 | **Phase 1 から `m_students` に列追加**（兄弟がいる場合のみ手動入力）。Phase 2 でファミリーUI整備 |
+| d | 請求 CSV の各校舎テンプレ | Phase 1-G 着手時に各校舎ファイル『2026各校舎_受講一覧.xlsx』から再採取して `docs/CSV_FORMATS.md` に列定義を追記 |
 
 ---
 
-## 11. ライセンス・著作権
+## 11. 申請ワークフロー（v2.0 追加）
+
+`tx_requests` の状態遷移と承認権限を定義する節。Phase 1-F の実装基準。
+
+### 11.1 ステートマシン
+
+```
+        create
+          ↓
+       pending  ── auto_apply 条件成立 ──→  auto_applied  →（即座に対象シートに反映）
+          │
+          ├── approve →  approved  →（対象シートに反映）
+          └── reject  →  rejected  （理由を reason に保存）
+```
+
+すべての終端状態（auto_applied / approved / rejected）は不変。再申請は新しい request_id を発行。
+
+### 11.2 申請種別 × 承認権限 × 自動適用
+
+| request_type | 申請者 | 承認者 | auto_apply 条件 | 反映先 |
+|---|---|---|---|---|
+| `start` | 任意校舎の運営 | 主催校 (course.host_school_id) の運営 + admin | なし | tx_enrollments に新規レコード（status='active'） |
+| `suspend` | 任意校舎の運営 | 主催校の運営 | requester_school == host_school のとき auto_apply | enrollment.status='suspended', ended_at=指定日 |
+| `resume` | 任意校舎の運営 | 主催校の運営 + admin | なし（枠確認要） | 新規 enrollment レコード（履歴維持） |
+| `cancel` | 任意校舎の運営 | 主催校の運営 | requester_school == host_school のとき auto_apply | enrollment.status='cancelled' |
+| `makeup` | 任意校舎の運営 | 主催校の運営 | なし | tx_attendance に2件（振替元 mark='makeup' / 振替先 mark='present'）。受講枠は変えない |
+| `billing_change` | 任意校舎の運営 | 関係する全 billing_school_id の運営 + admin | なし | enrollment.billing_school_id 更新、必要なら tx_billing_adj に inter_school 切る |
+
+**承認の実装：** `request.approver_id` は配列ではなく単一者だが、複数承認が必要な種別 (`billing_change`) はチェーンで実装：1人目承認 → status='partial' → 次の承認者に遷移 → 全員承認で 'approved' に。Phase 1 では partial を使わず admin が代表承認する簡易運用で開始。
+
+### 11.3 通知
+
+| イベント | 受信者 | 媒体 | Phase |
+|---|---|---|---|
+| pending 作成 | approver | GMail | 1 |
+| approved | requester | GMail | 1 |
+| rejected | requester | GMail（reason 含む） | 1 |
+| auto_applied | requester + approver（CC） | GMail | 1 |
+| ダッシュボード通知バッジ | 全関係者 | UI | 2 |
+
+メールテンプレは `gas_src/lib_Notify.gs`（新規・hoshuko_app の同名ライブラリを流用）に置く。
+
+### 11.4 UI（request_form.html）
+
+```
+┌─ 新規申請 ─────────────────────────────────────────────┐
+│ 種別      : [受講開始 ▼]                                │
+│ 対象生徒  : [生徒検索...]                               │
+│ 対象講座  : [講座検索...]                               │
+│ 適用日    : [2026-04-01]                                │
+│ 請求元    : [TX (現状)] ← billing_change のときだけ編集可│
+│ 理由      : [_______________________________]           │
+│ [プレビュー] [申請を送信]                               │
+└────────────────────────────────────────────────────────┘
+```
+
+承認画面は別 URL（`request_inbox.html` / Phase 2 で正式化、Phase 1 はダッシュボードに「自分宛承認待ち」セクションを置く）。
+
+### 11.5 監査
+- 全 transition で `audit_log` にエントリ：actor, request_id, from_status, to_status, diff
+- 反映先シート（tx_enrollments / tx_attendance / tx_billing_adj）への書込みは別エントリとして audit_log に記録
+
+---
+
+## 12. 校舎間取り決め実務フロー（v2.0 追加）
+
+§1.11 の `tx_billing_adj` と §11 の `billing_change` 申請がどう連動するかを示す節。
+
+### 12.1 取り決めパターン
+
+| パターン | 例 | 仕組み |
+|---|---|---|
+| **A. 単一校舎請求** | 生徒X(NY籍) が NY 講座のみ受講 | 全 enrollment.billing_school_id='NY'。調整不要 |
+| **B. 講座別分担** | 生徒X(NY籍) が NY+TX 講座 → 各校舎が自校講座分だけ請求 | enrollment 別に billing_school_id を設定。tx_billing_adj 不要 |
+| **C. 一括請求＋月毎の収益移転** | 生徒X(USA籍) が複数校舎の講座 → 主請求元1校舎が全額請求、後で他校舎へ送金 | 主請求元に enrollment.billing_school_id 集約、tx_billing_adj に毎月 inter_school レコード |
+| **D. 一時的負担調整** | 校舎間の合意で「今月だけ TX が肩代わり」 | tx_billing_adj に inter_school 1レコード（その月のみ） |
+
+### 12.2 取り決めプロセス（Phase 1：Ryo中心）
+
+```
+1. 受講開始申請（tx_requests start）が承認される
+   ↓
+2. Ryo (admin) が enrollment レビュー
+   ↓
+3. パターン A〜D のどれかを判定
+   ↓
+4-A. パターンA/B → enrollment.billing_school_id を設定して終了
+4-B. パターンC/D → 関係校舎にメール通知（テンプレ送信）
+                   → tx_billing_adj に必要レコード（毎月分または単発）を作成
+   ↓
+5. audit_log に取り決め内容を記録
+```
+
+### 12.3 Phase 2 での昇格
+
+- `billing_change` 申請を必須化：パターンC/Dは関係校舎の運営者が UI 上で承認
+- 「定期取り決め」テンプレ：毎月同じ inter_school 移転を発生させる場合、テンプレ登録すればバッチが自動で月次レコードを生成
+- ダッシュボード：「未取り決め enrollment」アラート（生徒の在籍校 ≠ enrollment.host_school_id ≠ billing_school_id のような不整合検知）
+
+### 12.4 監査・トレーサビリティ
+
+すべての取り決めは:
+- `tx_billing_adj.reason` に取り決め内容（フリーテキスト）
+- `tx_billing_adj.agreed_by` に合意校舎の運営者 staff_id（カンマ区切り）
+- `audit_log` に作成・更新履歴
+
+を残し、後から「いつ・誰が・なぜ」を再現できる状態にする。
+
+---
+
+## 13. ライセンス・著作権
 
 本ドキュメントおよび関連コード一式の著作権は駿台USA運営にある。各校舎が運用に使用することは許諾される。商用転用・他法人への提供には橋川の承認を要する（hoshuko_appと同方針）。
 
 ---
 
-**END OF HANDOFF DOCUMENT**
+**END OF HANDOFF DOCUMENT (v2.0 — 設計確定)**
 
-実装着手時は本ファイルの全節を熟読のうえ、§9の未決事項を解消してから設計確定すること。
-[不明点はclaude.ai](http://不明点はclaude.ai)セッションに戻って橋川と再確認する。
+§9 全項目クローズ済。実装中に新規論点が発生した場合は `IDEAS_BACKLOG.md` または本ファイルの追記で管理し、必要に応じて [claude.ai](http://claude.ai) セッションで橋川と再確認する。データ移行詳細は `docs/DATA_MIGRATION.md` を参照。
