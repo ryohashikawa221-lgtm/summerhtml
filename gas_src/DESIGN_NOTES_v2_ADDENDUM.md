@@ -274,24 +274,58 @@ function migrate_v2_setExamDefaults() {
 
 ### 11.2 G-1 申込フォーム
 
-`G1_Apply.html` フォームに date input を追加 (受験形式と並べる):
+**訂正 (Ryo 確認 2026-05-03)**: 駿台合同演習会は **前日 + 当日 の 2 値固定運用** (年 3〜4 回 × 全校舎統一)。よって自由日付入力ではなく **dropdown 2 値選択** が UX 上正解。
+
+m_設定 に 2 つの key を持つ:
+- `event_date_pre`  : 前日開催日 (YYYY-MM-DD)
+- `event_date`      : 当日開催日 (YYYY-MM-DD、既存)
+
+`G1_Apply.html` フォームには **dropdown** を追加 (受験形式と並べる):
 
 ```html
 <div class="field">
   <label>受験日 <span class="req">*</span></label>
-  <input type="date" name="examDate" id="fExamDate" required>
+  <select name="examDate" id="fExamDate" required>
+    <option value="">選択</option>
+    <!-- bootstrap で event_date_pre と event_date を populate -->
+  </select>
 </div>
 ```
 
-`api_G1_Apply.gs g1_submitApplication` payload バリデーション:
+JS 側で bootstrap.examDateOptions から populate:
+```javascript
+BOOTSTRAP.examDateOptions.forEach(function(opt) {
+  // opt = { value: '2026-05-16', label: '2026-05-16 (前日)' }
+  var optionEl = document.createElement('option');
+  optionEl.value = opt.value;
+  optionEl.textContent = opt.label;
+  fExamDate.appendChild(optionEl);
+});
+```
+
+`Code.gs:_buildApplyBootstrap` で 2 値を返す (実装済):
+```javascript
+var dateOptions = [];
+var pre = Settings.get('event_date_pre', '');
+var main = Settings.get('event_date', '');
+if (pre) dateOptions.push({ value: pre, label: pre + ' (前日)' });
+if (main) dateOptions.push({ value: main, label: main + ' (当日)' });
+return { /* ... */, examDateOptions: dateOptions };
+```
+
+`api_G1_Apply.gs g1_submitApplication` payload バリデーション (whitelist):
 ```javascript
 var examDate = String(payload.examDate || '').trim();
-if (!examDate || !/^\d{4}-\d{2}-\d{2}$/.test(examDate)) {
-  throw new Error('受験日が不正です: ' + examDate);
+var preDate = Settings.get('event_date_pre', '');
+var mainDate = Settings.get('event_date', '');
+if (examDate !== preDate && examDate !== mainDate) {
+  throw new Error('受験日が不正です: ' + examDate + ' (有効値: ' + preDate + ' / ' + mainDate + ')');
 }
 ```
 
 tx_申込 + 確認メール文面に追加。
+
+**将来対応**: 3 日以上の開催が必要になったら m_設定 を `event_dates` (CSV or JSON 配列) に拡張。
 
 ### 11.3 G-2 アップロード画面
 

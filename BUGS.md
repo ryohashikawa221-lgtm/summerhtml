@@ -10,6 +10,52 @@
 
 ---
 
+## Static Review Log (動作検証担当の静的レビュー結果集)
+
+役割再定義 (2026-05-03): Web CC は静的コードレビュー専門。動的検証 (UI/E2E/認証フロー) は Ryo or Mac CC 担当。
+
+### 2026-05-03 静的レビュー Round 1 (Day 0 Day 1 後の改訂版コード)
+
+レビュー対象 (Ryo が貼付):
+1. `gas_src/SETUP.md §6` (admin_setupPin + ロック解除手順)
+2. `gas_src/api_Admin_Auth.gs` 全文
+3. `gas_src/Code.gs` 全文
+
+#### 検証 0 結果: SETUP.md ロック解除手順記載確認
+
+**判定: PASS**
+
+- 方法 1 (admin_setupPin 再実行) 記載あり ✓
+- 方法 2 (admin_clearLockout 関数実行) 記載あり ✓ (実装で関数化、私の仕様より洗練)
+- 検証 4 (5 回失敗ロック) を実行しても後続検証がブロッカー化しないことを保証
+
+#### 検証 8 結果: `_assertAdminAuth` ガード位置確認
+
+**判定: CONDITIONAL PASS**
+
+- `api_Admin_Auth.gs` 末尾に `_assertAdminAuth(token)` 関数定義あり ✓
+- 全 admin server-side API (`g3_*`, `g6_*`) の冒頭で呼出されているかは **次のレビューサイクル** (`api_G3_Notify.gs` / `api_G6_DocGen.gs` 受領時) に確認
+
+#### 仕様適合サマリー
+
+| ファイル | ✓ 適合 | ✗ 不適合 | ⚠ 要確認 | 💡 改善 |
+|---|---|---|---|---|
+| SETUP.md §6 | 8 件 | 0 | 0 | 1 件 (admin_clearLockout 関数化、実装が仕様超え) |
+| api_Admin_Auth.gs | 10 件 | 1 件 → BUG-003 | 0 (paste artifact 解消済) | 5 件 (AuditLog 連携 / api_g3_* 命名 / purgeAllSessions / DEFAULT_ パターン / _formatJaTime) |
+| Code.gs | 多数 | 0 | 3 件 → BUG-005 | 7 件 (?action=bootstrap / ?action=ping / _runFullBootstrap / _ensureUnifiedViewFormula / onOpen menu / v2 bootstrap 統合 / _getExamInfoForStudent) |
+
+**ブロッカー**: 1 件 (BUG-003)、**マイナー逸脱**: 3 件 (BUG-005)、**全体評価**: 期待を上回る品質。
+
+#### 動的検証担当 (Ryo) への引き継ぎ
+
+静的では検出不可、Day 1 で実機確認が必要な項目:
+- 検証 1〜7, 9〜10 (UI 動作・認証フロー・E2E)
+- E2E シナリオ: MI-001/002/003 で G-1 → G-2 → G-3 完走
+- モバイル実機での G-2 アップロード挙動
+- 確認メールの実配信確認
+
+---
+
 ## BUG-001: URL ルーティング仕様 — `id` 優先 + `role=dashboard` のみ採用
 
 | | |
@@ -573,6 +619,192 @@ PIN を忘れた場合は **方法 2** で新 PIN を設定。
 | 8 | 認証なしで g3_distributeResults を直接 google.script.run で呼ぶ | エラー「管理者認証が必要です」(_assertAdminAuth 効果) |
 | 9 | `?id=MI-001` (parent ルート) | G-2 アップロード画面 (認証不要、PIN 影響なし) |
 | 10 | 無指定 | G-1 申込フォーム (認証不要) |
+
+---
+
+## BUG-003: `setAdminPin` が既存セッション + ロックを clear しない
+
+| | |
+|---|---|
+| 起票日 | 2026-05-03 (静的レビュー Round 1 で検出) |
+| Severity | High (脱属人化要件の中核に影響) |
+| Status | **OPEN (ターミナル CC 修正中)** |
+| Reporter | 動作検証担当 (Web CC) |
+| Assignee | 実装担当 (ターミナル CC) |
+
+### 背景
+
+BUG-002 修正 2-B (案A) の確定仕様では `admin_setupPin` (実装名: `setAdminPin`) で PIN ハッシュ更新時に **既存セッション全破棄 + ロックアウトカウンタ全クリア** を必須としていた。
+
+実装 (`api_Admin_Auth.gs:setAdminPin`) は PIN hash の更新のみ行い、sessions / lockout のクリアを行っていない。
+
+### 実害
+
+- **A. 引継ぎ時の旧運用者残存セッション**: Ryo が新運用者へ引継ぎして PIN を変えても、旧運用者の localStorage に保存された旧 token は **最大 12h 有効のまま**。これは **脱属人化要件 (BUG-002 を Option A に決めた根拠そのもの) に直接違反**。
+- **B. SETUP.md §6-3 方法1 の不正確化**: 「PIN を再設定 → 新 PIN でログイン → ロックアウトカウンタ自動リセット」と書いてあるが、ロック中は loginAdmin step (a) で弾かれるため、PIN 再設定だけではログインできない (admin_clearLockout 併用が必要)。
+
+### 修正対象
+
+`gas_src/api_Admin_Auth.gs` の `setAdminPin` 関数 (AdminAuth module 内、private)
+
+**確定仕様 (修正後コード)**:
+
+```javascript
+function setAdminPin(plainPin) {
+  var pin = String(plainPin || '').trim();
+  if (!pin || pin.length < 4) throw new Error('PIN は 4 文字以上にしてください');
+  var hash = Util.hashPassword(pin);
+  Settings.set('admin_pin_hash', hash, 'BUG-002 案A: PIN の SHA-256 ハッシュ');
+  // BUG-003: PIN 変更 = 引継ぎや緊急対応の合図。
+  // 既存セッション + ロックを全クリアして即適用する (旧運用者残存セッション排除)。
+  PropertiesService.getScriptProperties().deleteProperty(SESSIONS_KEY);
+  PropertiesService.getScriptProperties().deleteProperty(LOCKOUT_KEY);
+  AuditLog.log('reset_pin', 'admin_auth', '', null, {
+    hash_prefix: hash.substring(0, 8) + '...',
+    sessions_cleared: true,
+    lockout_cleared: true
+  });
+  return {
+    ok: true,
+    hash_prefix: hash.substring(0, 8) + '...',
+    sessions_cleared: true,
+    lockout_cleared: true
+  };
+}
+```
+
+### 検証項目 (修正後)
+
+| # | ケース | 期待 |
+|---|---|---|
+| 1 | 既存セッション (token 保持) で `admin_setupPin('newPin')` 実行 → 既存 token で `api_g3_verify` | 「無効なセッション」が返る (旧 token 失効) |
+| 2 | ロック中 (5 回失敗状態) で `admin_setupPin('newPin')` 実行 → 新 PIN でログイン試行 | ロックエラーなしで成功 (即座にログイン可能) |
+| 3 | `admin_setupPin('newPin')` の戻り値 | `{ ok: true, hash_prefix: '...', sessions_cleared: true, lockout_cleared: true }` |
+| 4 | audit_log シート | `reset_pin` action 行が追加されている |
+
+### 関連
+
+- BUG-002 修正 2-B の確定仕様 (Web CC 起票時から書いていたが、ターミナル CC が初版実装で漏らした)
+- SETUP.md §6-3 方法1 の正確性も BUG-003 修正で担保される
+
+---
+
+## BUG-005: Code.gs に BUG-001 確定仕様からの 3 点逸脱 + 改善 2 件まとめて反映
+
+| | |
+|---|---|
+| 起票日 | 2026-05-03 (静的レビュー Round 1 で検出) |
+| Severity | Medium (実害限定的だが整合性 + 監査性のため必須) |
+| Status | **OPEN (ターミナル CC 修正中)** |
+| Reporter | 動作検証担当 (Web CC) |
+| Assignee | 実装担当 (ターミナル CC) |
+
+### 背景
+
+`Code.gs:doGet` は BUG-001 修正 1-A の確定仕様に対して 3 点の逸脱があり、また Web CC 静的レビューで提案した改善 2 件 (bootstrap AuditLog 記録 + dead code 削除) も Ryo が採用判断済。これら 5 点を 1 PR でまとめて反映する。
+
+### 修正対象 (5 サブタスク)
+
+#### 修正 5-A: legacy route `?role=upload` / `?role=apply` の削除
+
+**現状** (`Code.gs:doGet` L52-58):
+```javascript
+if (role === 'upload') {
+  return _renderUploadPage(e.parameter.id || '');
+}
+if (role === 'apply') {
+  return _renderApplyPage();
+}
+```
+
+**修正後**: 上記 2 ブロックを **削除**。`?role=upload` / `?role=apply` は廃止し、確定仕様の 3 ルート (`?id=` / `?role=dashboard` / 無指定) のみ。
+
+#### 修正 5-B: `id` 優先順位の `&& !role` 条件を削除
+
+**現状** (`Code.gs:doGet` L48-50):
+```javascript
+if (e && e.parameter && e.parameter.id && !role) {
+  return _renderUploadPage(e.parameter.id);
+}
+```
+
+**修正後**:
+```javascript
+if (e && e.parameter && e.parameter.id) {
+  return _renderUploadPage(e.parameter.id);
+}
+```
+
+これにより `?id=MI-001&role=dashboard` でも `?id=MI-001&role=upload` でも常に G-2 が優先される (確定仕様検証項目 5「id 優先で role 無視」の原則準拠)。
+
+#### 修正 5-C: ヘッダコメント (L4-6) を新仕様で書き換え
+
+**現状**:
+```javascript
+ * URL ルーティング (HANDOFF G-2 シーケンス §4):
+ *   {WebAppURL}?role=upload&id={受験番号}  → G-2 答案アップロード画面
+ *   {WebAppURL}?role=apply                  → G-1 申込フォーム
+ *   {WebAppURL}                             → 既定: G-1 申込フォーム
+```
+
+**修正後**:
+```javascript
+ * URL ルーティング (BUG-001 確定仕様 2026-05-03):
+ *   {WebAppURL}?id={受験番号}     → G-2 答案アップロード画面 (parent)
+ *   {WebAppURL}?role=dashboard    → G-3 管理者ダッシュボード (PIN 認証要)
+ *   {WebAppURL}                   → G-1 申込フォーム (default)
+ *   {WebAppURL}?action=bootstrap&secret={secret}  → 自走 setup (運用ツール)
+ *   {WebAppURL}?action=ping       → health check
+ *
+ * id があれば常に G-2 優先 (role 無視、検証項目 5 準拠)。
+```
+
+#### 修正 5-D: `?action=bootstrap` の AuditLog 記録追加 (改善 #1)
+
+**修正後**:
+```javascript
+if (action === 'bootstrap') {
+  var secret = (e && e.parameter && e.parameter.secret) || '';
+  var expected = PropertiesService.getScriptProperties().getProperty('APP_BOOTSTRAP_SECRET') || '';
+  if (!expected || secret !== expected) {
+    AuditLog.log('remote_bootstrap_denied', 'system', '', null, {
+      reason: !expected ? 'secret_not_set' : 'secret_mismatch',
+      triggered_at: Util.nowIso()
+    });
+    return ContentService.createTextOutput(JSON.stringify({ /* ... */ }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  AuditLog.log('remote_bootstrap', 'system', '', null, {
+    triggered_at: Util.nowIso()
+  });
+  var bootstrapReport = _runFullBootstrap();
+  // ... 既存処理
+}
+```
+
+denied / 成功どちらも記録すると、secret 漏洩時の検知能力が上がる。
+
+#### 修正 5-E: `_renderForbidden` dead code 削除 (改善 #2)
+
+`Code.gs` L70-77 の `_renderForbidden` 関数定義を削除 (どこからも呼ばれていない、BUG-002 案 C 検討時の名残)。
+
+### 検証項目 (修正後)
+
+| # | ケース | 期待 |
+|---|---|---|
+| 1 | `?role=upload&id=MI-001` | G-2 表示 (id 優先で動作変わらず) |
+| 2 | `?role=apply` | G-1 表示 (route 削除で fallback、動作変わらず) |
+| 3 | `?role=upload` (id なし) | G-1 表示 (route 削除で fallback) ※修正前はエラー画面 |
+| 4 | `?id=MI-001&role=dashboard` | G-2 表示 (id 優先で role 無視) ※修正前は dashboard 表示 |
+| 5 | `?action=bootstrap&secret=正` | 成功 + audit_log に `remote_bootstrap` 行 |
+| 6 | `?action=bootstrap&secret=誤` | エラー + audit_log に `remote_bootstrap_denied` 行 |
+| 7 | `grep -n _renderForbidden Code.gs` | hit 0 (削除確認) |
+| 8 | ヘッダコメントの URL ルーティング表 | BUG-001 新仕様 (3 ルート + 2 action) を反映 |
+
+### 関連
+
+- BUG-001 修正 1-A 確定仕様
+- 改善 #1 / 改善 #2 (Web CC レビュー Code.gs Round 1 提案、Ryo 判断 2026-05-03 採用)
 
 ---
 
