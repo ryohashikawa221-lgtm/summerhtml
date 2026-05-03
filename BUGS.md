@@ -94,9 +94,9 @@ var uploadUrl = uploadUrlBase.indexOf('http') === 0
 **修正後**:
 ```javascript
 // upload role は廃止。WebApp ベース URL に ?id=XX を直接付ける。
-var webAppBase = Settings.getParentWebAppUrl();
+var webAppBase = Settings.get('web_app_url', '');
 if (!webAppBase) {
-  webAppBase = '(管理者: m_設定 の web_app_url_parent を設定してください)';
+  webAppBase = '(管理者: m_設定 の web_app_url を設定してください)';
 }
 var uploadUrl = webAppBase.indexOf('http') === 0
   ? webAppBase + '?id=' + encodeURIComponent(ctx.studentId)
@@ -113,63 +113,40 @@ function setWebAppUrl(role, rawUrl) { ... }
 function getWebAppUrl(role) { ... }
 ```
 
-**修正後 (BUG-002 Option C 採用に伴い、parent / admin の 2 deployment 前提)**:
+**修正後 (single deployment + PIN 認証で運用、BUG-002 Option A 採用)**:
 
 ```javascript
 // 旧 normalizeWebAppUrl / setWebAppUrl / getWebAppUrl は廃止。
-// 以下 4 関数に置換する。
+// `web_app_url` 単一キーに統一、role/正規化ロジック不要。
 
-function getParentWebAppUrl() {
-  return get('web_app_url_parent', '');  // bare URL、?id=XX は呼出側で付与
+// (Settings module 内に新規追加)
+function getWebAppUrl() {
+  return get('web_app_url', '');  // bare URL、?id=XX / ?role=dashboard は呼出側で付与
 }
 
-function setParentWebAppUrl(url) {
+function setWebAppUrl(url) {
   if (!url) throw new Error('URL is required');
-  set('web_app_url_parent', String(url),
-      'parent (anonymous) deployment の WebApp URL。?id=XX は送信時に付与する。');
+  set('web_app_url', String(url),
+      'WebApp 公開 URL (パラメータなし、?id=XX / ?role=dashboard は呼出側で付与)');
   return url;
-}
-
-function getAdminWebAppUrl() {
-  // defense in depth: 保存値に ?role=dashboard が無くても付与して返す
-  var url = get('web_app_url_admin', '');
-  if (!url) return '';
-  if (/[?&]role=dashboard/.test(url)) return url;
-  var sep = url.indexOf('?') >= 0 ? '&' : '?';
-  return url + sep + 'role=dashboard';
-}
-
-function setAdminWebAppUrl(rawUrl) {
-  if (!rawUrl) throw new Error('URL is required');
-  // 保存時にも ?role=dashboard を強制付与
-  var u = String(rawUrl);
-  if (!/[?&]role=dashboard/.test(u)) {
-    u += (u.indexOf('?') >= 0 ? '&' : '?') + 'role=dashboard';
-  }
-  set('web_app_url_admin', u,
-      'admin (MYSELF_ONLY) deployment の WebApp URL。?role=dashboard 強制付与済。');
-  return u;
 }
 ```
 
 bootstrap defaults の変更:
 - 削除: `upload_web_app_url`, `apply_web_app_url`
-- 追加: `web_app_url_parent`, `web_app_url_admin`
+- 追加: `web_app_url` (1 個のみ)
 
 ```javascript
 // lib_Settings.gs:bootstrap() の defaults
-web_app_url_parent: '',
-web_app_url_admin: '',
+web_app_url: '',
 ```
 
-return 句から `normalizeWebAppUrl` / `setWebAppUrl` / `getWebAppUrl` を削除し、以下 4 つを export:
+return 句から `normalizeWebAppUrl` / 旧 `setWebAppUrl(role, ...)` / 旧 `getWebAppUrl(role)` を削除し、以下 2 つに置換:
 ```javascript
 return {
   // ...
-  getParentWebAppUrl: getParentWebAppUrl,
-  setParentWebAppUrl: setParentWebAppUrl,
-  getAdminWebAppUrl: getAdminWebAppUrl,
-  setAdminWebAppUrl: setAdminWebAppUrl,
+  getWebAppUrl: getWebAppUrl,    // 引数なし版
+  setWebAppUrl: setWebAppUrl,    // 引数 (url) 版
   // ...
 };
 ```
@@ -177,17 +154,17 @@ return {
 ### 検証項目 (修正後)
 | ケース | 期待 |
 |---|---|
-| `<parent_url>?id=MI-001` | G-2 アップロード画面が表示される |
-| `<parent_url>?id=` (空) | G-1 申込フォームが表示される (id 空なので) |
-| `<parent_url>` | G-1 申込フォームが表示される |
-| `<admin_url>?role=dashboard` | G-3 管理者ダッシュボード (Google SSO で Ryo のみ閲覧可能、BUG-002 参照) |
-| `<parent_url>?role=upload&id=MI-001` | G-2 が表示される (id があるため、role は無視) |
-| 確認メール内 URL | parent URL に `?id=MI-001` 付きで保護者がワンタップで G-2 に到達 |
+| `<webapp_url>?id=MI-001` | G-2 アップロード画面が表示される |
+| `<webapp_url>?id=` (空) | G-1 申込フォームが表示される (id 空なので) |
+| `<webapp_url>` | G-1 申込フォームが表示される |
+| `<webapp_url>?role=dashboard` | G-3 管理者ダッシュボード (PIN 入力プロンプト、BUG-002 参照) |
+| `<webapp_url>?role=upload&id=MI-001` | G-2 が表示される (id があるため、role は無視) |
+| 確認メール内 URL | `?id=MI-001` 付きで保護者がワンタップで G-2 に到達 |
 
 ### 既存 Settings 行のクリーンアップ (運用)
 すでに `upload_web_app_url` / `apply_web_app_url` を `m_設定` に投入済みの環境では、bootstrap 後に手動で:
 - 旧キーの行を削除 or 値を空に (used されない)
-- 新規 `web_app_url_parent` / `web_app_url_admin` キーに正しい URL を投入
+- 新規 `web_app_url` キーに正しい URL を投入
 
 migration スクリプト不要 (Settings.bootstrap() は既存行を上書きしないため)。
 
@@ -199,184 +176,383 @@ migration スクリプト不要 (Settings.bootstrap() は既存行を上書き�
 |---|---|
 | 起票日 | 2026-05-03 |
 | Severity | High (情報漏洩 + 誤操作リスク) |
-| Status | **OPEN (Ryo 判断 C 確定 2026-05-03)** |
+| Status | **OPEN (Ryo 判断 A 確定 2026-05-03、脱属人化要件)** |
 | Reporter | 動作検証担当 (Web CC) |
 | Assignee | 実装担当 (ターミナル CC) |
 
-### 確定仕様: Option C (別 deployment + Google SSO)
+### 確定仕様: Option A (PIN 認証 + token-based セッション)
 
-Ryo 判断 (2026-05-03):
-- **A** (PIN 認証) は 14 日のスケジュール内で 1〜2 日の認証実装は重い → 却下
-- **B** (Google 認証で混在) は parent flow と衝突 → 却下
-- **C** (別 deployment + MYSELF_ONLY) は実装ほぼゼロでセキュリティ最強 (Google SSO) → **採用**
+Ryo 判断 (2026-05-03、再判断):
+- **A** (PIN 認証) → **採用**: 引継ぎ可能、脱属人化に整合
+- **B** (Google 認証で混在) → 却下: parent flow と衝突
+- **C** (別 deployment + MYSELF_ONLY) → 却下: Ryo アカウント依存で**引継ぎ不可**、運用者が Ryo 以外になる前提に反する
 
-### 確定仕様
+### 全体像
 
-```
-deployment-parent : ANYONE_ANONYMOUS, executeAs USER_DEPLOYING (= Ryo)
-deployment-admin  : MYSELF_ONLY,      executeAs USER_ACCESSING (= 開いた人)
-```
+- **single deployment** (ANYONE_ANONYMOUS, executeAs USER_DEPLOYING) で運用
+- ダッシュボード初期描画時にクライアント側で認証状態確認
+- 未認証なら PIN 入力フォームを描画、認証済みならダッシュボード描画
+- セッション token は `ScriptProperties.admin_sessions` に JSON map で保持 (12h で expire)
+- 失敗 5 回でロック (15 分、ScriptProperties.admin_pin_lockout)
+- 全 admin server-side API (g3_*) は token を引数に受け取り `_assertAdminAuth(token)` で検証
 
-m_設定 シートに 2 つの URL 列を持つ:
-- `web_app_url_parent` : parent (anonymous) deployment URL
-- `web_app_url_admin`  : admin (MYSELF_ONLY) deployment URL (`?role=dashboard` 強制付与済)
-
-Code.gs:doGet は **変更なし**。Google deployment 設定 (MYSELF_ONLY) が認証層を担う。
-保護者が admin URL を踏んでも Google 側で「アクセス権がありません」エラーになる。
-
-### 修正対象 (3 箇所、いずれも軽微)
+### 修正対象 (5 箇所)
 
 #### 修正 2-A: `gas_src/lib_Settings.gs` の bootstrap defaults
 
-BUG-001 修正 1-C で既に対応 (`web_app_url_parent` / `web_app_url_admin` 追加)。
-BUG-002 では **`getAdminWebAppUrl` / `setAdminWebAppUrl` の defense in depth** が役立つ。
-具体的には `setAdminWebAppUrl` 保存時 + `getAdminWebAppUrl` 取得時の両方で `?role=dashboard` を強制付与済 (BUG-001 の修正後コード参照)。
-
-#### 修正 2-B: `gas_src/SETUP.md` に「2 つ目の deployment 作成手順」を追記
-
-現状の SETUP.md `### 7. WebApp デプロイ` セクションを以下で置換:
-
-```markdown
-### 7. WebApp デプロイ (parent / admin の 2 deployment)
-
-#### 7-1. parent deployment (保護者向け、anonymous アクセス)
-
-GAS エディタ → デプロイ → 新しいデプロイ → 種類「ウェブアプリ」
-
-| 項目 | 値 |
-|---|---|
-| 説明 | parent deployment (anonymous) |
-| 実行アカウント | 自分 (Ryo) |
-| アクセス権 | 全員 (anonymous) |
-
-デプロイ完了後の URL を保存:
 ```javascript
-Settings.setParentWebAppUrl('https://script.google.com/macros/s/.../exec');
+// lib_Settings.gs:bootstrap() の defaults に追加
+admin_pin_hash: '',
+admin_session_ttl_hours: '12',
+admin_lockout_threshold: '5',
+admin_lockout_duration_minutes: '15'
 ```
 
-#### 7-2. admin deployment (管理者向け、Google SSO)
+description テキスト:
+- `admin_pin_hash`: '管理者ダッシュボード PIN の SHA-256 ハッシュ (admin_setupPin() で設定)'
+- `admin_session_ttl_hours`: '管理者セッション有効時間 (時間単位)'
+- `admin_lockout_threshold`: '連続失敗回数 N 回でロック'
+- `admin_lockout_duration_minutes`: 'ロック時間 (分)'
 
-同じく デプロイ → 新しいデプロイ → 種類「ウェブアプリ」
-
-| 項目 | 値 |
-|---|---|
-| 説明 | admin deployment (MYSELF_ONLY) |
-| 実行アカウント | **アクセスしているユーザー** (USER_ACCESSING) |
-| アクセス権 | **自分のみ** (MYSELF_ONLY) |
-
-デプロイ完了後の URL を保存:
-```javascript
-Settings.setAdminWebAppUrl('https://script.google.com/macros/s/.../exec');
-// `?role=dashboard` は内部で自動付与されます
-```
-
-#### 7-3. ブックマーク
-
-Ryo はブラウザのブックマークに以下 2 つを登録:
-- 「合同演習会 parent (申込テスト用)」: parent URL
-- 「合同演習会 admin (ダッシュボード)」: `Settings.getAdminWebAppUrl()` の戻り値 (admin URL + ?role=dashboard)
-
-#### 7-4. 確認: parent URL で `?role=dashboard` を踏むと
-
-parent deployment は anonymous なので何の制限もないが、Code.gs:doGet は
-**id 優先 + role=dashboard も受付** するため、ダッシュボード HTML が返ってしまう
-**ように見える**。
-
-ただし server-side API (g3_*) は parent URL でも動作するため、データ漏洩リスクが残る。
-
-→ **対策**: deployment-parent の Code.gs:doGet で `?role=dashboard` の場合に
-「アクセス権がありません」を返す簡易ガードを追加すべき (修正 2-C)。
-
-#### 修正 2-C (追加): parent deployment で dashboard ルートを塞ぐ
-
-`gas_src/Code.gs:doGet` を以下に修正:
+#### 修正 2-B: 新規ファイル `gas_src/api_Admin_Auth.gs`
 
 ```javascript
-function doGet(e) {
-  var params = (e && e.parameter) || {};
-  var id = params.id || '';
-  var role = params.role || '';
+/**
+ * api_Admin_Auth.gs (goudou_enshu_app)
+ * 管理者ダッシュボード PIN 認証 + token セッション管理。
+ *
+ * 来歴: 2026-05-03 BUG-002 Option A 確定 (脱属人化要件)。
+ *
+ * - PIN は SHA-256 ハッシュで Settings.admin_pin_hash に保存
+ * - token は UUID、ScriptProperties.admin_sessions に JSON map で保存
+ * - failed_count / locked_until は ScriptProperties.admin_pin_lockout に保存
+ * - 期限切れ token / locked_until は読込時に自動 cleanup
+ */
+
+var SESSIONS_KEY = 'admin_sessions';      // ScriptProperties key
+var LOCKOUT_KEY = 'admin_pin_lockout';
+
+/**
+ * GAS エディタから手動実行する初期 PIN 設定ユーティリティ。
+ * @param {string} plainPin 4 桁以上の数字または英数字
+ */
+function admin_setupPin(plainPin) {
+  if (!plainPin || String(plainPin).length < 4) {
+    throw new Error('PIN は 4 桁以上を指定してください');
+  }
+  Settings.set('admin_pin_hash', Util.hashPassword(plainPin),
+    '管理者ダッシュボード PIN の SHA-256 ハッシュ');
+  // 設定変更時は既存セッション + ロックを全クリア (新 PIN 即適用)
+  PropertiesService.getScriptProperties().deleteProperty(SESSIONS_KEY);
+  PropertiesService.getScriptProperties().deleteProperty(LOCKOUT_KEY);
+  return { ok: true, message: 'PIN を更新しました。既存セッションは無効化されました。' };
+}
+
+/**
+ * クライアントから google.script.run で呼ぶログイン API。
+ * @param {string} pin 平文 PIN
+ * @return {{ok, token?, expiresAt?, error?, lockedUntil?}}
+ */
+function admin_login(pin) {
   try {
-    if (id) {
-      return _renderUploadPage(id);
+    // 1. ロック確認
+    var lockout = _readLockout();
+    if (lockout.lockedUntil && new Date(lockout.lockedUntil) > new Date()) {
+      return {
+        ok: false,
+        error: 'ロック中です',
+        lockedUntil: lockout.lockedUntil
+      };
     }
-    if (role === 'dashboard') {
-      // admin deployment 経由でしかダッシュボードを返さない
-      // USER_ACCESSING で running なら必ず Session.getActiveUser().getEmail() が取得可能
-      // anonymous deployment では空文字列が返るため、それでガードする
-      var userEmail = '';
-      try { userEmail = Session.getActiveUser().getEmail() || ''; } catch (err) {}
-      if (!userEmail) {
-        return _renderForbidden('管理者ダッシュボードはこの URL から開けません。管理者の URL をご利用ください。');
+
+    // 2. PIN 設定の有無確認
+    var stored = Settings.get('admin_pin_hash', '');
+    if (!stored) {
+      return { ok: false, error: 'PIN が未設定です。管理者は admin_setupPin() を実行してください。' };
+    }
+
+    // 3. 照合
+    var inputHash = Util.hashPassword(String(pin || ''));
+    if (inputHash !== stored) {
+      // 失敗カウント増分
+      var threshold = Number(Settings.get('admin_lockout_threshold', 5));
+      var newCount = (lockout.failedCount || 0) + 1;
+      var newLockout = { failedCount: newCount, lockedUntil: '' };
+      if (newCount >= threshold) {
+        var lockMin = Number(Settings.get('admin_lockout_duration_minutes', 15));
+        newLockout.lockedUntil = Utilities.formatDate(
+          new Date(Date.now() + lockMin * 60 * 1000),
+          Util.getTz(), "yyyy-MM-dd'T'HH:mm:ssXXX");
       }
-      // Optional: m_設定.admin_emails 許可リストとの照合 (将来拡張)
-      return _renderDashboardPage();
+      _writeLockout(newLockout);
+      return {
+        ok: false,
+        error: 'PIN が違います (残り ' + Math.max(threshold - newCount, 0) + ' 回)',
+        lockedUntil: newLockout.lockedUntil || null
+      };
     }
-    return _renderApplyPage();
+
+    // 4. 成功 → 失敗カウント reset, token 発行
+    _writeLockout({ failedCount: 0, lockedUntil: '' });
+    var token = Utilities.getUuid();
+    var ttlH = Number(Settings.get('admin_session_ttl_hours', 12));
+    var expiresAt = Utilities.formatDate(
+      new Date(Date.now() + ttlH * 3600 * 1000),
+      Util.getTz(), "yyyy-MM-dd'T'HH:mm:ssXXX");
+    var sessions = _readSessions();
+    sessions[token] = expiresAt;
+    _writeSessions(sessions);
+    AuditLog.log('admin_login', 'admin_sessions', token.substring(0, 8) + '...', null,
+      { expiresAt: expiresAt });
+    return { ok: true, token: token, expiresAt: expiresAt };
   } catch (err) {
-    return _renderError(err);
+    Logger.log('[admin_login] ' + err.stack);
+    return { ok: false, error: err.message };
   }
 }
 
-function _renderForbidden(msg) {
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>アクセス権がありません</title></head>' +
-    '<body style="font-family:sans-serif;padding:40px;max-width:560px;margin:auto">' +
-    '<h2 style="color:#c0392b">アクセス権がありません</h2>' +
-    '<p>' + Util.escapeHtml(msg) + '</p></body></html>';
-  return HtmlService.createHtmlOutput(html);
+/**
+ * 認証状態確認 (再訪時)。
+ * @param {string} token
+ */
+function admin_isAuthenticated(token) {
+  if (!token) return { ok: false, error: 'token なし' };
+  var sessions = _readSessions();
+  var expiresAt = sessions[token];
+  if (!expiresAt) return { ok: false, error: '無効なセッション' };
+  if (new Date(expiresAt) <= new Date()) {
+    delete sessions[token];
+    _writeSessions(sessions);
+    return { ok: false, error: 'セッション切れ' };
+  }
+  return { ok: true, expiresAt: expiresAt };
+}
+
+/**
+ * ログアウト。
+ */
+function admin_logout(token) {
+  if (!token) return { ok: true };
+  var sessions = _readSessions();
+  if (sessions[token]) {
+    delete sessions[token];
+    _writeSessions(sessions);
+  }
+  return { ok: true };
+}
+
+/**
+ * server-side admin API のガード。token 不正なら throw。
+ */
+function _assertAdminAuth(token) {
+  var res = admin_isAuthenticated(token);
+  if (!res.ok) throw new Error('管理者認証が必要です: ' + (res.error || ''));
+}
+
+// ----- 内部: ScriptProperties JSON 読み書き + cleanup -----
+
+function _readSessions() {
+  var raw = PropertiesService.getScriptProperties().getProperty(SESSIONS_KEY);
+  var map = raw ? Util.safeJsonParse(raw, {}) : {};
+  // 期限切れ token を読込時に削除
+  var now = new Date();
+  var changed = false;
+  Object.keys(map).forEach(function (k) {
+    if (new Date(map[k]) <= now) { delete map[k]; changed = true; }
+  });
+  if (changed) _writeSessions(map);
+  return map;
+}
+
+function _writeSessions(map) {
+  PropertiesService.getScriptProperties().setProperty(SESSIONS_KEY, JSON.stringify(map));
+}
+
+function _readLockout() {
+  var raw = PropertiesService.getScriptProperties().getProperty(LOCKOUT_KEY);
+  return raw ? Util.safeJsonParse(raw, { failedCount: 0, lockedUntil: '' })
+             : { failedCount: 0, lockedUntil: '' };
+}
+
+function _writeLockout(obj) {
+  PropertiesService.getScriptProperties().setProperty(LOCKOUT_KEY, JSON.stringify(obj));
 }
 ```
 
-**根拠**:
-- parent deployment は `executeAs: USER_DEPLOYING` + anonymous なので `Session.getActiveUser().getEmail()` は **空文字列**
-- admin deployment は `executeAs: USER_ACCESSING` + MYSELF_ONLY なので **必ず Ryo のメールが取れる**
-- この差で deployment 区別できる
+#### 修正 2-C: `gas_src/api_G3_Notify.gs` の admin 関数に token ガード追加
 
-これで parent URL を踏んだ第三者が `?role=dashboard` を試しても弾かれる。
-
-#### 修正 2-D (任意、防御深化): server-side API ガード
-
-api_G3_Notify.gs の `g3_distributeResults` / `g3_setBulkMailEnabled` 等、
-admin-only であるべき関数の冒頭で同様の email チェックを足すと、
-万一 parent URL から google.script.run が呼ばれた場合の保険になる:
+以下 4 関数の冒頭で `_assertAdminAuth(authToken)` を呼ぶ:
 
 ```javascript
-function _assertAdmin() {
-  var email = '';
-  try { email = Session.getActiveUser().getEmail() || ''; } catch (e) {}
-  if (!email) throw new Error('管理者権限が必要です');
+function g3_populateGrading(authToken) {
+  _assertAdminAuth(authToken);
+  // ... 既存処理
 }
 
-function g3_distributeResults(opts) {
-  _assertAdmin();
+function g3_computeRankings(authToken) {
+  _assertAdminAuth(authToken);
   // ... 既存処理
 }
-function g3_setBulkMailEnabled(enabled) {
-  _assertAdmin();
+
+function g3_distributeResults(opts, authToken) {
+  _assertAdminAuth(authToken);
   // ... 既存処理
 }
-function g3_populateGrading() {
-  _assertAdmin();
+
+function g3_setBulkMailEnabled(enabled, authToken) {
+  _assertAdminAuth(authToken);
   // ... 既存処理
 }
-function g3_computeRankings() {
-  _assertAdmin();
+
+function g3_previewResultMail(studentId, authToken) {
+  _assertAdminAuth(authToken);
+  // ... 既存処理
+}
+
+function g3_getProgress(authToken) {
+  _assertAdminAuth(authToken);
   // ... 既存処理
 }
 ```
 
-修正 2-D は **任意** だが kill switch + 配信ボタンの誤操作リスクを下げるので推奨。
+`api_G6_DocGen.gs:g6_generateAll` / `g6_generateOne` も同様に追加 (admin 操作)。
 
-### 検証項目 (修正後、Ryo 指定 + Web CC 追加)
+#### 修正 2-D: `gas_src/G3_Dashboard.html` をログイン状態管理対応に書き換え
+
+主な変更点:
+1. ページ冒頭にログインフォームの DOM を追加 (display:none で隠しておく)
+2. ページ末尾の `<script>` で `localStorage.adminToken` チェック
+3. 未認証なら login form 表示、認証済みなら dashboard 表示
+4. 全 google.script.run 呼出に `localStorage.adminToken` を引数追加
+5. ヘッダーに「ログアウト」ボタン追加
+
+具体的な実装イメージ (簡略):
+
+```html
+<!-- 既存の dashboard wrap の前に追加 -->
+<div id="loginPane" class="card" style="display:none">
+  <h2 style="text-align:center;margin-bottom:16px">管理者 PIN 入力</h2>
+  <form id="loginForm">
+    <input type="password" id="pinInput" placeholder="PIN" required
+      autocomplete="current-password" style="width:100%;padding:14px;font-size:18px;text-align:center">
+    <button type="submit" class="btn" style="margin-top:10px">ログイン</button>
+  </form>
+  <div id="loginMsg"></div>
+</div>
+
+<!-- 既存の dashboard wrap (.wrap) を id="dashboardPane" にして display:none をデフォに -->
+<div class="wrap" id="dashboardPane" style="display:none">
+  ...既存...
+  <button class="btn secondary" id="logoutBtn" type="button" style="margin-left:10px">ログアウト</button>
+  ...
+</div>
+```
+
+```javascript
+var AUTH_TOKEN = null;
+
+document.addEventListener('DOMContentLoaded', function () {
+  AUTH_TOKEN = localStorage.getItem('adminToken') || null;
+  if (!AUTH_TOKEN) {
+    showLogin();
+  } else {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res && res.ok) showDashboard();
+        else { localStorage.removeItem('adminToken'); AUTH_TOKEN = null; showLogin(); }
+      })
+      .admin_isAuthenticated(AUTH_TOKEN);
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var pin = document.getElementById('pinInput').value;
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res.ok) {
+          AUTH_TOKEN = res.token;
+          localStorage.setItem('adminToken', AUTH_TOKEN);
+          showDashboard();
+        } else {
+          var msg = res.error;
+          if (res.lockedUntil) msg += ' (ロック解除: ' + res.lockedUntil + ')';
+          document.getElementById('loginMsg').innerHTML =
+            '<div class="alert error">' + esc(msg) + '</div>';
+        }
+      })
+      .admin_login(pin);
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function () {
+    google.script.run
+      .withSuccessHandler(function () {
+        localStorage.removeItem('adminToken');
+        AUTH_TOKEN = null;
+        showLogin();
+      })
+      .admin_logout(AUTH_TOKEN);
+  });
+});
+
+function showLogin() {
+  document.getElementById('loginPane').style.display = 'block';
+  document.getElementById('dashboardPane').style.display = 'none';
+}
+function showDashboard() {
+  document.getElementById('loginPane').style.display = 'none';
+  document.getElementById('dashboardPane').style.display = 'block';
+  loadProgress();
+}
+
+// 既存の loadProgress / runPopulate / runRanking / runDryDistribute /
+// runDistribute / toggleKillSwitch / previewStudent / runDistribute は
+// すべて google.script.run.xxxx(args) 呼出に AUTH_TOKEN を最後の引数として追加。
+// 例:
+function loadProgress() {
+  google.script.run
+    .withSuccessHandler(...)
+    .g3_getProgress(AUTH_TOKEN);  // 追加
+}
+function runPopulate() {
+  google.script.run...g3_populateGrading(AUTH_TOKEN);
+}
+// ... 他も同様
+```
+
+#### 修正 2-E: `gas_src/SETUP.md` に PIN 設定手順を追記
+
+`### 9.` の前 (G-6 テンプレ前) に新セクションを追加:
+
+```markdown
+### 8.5. 管理者 PIN 設定 (BUG-002)
+
+GAS エディタで以下を 1 回実行 (引数に任意の PIN を渡す):
+
+```javascript
+admin_setupPin('1234');  // 4 桁以上の任意の文字列
+```
+
+PIN は SHA-256 ハッシュで `m_設定.admin_pin_hash` に保存される (平文は保持しない)。
+
+PIN 変更時は再度 `admin_setupPin('newPin')` を実行 (既存セッションは全無効化)。
+
+ロック解除を強制したい場合は ScriptProperties から `admin_pin_lockout` キーを削除:
+- GAS エディタ → プロジェクト設定 → スクリプト プロパティ → `admin_pin_lockout` 行を削除
+```
+
+### 検証項目 (修正後、Ryo 指定 4 項目 + Web CC 補強)
 | # | ケース | 期待 |
 |---|---|---|
-| 1 | parent URL で `?id=MI-001` | G-2 アップロード画面 |
-| 2 | parent URL で `?role=dashboard` | 「アクセス権がありません」表示 (修正 2-C 効果) |
-| 3 | parent URL で `?role=dashboard` から google.script.run で `g3_distributeResults` 呼出 (DevTools 経由) | エラー「管理者権限が必要です」(修正 2-D 効果、任意) |
-| 4 | admin URL を未ログインで開く | Google ログイン画面 |
-| 5 | admin URL を Ryo 以外のアカウントで開く | Google「アクセス権がありません」(MYSELF_ONLY 効果) |
-| 6 | admin URL で `?role=dashboard` を Ryo アカウントで開く | ダッシュボード表示 + Ryo の email 取得済 |
-| 7 | admin URL で `?id=MI-001` を Ryo アカウントで開く | G-2 画面 (Ryo も parent 動作確認できる) |
+| 1 | `?role=dashboard` 初回アクセス | PIN 入力フォーム表示 |
+| 2 | PIN 正解で submit | ダッシュボード表示、token が localStorage に保存 |
+| 3 | PIN 誤りで submit | エラー表示「PIN が違います (残り N 回)」、ログイン画面のまま |
+| 4 | PIN を 5 回連続で誤り | エラー「ロック中です」+ ロック解除時刻表示、15 分間ログイン不可 |
+| 5 | ログイン後にページ reload | localStorage の token が有効なのでダッシュボード即表示 (PIN 不要) |
+| 6 | セッション切れ後 (12h 経過) reload | 「セッション切れ」、再度 PIN プロンプト |
+| 7 | ログアウトボタン押下 | localStorage クリア + ScriptProperties から token 削除 + ログイン画面復帰 |
+| 8 | 認証なしで g3_distributeResults を直接 google.script.run で呼ぶ | エラー「管理者認証が必要です」(_assertAdminAuth 効果) |
+| 9 | `?id=MI-001` (parent ルート) | G-2 アップロード画面 (認証不要、PIN 影響なし) |
+| 10 | 無指定 | G-1 申込フォーム (認証不要) |
 
 ---
 
