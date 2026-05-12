@@ -605,10 +605,30 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--t
             <div style="font-weight:700;color:var(--navy);margin-bottom:6px">🏫 補習校・AS生割引</div>
             <div style="line-height:2">補習校またはAfter School在籍の方<br><strong>10%引き<br>※ウェイティングの生徒も対象です</strong></div>
           </div>
-          <div style="padding:12px 14px;border:1px solid var(--border);border-radius:3px;border-left:3px solid var(--gold)">
-            <div style="font-weight:700;color:var(--navy);margin-bottom:6px">👫 お友達割引</div>
-            <div style="line-height:2">お友達と同じコマを受講する場合<br>該当コマのみ<strong>10%引き</strong><br>※申込書にお名前をご記入ください</div>
-          </div>
+          <details style="padding:12px 14px;border:1px solid var(--border);border-radius:3px;border-left:3px solid var(--gold);background:#fff">
+            <summary style="font-weight:700;color:var(--navy);margin-bottom:6px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px">
+              👫 お友達割引（クリックで詳細）
+              <span style="font-size:11px;color:var(--muted);font-weight:400">▼ 適用条件あり</span>
+            </summary>
+            <div style="line-height:2;margin-top:8px">
+              お友達と同じコマを受講する場合<br>該当コマのみ <strong>10%引き</strong>
+            </div>
+            <div style="margin-top:10px;padding:10px 12px;background:#fffdf3;border:1px solid #ecd9a0;border-radius:4px;font-size:12px;line-height:1.8">
+              <div style="font-weight:700;color:var(--navy);margin-bottom:6px">📝 ご記入のお願い</div>
+              <ul style="margin:0 0 6px 18px;padding:0;list-style:disc">
+                <li>お名前は <strong>フルネーム</strong>（姓と名）でご記入ください<br>
+                  <span style="color:var(--muted);font-size:11px">例: ⭕ 「駿台 花子」 ／ ❌ 「はなこさん」</span>
+                </li>
+                <li><strong>お互いにお名前のご記入が必要</strong>です<br>
+                  <span style="color:var(--muted);font-size:11px">
+                    ・お二人の場合：それぞれが相手のお名前を記入<br>
+                    ・お三人以上の場合：連環の形（A→B→C→A）でご記入
+                  </span>
+                </li>
+              </ul>
+              <div style="color:#b00;font-weight:600;margin-top:6px">⚠ 片方のみのご記入では、割引は適用できません。</div>
+            </div>
+          </details>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px">※ 各割引は乗算方式で適用されます。割引後の端数はドル単位で切り上げとなります。</div>
       </div>
